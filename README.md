@@ -59,7 +59,7 @@ cd horse-racing-backend
 2. Chọn **Open**.
 3. Chọn thư mục backend vừa clone.
 4. Đợi IntelliJ import Maven dependencies.
-5. Kiểm tra Project SDK đang dùng **JDK 17**.
+5. Kiểm tra Project SDK đang dùng **JDK 25**.
 
 Nếu IntelliJ chưa nhận JDK:
 
