@@ -10,7 +10,7 @@ Trước khi chạy project, cần cài các công cụ sau:
 
 | Công cụ | Phiên bản khuyến nghị | Ghi chú |
 |---|---:|---|
-| Java JDK | 17 trở lên | Project Spring Boot nên dùng JDK 17 |
+| Java JDK | 17 trở lên | Project Spring Boot nên dùng JDK  |
 | IntelliJ IDEA | Community hoặc Ultimate | Dùng để mở project |
 | Maven | Có thể dùng Maven Wrapper | Nếu repo có `mvnw` thì không cần cài Maven riêng |
 | MySQL | 8.x | Dùng làm database |
