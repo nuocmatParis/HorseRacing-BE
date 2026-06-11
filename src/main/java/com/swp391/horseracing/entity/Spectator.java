@@ -2,11 +2,10 @@ package com.swp391.horseracing.entity;
 
 import jakarta.persistence.*;
 
-@Table
+@Table(name = "spectator")
 @Entity
-@PrimaryKeyJoinColumn(name = "UserId")
+@PrimaryKeyJoinColumn(name = "user_id")
 public class Spectator extends User {
-    @Column(name = "TotalPoint")
-    private int TotalPoints;
-
+    @Column(name = "total_points")
+    private int totalPoints;
 }

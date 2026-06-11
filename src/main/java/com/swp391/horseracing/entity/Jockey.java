@@ -5,24 +5,23 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 
-@Table(name = "Jockey")
+@Table(name = "jockey")
 @Entity
-@PrimaryKeyJoinColumn(name = "UserId")
+@PrimaryKeyJoinColumn(name = "user_id")
 public class Jockey extends User {
-    @Column(name = "Height", nullable = false, length = 50)
+    @Column(name = "height", nullable = false)
     private float height;
-    @Column(name = "Weight", nullable = false, length = 20)
+    @Column(name = "weight", nullable = false)
     private float weight;
-    @Column(name = "ExperienceYears", nullable = false, length = 20)
+    @Column(name = "experience_years", nullable = false)
     private int experienceYear;
-    @Column(name = "LicenseNumber", nullable = false, length = 20)
+    @Column(name = "license_number", nullable = false, length = 20)
     private String licenseNumber;
-    @Column(name = "Specialization", length = 100)
+    @Column(name = "specialization", length = 100)
     private String specialization;
-    @Column(name = "HireFee", nullable = false)
+    @Column(name = "hire_fee", nullable = false)
     private BigDecimal hireFee;
     @Enumerated(EnumType.STRING)
-    @Column(name = "Status")
+    @Column(name = "status")
     private JockeyStatus status;
-
 }
