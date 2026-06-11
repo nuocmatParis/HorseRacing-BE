@@ -8,32 +8,32 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table
+@Table(name = "user")
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "RoleType", discriminatorType = DiscriminatorType.STRING)
+@DiscriminatorColumn(name = "role_type", discriminatorType = DiscriminatorType.STRING)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID userId;
-    @Column(name = "UserName", nullable = false, length = 50, unique = true)
+    @Column(name = "user_name", nullable = false, length = 50, unique = true)
     private String userName;
-    @Column(name = "Password", nullable = false)
+    @Column(name = "password", nullable = false)
     private String password;
-    @Column(name = "Email", nullable = false, unique = true, length = 100)
+    @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
-    @Column(name = "DateOfBirth")
+    @Column(name = "date_of_birth")
     private LocalDate dob;
-    @Column(name = "FullName", nullable = false, length = 100)
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
-    @Column(name = "PhoneNumber", nullable = false)
+    @Column(name = "phone_number", nullable = false)
     private String phoneNumber;
     @Enumerated(EnumType.STRING)
-    @Column(name = "AccountStatus")
+    @Column(name = "account_status")
     private AccountStatus accountStatus;
-    @Column(name = "CreateAt")
+    @Column(name = "create_at")
     @CreationTimestamp
     private LocalDate createAt;
-    @Column(name = "LastLoginAt")
+    @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 }

@@ -2,15 +2,14 @@ package com.swp391.horseracing.entity;
 
 import jakarta.persistence.*;
 
-@Table(name = "HorseOwner")
+@Table(name = "horse_owner")
 @Entity
-@PrimaryKeyJoinColumn(name = "UserId")
+@PrimaryKeyJoinColumn(name = "user_id")
 public class HorseOwner extends User {
-    @Column(name = "FarmName", nullable = false, length = 50)
+    @Column(name = "farm_name", nullable = false, length = 50)
     private String farmName;
-    @Column(name = "Adress", nullable = false, length = 50)
+    @Column(name = "adress", nullable = false, length = 50)
     private String adress;
-    @Column(name = "LicenseNumber", nullable = false, length = 30)
+    @Column(name = "license_number", nullable = false, length = 30)
     private String licenseNumber;
-
 }
