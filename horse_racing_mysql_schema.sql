@@ -1109,11 +1109,3 @@ ON DUPLICATE KEY UPDATE
     is_active = VALUES(is_active);
 
 SET FOREIGN_KEY_CHECKS = 1;
-
--- ============================================================
--- 14. QUICK CHECKS
--- ============================================================
-
--- SELECT role_name FROM roles;
--- SELECT * FROM wallets WHERE owner_type = 'SYSTEM';
--- SHOW TABLES;
