@@ -43,6 +43,10 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.ROLE_NOT_ALLOWED);
         }
 
+        if(userRepository.existsByEmail(request.getEmail())){
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
+        }
+
         Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
                 -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
