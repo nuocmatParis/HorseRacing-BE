@@ -1,39 +1,67 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.AccountStatus;
+import com.swp391.horseracing.enums.Gender;
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table(name = "user")
 @Entity
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name = "role_type", discriminatorType = DiscriminatorType.STRING)
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class User {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID userId;
-    @Column(name = "user_name", nullable = false, length = 50, unique = true)
-    private String userName;
+    @Column(name = "user_id")
+    UUID userId;
+
+    @Column(name = "username", nullable = false, length = 15, unique = true)
+    String username;
+
     @Column(name = "password", nullable = false)
-    private String password;
+    String password;
+
     @Column(name = "email", nullable = false, unique = true, length = 100)
-    private String email;
-    @Column(name = "date_of_birth")
-    private LocalDate dob;
-    @Column(name = "full_name", nullable = false, length = 100)
-    private String fullName;
-    @Column(name = "phone_number", nullable = false)
-    private String phoneNumber;
+    String email;
+
+    @Column(name = "dob")
+    LocalDate dob;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status")
-    private AccountStatus accountStatus;
-    @Column(name = "create_at")
+    @Column(name = "gender")
+    private Gender gender;
+
+    @Column(name = "full_name", nullable = false, length = 100)
+    String fullName;
+
+    @Column(name = "phone_number", length = 20)
+    String phoneNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    AccountStatus status;
+
     @CreationTimestamp
-    private LocalDate createAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
+
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    LocalDateTime lastLoginAt;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
+
 }
