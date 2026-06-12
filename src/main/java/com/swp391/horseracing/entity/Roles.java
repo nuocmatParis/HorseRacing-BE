@@ -17,12 +17,12 @@ import java.util.UUID;
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Role {
+public class Roles {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "role_id")
-    UUID roleId;
+    private UUID roleId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role_name", unique = true, nullable = false)

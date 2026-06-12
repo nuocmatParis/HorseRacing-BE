@@ -2,8 +2,8 @@ package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
-import com.swp391.horseracing.entity.Role;
-import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.entity.Roles;
+import com.swp391.horseracing.entity.Users;
 import com.swp391.horseracing.enums.AccountStatus;
 import com.swp391.horseracing.enums.RoleName;
 import com.swp391.horseracing.exception.AppException;
@@ -43,10 +43,10 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.ROLE_NOT_ALLOWED);
         }
 
-        Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
+        Roles role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
                 -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
-        User user = userMapper.toUser(request);
+        Users user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setStatus(AccountStatus.ACTIVE);
