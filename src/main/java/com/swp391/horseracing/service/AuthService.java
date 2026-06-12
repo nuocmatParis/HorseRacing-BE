@@ -1,22 +1,16 @@
 package com.swp391.horseracing.service;
 
-import com.swp391.horseracing.dto.auth.request.LoginRequest;
+import com.swp391.horseracing.dto.auth.request.AuthRequest;
 import com.swp391.horseracing.dto.auth.response.AuthResponse;
-import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
+import com.swp391.horseracing.entity.User;
 
 public interface AuthService {
 
-    /**
-     * Đăng nhập.
-     * - Verify password
-     * - Update lastLoginAt
-     * - Trả về JWT token
-     */
-    AuthResponse login(LoginRequest request);
+    AuthResponse login(AuthRequest request);
 
-    /**
-     * Lấy thông tin user hiện tại từ Security context.
-     */
     UserResponse getMyProfile();
+
+    String generateToken(User user);
+
 }
