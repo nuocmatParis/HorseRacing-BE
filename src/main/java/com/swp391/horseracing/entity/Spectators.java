@@ -1,6 +1,5 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.RefereeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -10,37 +9,29 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "referees")
+@Table(name = "spectators")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Referee {
+public class Spectators {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "referee_id")
-    UUID refereeId;
+    @Column(name = "spectator_id")
+    private UUID spectatorId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
-
-    @Column(name = "certification_level", length = 50)
-    String certificationLevel;
+    private Users user;
 
     @Builder.Default
-    @Column(name = "years_of_service", nullable = false)
-    int yearsOfService = 0;
-
-    @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    RefereeStatus status = RefereeStatus.AVAILABLE;
+    @Column(name = "total_points", nullable = false)
+    private int totalPoints = 0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

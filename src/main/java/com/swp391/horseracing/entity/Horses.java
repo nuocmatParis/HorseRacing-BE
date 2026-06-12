@@ -1,17 +1,25 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.Gender;
-import com.swp391.horseracing.enums.HeathStatus;
+import com.swp391.horseracing.enums.HealthStatus;
 import com.swp391.horseracing.enums.HorseBreed;
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Table(name = "horses")
 @Entity
-public class Horse {
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class Horses {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID horseId;
@@ -29,8 +37,8 @@ public class Horse {
     private float weight;
     @Column(name = "color", nullable = false, length = 50)
     private String color;
-    @Column(name = "heath_status", nullable = false)
-    private HeathStatus heathStatus;
+    @Column(name = "health_status", nullable = false)
+    private HealthStatus healthStatus;
     @Column(name = "race_class", nullable = false, length = 50)
     private String raceClass;
     @Column(name = "total_races", nullable = false)
@@ -39,11 +47,11 @@ public class Horse {
     private int totalWins;
     @Column(name = "win_rate", nullable = false)
     private Double winRate;
-    @Column(name = "create_at")
+    @Column(name = "created_at")
     @CreationTimestamp
-    private LocalDate createAt;
+    private LocalDateTime createdAt;
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
-    private HorseOwner owner;
+    private HorseOwners owner;
 }
