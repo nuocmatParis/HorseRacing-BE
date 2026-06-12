@@ -1,17 +1,49 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.RefereeStatus;
+import com.swp391.horseracing.enums.VetStatus;
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
 
-@Table(name = "veterinarian")
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Entity
-@PrimaryKeyJoinColumn(name = "user_id")
-public class Veterinarian extends User {
-    @Column(name = "license_number", nullable = false, length = 50)
-    private String licenseNumber;
-    @Column(name = "year_of_service", nullable = false)
-    private int yearOfService;
+@Table(name = "veterinarians")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class Veterinarian {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "vet_id")
+    UUID vetId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true, nullable = false)
+    User user;
+
+    @Column(name = "license_number", nullable = false, unique = true, length = 50)
+    String licenseNumber;
+
+    @Column(name = "specialization", length = 100)
+    String specialization;
+
+    @Builder.Default
+    @Column(name = "years_of_service", nullable = false)
+    int yearsOfService = 0;
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private RefereeStatus status;
+    @Column(name = "status", nullable = false)
+    VetStatus status = VetStatus.AVAILABLE;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
 }

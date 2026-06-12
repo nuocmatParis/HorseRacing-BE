@@ -70,6 +70,9 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(1109, HttpStatus.NOT_FOUND, "Role not found"),
 // Không tìm thấy vai trò người dùng
 
+    ROLE_NOT_ALLOWED(1110, HttpStatus.BAD_REQUEST, "Role not allowed to choose"),
+// Chọn role không cho phép
+
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
