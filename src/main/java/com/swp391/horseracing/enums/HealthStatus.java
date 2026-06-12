@@ -1,6 +1,6 @@
 package com.swp391.horseracing.enums;
 
-public enum HeathStatus {
+public enum HealthStatus {
     HEALTHY,
     INJURED,
     RETIRED

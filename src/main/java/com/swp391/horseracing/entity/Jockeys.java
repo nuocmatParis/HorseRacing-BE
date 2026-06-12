@@ -18,43 +18,43 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Jockey {
+public class Jockeys {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "jockey_id")
-    UUID jockeyId;
+    private UUID jockeyId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
+    private Users user;
 
     @Column(name = "height", precision = 5, scale = 2)
-    BigDecimal height;
+    private BigDecimal height;
 
     @Column(name = "weight", precision = 5, scale = 2)
-    BigDecimal weight;
+    private BigDecimal weight;
 
     @Builder.Default
     @Column(name = "experience_years", nullable = false)
-    int experienceYears = 0;
+    private int experienceYears = 0;
 
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    String licenseNumber;
+    private String licenseNumber;
 
     @Column(name = "specialization", length = 100)
-    String specialization;
+    private String specialization;
 
     @Builder.Default
     @Column(name = "hire_fee", nullable = false, precision = 15, scale = 2)
-    BigDecimal hireFee = BigDecimal.ZERO;
+    private BigDecimal hireFee = BigDecimal.ZERO;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    JockeyStatus status = JockeyStatus.AVAILABLE;
+    private JockeyStatus status = JockeyStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }
