@@ -18,6 +18,8 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @Service
@@ -36,6 +38,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse create(UserCreationRequest request) {
+        Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
+                -> new AppException(ErrorCode.ROLE_NOT_FOUND));
+
         if(userRepository.existsByUsername(request.getUsername()))
             throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
 
@@ -47,14 +52,23 @@ public class UserServiceImpl implements UserService {
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
-                -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(role);
         user.setStatus(AccountStatus.ACTIVE);
 
         return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    public List<UserResponse> findAll() {
+        List<User> list = userRepository.findAll();
+
+        List<UserResponse> responseList = new ArrayList<>();
+        for(User user : list){
+            responseList.add(userMapper.toUserResponse(user));
+        }
+
+        return responseList;
     }
 }
