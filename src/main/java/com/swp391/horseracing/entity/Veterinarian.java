@@ -22,28 +22,28 @@ public class Veterinarian {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "vet_id")
-    UUID vetId;
+    private UUID vetId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
+    private User user;
 
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    String licenseNumber;
+    private String licenseNumber;
 
     @Column(name = "specialization", length = 100)
-    String specialization;
+    private String specialization;
 
     @Builder.Default
     @Column(name = "years_of_service", nullable = false)
-    int yearsOfService = 0;
+    private int yearsOfService = 0;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    VetStatus status = VetStatus.AVAILABLE;
+    private VetStatus status = VetStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

@@ -22,25 +22,25 @@ public class MedicalStaff {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "med_staff_id")
-    UUID medStaffId;
+    private UUID medStaffId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
+    private User user;
 
     @Column(name = "certification", length = 100)
-    String certification;
+    private String certification;
 
     @Builder.Default
     @Column(name = "years_of_service", nullable = false)
-    int yearsOfService = 0;
+    private int yearsOfService = 0;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    MedicalStaffStatus status = MedicalStaffStatus.AVAILABLE;
+    private MedicalStaffStatus status = MedicalStaffStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }
