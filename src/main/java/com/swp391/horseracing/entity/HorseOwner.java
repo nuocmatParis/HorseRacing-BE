@@ -21,22 +21,22 @@ public class HorseOwner {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "owner_id")
-    UUID ownerId;
+    private UUID ownerId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
+    private User user;
 
     @Column(name = "farm_name", length = 100)
-    String farmName;
+    private String farmName;
 
     @Column(name = "address", columnDefinition = "TEXT")
-    String address;
+    private String address;
 
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    String licenseNumber;
+    private String licenseNumber;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

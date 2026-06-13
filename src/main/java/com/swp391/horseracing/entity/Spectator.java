@@ -21,17 +21,17 @@ public class Spectator {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "spectator_id")
-    UUID spectatorId;
+    private UUID spectatorId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    User user;
+    private User user;
 
     @Builder.Default
     @Column(name = "total_points", nullable = false)
-    int totalPoints = 0;
+    private int totalPoints = 0;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

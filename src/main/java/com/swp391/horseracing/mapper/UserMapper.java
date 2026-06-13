@@ -3,7 +3,6 @@ package com.swp391.horseracing.mapper;
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
 import com.swp391.horseracing.entity.User;
-import com.swp391.horseracing.repository.UserRepository;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
