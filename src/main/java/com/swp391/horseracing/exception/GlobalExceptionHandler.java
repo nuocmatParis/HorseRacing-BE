@@ -2,6 +2,7 @@ package com.swp391.horseracing.exception;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -55,6 +56,21 @@ public class GlobalExceptionHandler {
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
                 .build();
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(apiResponse);
+    }
+
+    @ExceptionHandler(value = HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMessageNotReadableException(
+            HttpMessageNotReadableException exception){
+        ErrorCode errorCode = ErrorCode.ROLE_NOT_FOUND;
+
+        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+                .code(errorCode.getCode())
+                .message(errorCode.getMessage())
+                .build();
+
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(apiResponse);

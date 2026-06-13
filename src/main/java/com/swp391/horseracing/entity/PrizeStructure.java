@@ -3,6 +3,8 @@ package com.swp391.horseracing.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -19,7 +21,8 @@ public class PrizeStructure {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "prize_structure_id")
+    @Column(name = "prize_structure_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID prizeStructureId;
 
     @Column(name = "rank", nullable = false)

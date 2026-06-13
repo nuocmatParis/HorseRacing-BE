@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,39 +24,42 @@ public class Jockey {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "jockey_id")
-    private UUID jockeyId;
+    @Column(name = "jockey_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID jockeyId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private User user;
+    User user;
 
     @Column(name = "height", precision = 5, scale = 2)
-    private BigDecimal height;
+    BigDecimal height;
 
     @Column(name = "weight", precision = 5, scale = 2)
-    private BigDecimal weight;
+    BigDecimal weight;
 
     @Builder.Default
     @Column(name = "experience_years", nullable = false)
-    private int experienceYears = 0;
+    int experienceYears = 0;
 
-    @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    private String licenseNumber;
+    @Column(name = "license_number", nullable = false,
+            unique = true, length = 50)
+    String licenseNumber;
 
     @Column(name = "specialization", length = 100)
-    private String specialization;
+    String specialization;
 
     @Builder.Default
-    @Column(name = "hire_fee", nullable = false, precision = 15, scale = 2)
-    private BigDecimal hireFee = BigDecimal.ZERO;
+    @Column(name = "hire_fee", nullable = false,
+            precision = 15, scale = 2)
+    BigDecimal hireFee = BigDecimal.ZERO;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private JockeyStatus status = JockeyStatus.AVAILABLE;
+    JockeyStatus status = JockeyStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 }

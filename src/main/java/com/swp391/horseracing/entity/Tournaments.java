@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,94 +27,95 @@ public class Tournaments {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "tournament_id")
-    private UUID tournamentId;
+    @Column(name = "tournament_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID tournamentId;
 
     @Column(name = "name", nullable = false, length = 150)
-    private String name;
+    String name;
 
     @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+    String description;
 
     @Column(name = "start_date")
-    private LocalDate startDate;
+    LocalDate startDate;
 
     @Column(name = "end_date")
-    private LocalDate endDate;
+    LocalDate endDate;
 
     @Column(name = "finished_at")
-    private LocalDateTime finishedAt;
+    LocalDateTime finishedAt;
 
     @Column(name = "location", length = 200)
-    private String location;
+    String location;
 
     @Column(name = "registration_fee", precision = 15, scale = 2)
-    private BigDecimal registrationFee;
+    BigDecimal registrationFee;
 
     @Column(name = "jockey_registration_fee", precision = 15, scale = 2)
-    private BigDecimal jockeyRegistrationFee;
+    BigDecimal jockeyRegistrationFee;
 
     @Column(name = "system_contract_fee", precision = 15, scale = 2)
-    private BigDecimal systemContractFee;
+    BigDecimal systemContractFee;
 
     @Column(name = "total_prize_pool", precision = 15, scale = 2)
-    private BigDecimal totalPrizePool;
+    BigDecimal totalPrizePool;
 
     @Column(name = "allowed_breed", length = 100)
-    private String allowedBreed;
+    String allowedBreed;
 
     @Column(name = "race_class", length = 50)
-    private String raceClass;
+    String raceClass;
 
     @Column(name = "weight_class", length = 50)
-    private String weightClass;
+    String weightClass;
 
     @Column(name = "min_horse_age")
-    private int minHorseAge;
+    int minHorseAge;
 
     @Column(name = "max_horse_age")
-    private int maxHorseAge;
+    int maxHorseAge;
 
     @Column(name = "tournament_division", length = 100)
-    private String tournamentDivision;
+    String tournamentDivision;
 
     @Column(name = "handicap_rule", columnDefinition = "TEXT")
-    private String handicapRule;
+    String handicapRule;
 
     @Column(name = "prediction_open_at")
-    private LocalDateTime predictionOpenAt;
+    LocalDateTime predictionOpenAt;
 
     @Column(name = "prediction_close_at")
-    private LocalDateTime predictionCloseAt;
+    LocalDateTime predictionCloseAt;
 
     @Column(name = "prediction_reward_rule", columnDefinition = "TEXT")
-    private String predictionRewardRule;
+    String predictionRewardRule;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private TournamentStatus status;
+    TournamentStatus status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "phase", nullable = false)
-    private TournamentPhase phase;
+    TournamentPhase phase;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @Column(name = "published_at")
-    private LocalDateTime publishedAt;
+    LocalDateTime publishedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    private User createdBy;
+    User createdBy;
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<PrizeStructure> prizeStructures;
+    List<PrizeStructure> prizeStructures;
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<TournamentEligibility> eligibilityRules;
+    List<TournamentEligibility> eligibilityRules;
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Round> rounds;
+    List<Round> rounds;
 }

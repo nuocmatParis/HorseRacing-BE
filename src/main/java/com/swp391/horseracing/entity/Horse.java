@@ -7,6 +7,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -22,36 +24,50 @@ import java.util.UUID;
 public class Horse {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID horseId;
+    @Column(name = "horse_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID horseId;
+
     @Column(name = "name", nullable = false, length = 100)
-    private String name;
+    String name;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "breed", nullable = false)
-    private HorseBreed breed;
+    HorseBreed breed;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "gender", nullable = false)
-    private Gender gender;
+    Gender gender;
+
     @Column(name = "age", nullable = false)
-    private int age;
+    int age;
+
     @Column(name = "weight", nullable = false)
-    private float weight;
+    float weight;
+
     @Column(name = "color", nullable = false, length = 50)
-    private String color;
+    String color;
+
     @Column(name = "health_status", nullable = false)
-    private HealthStatus healthStatus;
+    HealthStatus healthStatus;
+
     @Column(name = "race_class", nullable = false, length = 50)
-    private String raceClass;
+    String raceClass;
+
     @Column(name = "total_races", nullable = false)
-    private int totalRaces;
+    int totalRaces;
+
     @Column(name = "total_wins", nullable = false)
-    private int totalWins;
+    int totalWins;
+
     @Column(name = "win_rate", nullable = false)
-    private Double winRate;
+    Double winRate;
+
     @Column(name = "created_at")
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
-    private HorseOwner owner;
+    HorseOwner owner;
 }
