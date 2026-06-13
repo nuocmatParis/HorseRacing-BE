@@ -20,7 +20,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Wallets {
+public class Wallet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -51,5 +51,5 @@ public class Wallets {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private Users user;
+    private User user;
 }

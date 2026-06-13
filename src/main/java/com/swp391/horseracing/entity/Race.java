@@ -16,7 +16,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Races {
+public class Race {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -58,13 +58,13 @@ public class Races {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "round_id", nullable = false)
-    private Rounds round;
+    private Round round;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    private Users createdBy;
+    private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "started_by")
-    private Users startedBy;
+    private User startedBy;
 }

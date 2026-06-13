@@ -105,7 +105,7 @@ public class Tournaments {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
-    private Users createdBy;
+    private User createdBy;
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PrizeStructure> prizeStructures;
@@ -114,5 +114,5 @@ public class Tournaments {
     private List<TournamentEligibility> eligibilityRules;
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Rounds> rounds;
+    private List<Round> rounds;
 }
