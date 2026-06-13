@@ -2,7 +2,7 @@ package com.swp391.horseracing.mapper;
 
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
-import com.swp391.horseracing.entity.Users;
+import com.swp391.horseracing.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -10,7 +10,7 @@ import org.mapstruct.Mapping;
 public interface UserMapper {
 
     @Mapping(target = "roleName", source = "role.roleName")
-    UserResponse toUserResponse(Users user);
+    UserResponse toUserResponse(User user);
 
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "role", ignore = true)
@@ -18,5 +18,5 @@ public interface UserMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "lastLoginAt", ignore = true)
-    Users toUser(UserCreationRequest request);
+    User toUser(UserCreationRequest request);
 }

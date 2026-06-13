@@ -1,5 +1,6 @@
 package com.swp391.horseracing.entity;
 
+import com.swp391.horseracing.enums.VetStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -9,32 +10,38 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "horse_owners")
+@Table(name = "veterinarians")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class HorseOwners {
+public class Veterinarian {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "owner_id")
-    private UUID ownerId;
+    @Column(name = "vet_id")
+    private UUID vetId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private Users user;
-
-    @Column(name = "farm_name", length = 100)
-    private String farmName;
-
-    @Column(name = "address", columnDefinition = "TEXT")
-    private String address;
+    private User user;
 
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
     private String licenseNumber;
+
+    @Column(name = "specialization", length = 100)
+    private String specialization;
+
+    @Builder.Default
+    @Column(name = "years_of_service", nullable = false)
+    private int yearsOfService = 0;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private VetStatus status = VetStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

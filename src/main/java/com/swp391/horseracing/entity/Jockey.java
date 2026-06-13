@@ -18,7 +18,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Jockeys {
+public class Jockey {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -27,7 +27,7 @@ public class Jockeys {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private Users user;
+    private User user;
 
     @Column(name = "height", precision = 5, scale = 2)
     private BigDecimal height;
