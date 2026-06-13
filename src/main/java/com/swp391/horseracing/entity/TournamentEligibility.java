@@ -4,6 +4,8 @@ import com.swp391.horseracing.enums.EligibilityTargetType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
 
@@ -19,29 +21,30 @@ public class TournamentEligibility {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "eligibility_id")
-    private UUID eligibilityId;
+    @Column(name = "eligibility_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID eligibilityId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "target_type", nullable = false)
-    private EligibilityTargetType targetType;
+    EligibilityTargetType targetType;
 
     @Column(name = "condition_name", nullable = false, length = 100)
-    private String conditionName;
+    String conditionName;
 
     @Column(name = "condition_operator", nullable = false, length = 10)
-    private String conditionOperator;
+    String conditionOperator;
 
     @Column(name = "condition_value", nullable = false, length = 100)
-    private String conditionValue;
+    String conditionValue;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)
-    private boolean isActive = true;
+    boolean isActive = true;
 
     // ---- Relationships ----
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)
-    private Tournaments tournament;
+    Tournaments tournament;
 }

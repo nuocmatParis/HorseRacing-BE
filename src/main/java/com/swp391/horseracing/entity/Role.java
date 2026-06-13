@@ -29,17 +29,16 @@ public class Role {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role_name", unique = true, nullable = false)
-    private RoleName roleName;
+    RoleName roleName;
 
     @Column(name = "description")
-    private String description;
+    String description;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)
-    private boolean isActive = true;
+    boolean isActive = true;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
-
+    LocalDateTime createdAt;
 }
