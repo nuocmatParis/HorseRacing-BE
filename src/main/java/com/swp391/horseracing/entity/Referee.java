@@ -2,15 +2,45 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.RefereeStatus;
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
 
-@Table(name = "referee")
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Entity
-@PrimaryKeyJoinColumn(name = "user_id")
-public class Referee extends User {
-    @Column(name = "certification", nullable = false, length = 50)
-    private String certification;
-    @Column(name = "year_of_service", nullable = false)
-    private int yearOfService;
-    @Column(name = "status")
-    private RefereeStatus status;
+@Table(name = "referees")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class Referee {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "referee_id")
+    UUID refereeId;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", unique = true, nullable = false)
+    User user;
+
+    @Column(name = "certification_level", length = 50)
+    String certificationLevel;
+
+    @Builder.Default
+    @Column(name = "years_of_service", nullable = false)
+    int yearsOfService = 0;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    RefereeStatus status = RefereeStatus.AVAILABLE;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
 }

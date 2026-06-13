@@ -70,6 +70,15 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(1109, HttpStatus.NOT_FOUND, "Role not found"),
 // Không tìm thấy vai trò người dùng
 
+    ROLE_NOT_ALLOWED(1110, HttpStatus.BAD_REQUEST, "Role not allowed to choose"),
+// Chọn role không cho phép
+
+    CAN_NOT_CREATE_TOKEN(1111, HttpStatus.INTERNAL_SERVER_ERROR, "Can not create token"),
+// Không thể tạo token
+
+    INVALID_USERNAME(1112, HttpStatus.BAD_REQUEST, "Username must be at least 3 characters"),
+
+    INVALID_PASSWORD(1113, HttpStatus.BAD_REQUEST, "Password must be at least 8 characters"),
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
