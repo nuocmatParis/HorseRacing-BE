@@ -6,7 +6,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,32 +26,33 @@ public class Wallet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "wallet_id")
-    private UUID walletId;
+    @Column(name = "wallet_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID walletId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "owner_type", nullable = false)
-    private WalletOwnerType ownerType;
+    WalletOwnerType ownerType;
 
     @Column(name = "balance", nullable = false, precision = 15, scale = 2)
-    private BigDecimal balance;
+    BigDecimal balance;
 
     @Column(name = "currency", nullable = false, length = 10)
-    private String currency;
+    String currency;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private WalletStatus status;
+    WalletStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    LocalDateTime updatedAt;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user;
+    User user;
 }

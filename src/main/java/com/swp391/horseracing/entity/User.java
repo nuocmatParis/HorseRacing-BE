@@ -33,55 +33,56 @@ public class User {
     UUID userId;
 
     @Column(name = "username", nullable = false, length = 15, unique = true)
-    private String username;
+    String username;
 
     @Column(name = "password", nullable = false)
-    private String password;
+    String password;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
-    private String email;
+    String email;
 
     @Column(name = "dob")
-    private LocalDate dob;
+    LocalDate dob;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "gender")
-    private Gender gender;
+    Gender gender;
 
     @Column(name = "full_name", nullable = false, length = 100)
-    private String fullName;
+    String fullName;
 
     @Column(name = "phone_number", length = 20)
-    private String phoneNumber;
+    String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private AccountStatus status;
+    AccountStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    LocalDateTime lastLoginAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    Role role;
 
     @OneToOne(mappedBy = "user")
-    private Wallet wallet;
+    Wallet wallet;
+
+    @OneToMany(mappedBy = "createdBy",
+            cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Tournaments> createdTournaments;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Tournaments> createdTournaments;
+    List<Round> createdRounds;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Round> createdRounds;
-
-    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Race> createdRaces;
+    List<Race> createdRaces;
 
     @OneToMany(mappedBy = "startedBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Race> startedRaces;
+    List<Race> startedRaces;
 }

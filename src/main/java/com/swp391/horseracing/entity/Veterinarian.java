@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,29 +23,30 @@ public class Veterinarian {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "vet_id")
-    private UUID vetId;
+    @Column(name = "vet_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
+    UUID vetId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private User user;
+    User user;
 
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    private String licenseNumber;
+    String licenseNumber;
 
     @Column(name = "specialization", length = 100)
-    private String specialization;
+    String specialization;
 
     @Builder.Default
     @Column(name = "years_of_service", nullable = false)
-    private int yearsOfService = 0;
+    int yearsOfService = 0;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private VetStatus status = VetStatus.AVAILABLE;
+    VetStatus status = VetStatus.AVAILABLE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 }
