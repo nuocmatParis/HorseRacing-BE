@@ -17,7 +17,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Roles {
+public class Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

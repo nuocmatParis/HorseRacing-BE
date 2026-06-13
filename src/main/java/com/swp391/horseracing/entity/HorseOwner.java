@@ -9,27 +9,32 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "spectators")
+@Table(name = "horse_owners")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Spectators {
+public class HorseOwner {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "spectator_id")
-    private UUID spectatorId;
+    @Column(name = "owner_id")
+    private UUID ownerId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private Users user;
+    private User user;
 
-    @Builder.Default
-    @Column(name = "total_points", nullable = false)
-    private int totalPoints = 0;
+    @Column(name = "farm_name", length = 100)
+    private String farmName;
+
+    @Column(name = "address", columnDefinition = "TEXT")
+    private String address;
+
+    @Column(name = "license_number", nullable = false, unique = true, length = 50)
+    private String licenseNumber;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

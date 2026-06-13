@@ -21,7 +21,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Users {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -64,20 +64,20 @@ public class Users {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
-    private Roles role;
+    private Role role;
 
     @OneToOne(mappedBy = "user")
-    private Wallets wallet;
+    private Wallet wallet;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Tournaments> createdTournaments;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Rounds> createdRounds;
+    private List<Round> createdRounds;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Races> createdRaces;
+    private List<Race> createdRaces;
 
     @OneToMany(mappedBy = "startedBy", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Races> startedRaces;
+    private List<Race> startedRaces;
 }

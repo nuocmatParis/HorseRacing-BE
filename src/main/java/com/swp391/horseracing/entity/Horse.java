@@ -19,7 +19,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Horses {
+public class Horse {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID horseId;
@@ -53,5 +53,5 @@ public class Horses {
 
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
-    private HorseOwners owner;
+    private HorseOwner owner;
 }
