@@ -8,10 +8,12 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -31,40 +33,55 @@ public class User {
     UUID userId;
 
     @Column(name = "username", nullable = false, length = 15, unique = true)
-    String username;
+    private String username;
 
     @Column(name = "password", nullable = false)
-    String password;
+    private String password;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
-    String email;
+    private String email;
 
     @Column(name = "dob")
-    LocalDate dob;
+    private LocalDate dob;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "gender")
     private Gender gender;
 
     @Column(name = "full_name", nullable = false, length = 100)
-    String fullName;
+    private String fullName;
 
     @Column(name = "phone_number", length = 20)
-    String phoneNumber;
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    AccountStatus status;
+    private AccountStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "last_login_at")
-    LocalDateTime lastLoginAt;
+    private LocalDateTime lastLoginAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
+    @OneToOne(mappedBy = "user")
+    private Wallet wallet;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tournaments> createdTournaments;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Round> createdRounds;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Race> createdRaces;
+
+    @OneToMany(mappedBy = "startedBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Race> startedRaces;
 }
