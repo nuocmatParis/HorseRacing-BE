@@ -1,10 +1,12 @@
 package com.swp391.horseracing.mapper;
 
 import com.swp391.horseracing.dto.jockey.request.JockeyCreationRequest;
+import com.swp391.horseracing.dto.jockey.request.JockeyUpdateRequest;
 import com.swp391.horseracing.dto.jockey.response.JockeyResponse;
 import com.swp391.horseracing.entity.Jockey;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface JockeyMapper {
@@ -18,4 +20,10 @@ public interface JockeyMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     Jockey toJockey(JockeyCreationRequest request);
+
+    @Mapping(target = "jockeyId", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    void updateJockey(@MappingTarget Jockey jockey, JockeyUpdateRequest request);
 }

@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface HorseOwnerRepository extends JpaRepository<HorseOwner, UUID> {
     Optional<HorseOwner> findByUser_UserId(UUID userId);
     Optional<HorseOwner> findByUser_Username(String username);
+    boolean existsByUser_UserId(UUID userId);
 }
