@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service;
 
 import com.swp391.horseracing.dto.jockey.request.JockeyCreationRequest;
+import com.swp391.horseracing.dto.jockey.request.JockeyUpdateRequest;
 import com.swp391.horseracing.dto.jockey.response.JockeyResponse;
 import com.swp391.horseracing.entity.Jockey;
 import com.swp391.horseracing.entity.User;
@@ -13,9 +14,13 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 
 public interface JockeyService {
-    JockeyResponse create(JockeyCreationRequest request);
     List<JockeyResponse> getAll();
+    JockeyResponse createMyProfile(JockeyCreationRequest request);
+    JockeyResponse getById(UUID id);
+    JockeyResponse getMyProfile();
+    JockeyResponse updateMyProfile(JockeyUpdateRequest request);
 }

@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface JockeyRepository extends JpaRepository<Jockey, UUID> {
-    Optional<Jockey> findByUser_UserId(UUID userId);
+    Optional<Jockey> findByUser_Username(String userName);
     boolean existsByUser_UserId(UUID userId);
-
+    Optional<Jockey> findByUser_UserId(UUID userId);
 }

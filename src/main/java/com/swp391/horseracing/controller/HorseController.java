@@ -24,7 +24,7 @@ public class HorseController {
 
     HorseService horseService;
 
-    @GetMapping
+    @GetMapping("/my-horses")
     public ApiResponse<List<HorseResponse>> getAll() {
         return ApiResponse.<List<HorseResponse>>builder()
                 .result(horseService.getAll())
