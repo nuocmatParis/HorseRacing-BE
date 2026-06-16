@@ -12,6 +12,7 @@ import com.swp391.horseracing.mapper.UserMapper;
 import com.swp391.horseracing.repository.RoleRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.UserService;
+import com.swp391.horseracing.service.WalletService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -30,6 +31,7 @@ public class UserServiceImpl implements UserService {
     RoleRepository roleRepository;
     PasswordEncoder passwordEncoder;
     UserMapper userMapper;
+    WalletService walletService;
 
     static Set<RoleName> SELF_REGISTER_ALLOWED_ROLES = Set.of(
             RoleName.SPECTATOR,
@@ -57,7 +59,14 @@ public class UserServiceImpl implements UserService {
         user.setRole(role);
         user.setStatus(AccountStatus.ACTIVE);
 
-        return userMapper.toUserResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        RoleName roleName = savedUser.getRole().getRoleName();
+
+        if (roleName == RoleName.HORSE_OWNER || roleName == RoleName.JOCKEY) {
+            walletService.createUserWallet(savedUser);
+        }
+        return userMapper.toUserResponse(savedUser);
     }
 
     @Override
