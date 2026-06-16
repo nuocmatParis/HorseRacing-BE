@@ -151,8 +151,20 @@ public enum ErrorCode {
     INVOICE_NOT_PAID(1411, HttpStatus.BAD_REQUEST, "Invoice is not paid"),
 // Hóa đơn chưa được thanh toán
 
-    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled");
+    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled"),
 // Hóa đơn đã bị hủy
+
+    AMOUNT_REQUIRED(1413, HttpStatus.BAD_REQUEST, "IAmount is required"),
+//    Nạp tiền không được trống
+
+    INVALID_DEPOSIT_MINIMUM(1414, HttpStatus.BAD_REQUEST, "Minimum deposit is 1,000 VND"),
+//    Tiền nạp không dưới 1 nghìn đồng
+
+    WALLET_FROZEN(1415, HttpStatus.CONFLICT, "Wallet is frozen"),
+
+    WALLET_CLOSED(1416, HttpStatus.CONFLICT, "Wallet is closed"),
+
+    ;
 
 
     int code;
