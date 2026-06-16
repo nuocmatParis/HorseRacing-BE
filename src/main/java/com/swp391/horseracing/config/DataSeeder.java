@@ -1,10 +1,19 @@
 package com.swp391.horseracing.config;
 
+import com.swp391.horseracing.entity.Horse;
+import com.swp391.horseracing.entity.HorseOwner;
+import com.swp391.horseracing.entity.Jockey;
 import com.swp391.horseracing.entity.Role;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AccountStatus;
 import com.swp391.horseracing.enums.Gender;
+import com.swp391.horseracing.enums.HealthStatus;
+import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.JockeyStatus;
 import com.swp391.horseracing.enums.RoleName;
+import com.swp391.horseracing.repository.HorseOwnerRepository;
+import com.swp391.horseracing.repository.HorseRepository;
+import com.swp391.horseracing.repository.JockeyRepository;
 import com.swp391.horseracing.repository.RoleRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import lombok.AccessLevel;
@@ -14,6 +23,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -24,12 +34,18 @@ public class DataSeeder implements CommandLineRunner {
 
     RoleRepository roleRepository;
     UserRepository userRepository;
+    HorseOwnerRepository horseOwnerRepository;
+    JockeyRepository jockeyRepository;
+    HorseRepository horseRepository;
     PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
         seedRoles();
         seedUsers();
+        seedHorseOwners();
+        seedJockeys();
+        seedHorses();
     }
 
     void seedRoles() {
@@ -137,6 +153,83 @@ public class DataSeeder implements CommandLineRunner {
         );
 
         userRepository.saveAll(users);
+    }
+
+    void seedHorseOwners() {
+        if (horseOwnerRepository.count() > 0) return;
+
+        User user1 = userRepository.findByUsername("owner1").orElseThrow();
+
+        List<HorseOwner> owners = List.of(
+                HorseOwner.builder()
+                        .user(user1)
+                        .farmName("Thunder Stables")
+                        .address("123 Horse Street, District 1")
+                        .licenseNumber("LIC-OWN-001")
+                        .build()
+        );
+
+        horseOwnerRepository.saveAll(owners);
+    }
+
+    void seedJockeys() {
+        if (jockeyRepository.count() > 0) return;
+
+        User user1 = userRepository.findByUsername("jockey1").orElseThrow();
+
+        List<Jockey> jockeys = List.of(
+                Jockey.builder()
+                        .user(user1)
+                        .height(new BigDecimal("165"))
+                        .weight(new BigDecimal("52"))
+                        .experienceYears(5)
+                        .licenseNumber("LIC-JOC-001")
+                        .specialization("Flat Racing")
+                        .hireFee(new BigDecimal("1000000"))
+                        .status(JockeyStatus.AVAILABLE)
+                        .build()
+        );
+
+        jockeyRepository.saveAll(jockeys);
+    }
+
+    void seedHorses() {
+        if (horseRepository.count() > 0) return;
+
+        HorseOwner owner1 = horseOwnerRepository.findByUser_Username("owner1").orElseThrow();
+
+        List<Horse> horses = List.of(
+                Horse.builder()
+                        .owner(owner1)
+                        .name("Lightning Bolt")
+                        .breed(HorseBreed.THOROUGHBRED)
+                        .gender(Gender.MALE)
+                        .age(4)
+                        .weight(480)
+                        .color("Bay")
+                        .healthStatus(HealthStatus.HEALTHY)
+                        .raceClass("Class A")
+                        .totalRaces(10)
+                        .totalWins(5)
+                        .winRate(50.0)
+                        .build(),
+                Horse.builder()
+                        .owner(owner1)
+                        .name("Midnight Star")
+                        .breed(HorseBreed.ARABIAN)
+                        .gender(Gender.FEMALE)
+                        .age(3)
+                        .weight(450)
+                        .color("Black")
+                        .healthStatus(HealthStatus.HEALTHY)
+                        .raceClass("Class B")
+                        .totalRaces(6)
+                        .totalWins(2)
+                        .winRate(33.33)
+                        .build()
+        );
+
+        horseRepository.saveAll(horses);
     }
 
     String toDescription(RoleName name) {

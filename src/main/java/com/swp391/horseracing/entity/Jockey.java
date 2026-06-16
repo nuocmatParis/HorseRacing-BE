@@ -10,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -62,4 +63,7 @@ public class Jockey {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "jockey")
+    List<JockeyTournamentRegistration> tournamentRegistrations;
 }

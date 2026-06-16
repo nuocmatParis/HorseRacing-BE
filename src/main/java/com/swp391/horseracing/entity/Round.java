@@ -39,11 +39,23 @@ public class Round {
     boolean isFinal;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "prediction_type")
+    @Column(name = "prediction_type", nullable = false)
     PredictionType predictionType;
 
-    @Column(name = "advancement_rule", columnDefinition = "TEXT")
+    @Column(name = "advancement_rule", columnDefinition = "TEXT", nullable = false)
     String advancementRule;
+
+    @Column(name = "start_date", nullable = false)
+    LocalDateTime startDate;
+
+    @Column(name = "end_date", nullable = false)
+    LocalDateTime endDate;
+
+    @Column(name = "description", columnDefinition = "TEXT", nullable = false)
+    String description;
+
+    @Column(name = "max_races", nullable = false)
+    Integer maxRaces;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -55,7 +67,7 @@ public class Round {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)
-    Tournaments tournament;
+    Tournament tournament;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

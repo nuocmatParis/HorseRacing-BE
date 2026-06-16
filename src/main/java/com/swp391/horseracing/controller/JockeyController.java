@@ -6,6 +6,9 @@ import com.swp391.horseracing.dto.jockey.request.JockeyUpdateRequest;
 import com.swp391.horseracing.dto.jockey.response.JockeyResponse;
 import com.swp391.horseracing.service.JockeyService;
 import jakarta.validation.Valid;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequestMapping("/api/jockeys")
 public class JockeyController {
 
