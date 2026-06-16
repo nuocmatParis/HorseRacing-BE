@@ -23,7 +23,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Tournaments {
+public class Tournament {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -51,9 +51,6 @@ public class Tournaments {
 
     @Column(name = "registration_fee", precision = 15, scale = 2)
     BigDecimal registrationFee;
-
-    @Column(name = "jockey_registration_fee", precision = 15, scale = 2)
-    BigDecimal jockeyRegistrationFee;
 
     @Column(name = "system_contract_fee", precision = 15, scale = 2)
     BigDecimal systemContractFee;
@@ -118,4 +115,10 @@ public class Tournaments {
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Round> rounds;
+
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<HorseTournamentRegistration> horseRegistrations;
+
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<JockeyTournamentRegistration> jockeyRegistrations;
 }

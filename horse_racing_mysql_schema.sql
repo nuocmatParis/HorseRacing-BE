@@ -262,7 +262,6 @@ CREATE TABLE tournament (
                             location VARCHAR(200),
 
                             registration_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
-                            jockey_registration_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             system_contract_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             total_prize_pool DECIMAL(15,2) NOT NULL DEFAULT 0,
 
@@ -549,7 +548,11 @@ CREATE TABLE rounds (
                         sequence_order INT NOT NULL,
                         is_final BOOLEAN NOT NULL DEFAULT FALSE,
                         prediction_type ENUM('TOP1', 'TOP3') NOT NULL DEFAULT 'TOP1',
-                        advancement_rule TEXT,
+                        advancement_rule TEXT NOT NULL,
+                        start_date DATETIME NOT NULL,
+                        end_date DATETIME NOT NULL,
+                        description TEXT NOT NULL,
+                        max_races INT NOT NULL,
                         status ENUM('SCHEDULED', 'ONGOING', 'FINISHED') NOT NULL DEFAULT 'SCHEDULED',
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -572,9 +575,9 @@ CREATE TABLE race (
 
                       name VARCHAR(150) NOT NULL,
                       start_time DATETIME NOT NULL,
-                      end_time DATETIME NULL,
-                      track_condition VARCHAR(100),
-                      distance DECIMAL(8,2),
+                      end_time DATETIME NOT NULL,
+                      track_condition VARCHAR(100) NOT NULL,
+                      distance DECIMAL(8,2) NOT NULL,
                       max_entries INT NOT NULL,
 
                       status ENUM(

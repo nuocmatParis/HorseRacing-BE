@@ -1,0 +1,58 @@
+package com.swp391.horseracing.service.impl;
+
+import com.swp391.horseracing.dto.tournament.request.CreateRoundRequest;
+import com.swp391.horseracing.dto.tournament.response.RoundResponse;
+import com.swp391.horseracing.entity.Round;
+import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.exception.AppException;
+import com.swp391.horseracing.exception.ErrorCode;
+import com.swp391.horseracing.mapper.RoundMapper;
+import com.swp391.horseracing.repository.RoundRepository;
+import com.swp391.horseracing.repository.TournamentRepository;
+import com.swp391.horseracing.repository.UserRepository;
+import com.swp391.horseracing.service.RoundService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@RequiredArgsConstructor
+public class RoundServiceImpl implements RoundService {
+
+    RoundRepository roundRepository;
+    TournamentRepository tournamentRepository;
+    UserRepository userRepository;
+    RoundMapper roundMapper;
+
+    @Override
+    @Transactional
+    public RoundResponse create(UUID tournamentId, CreateRoundRequest request) {
+        if (request.getEndDate().isBefore(request.getStartDate())) {
+            throw new AppException(ErrorCode.INVALID_ROUND_DATES);
+        }
+
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        User currentUser = getCurrentUser();
+
+        Round round = roundMapper.toRound(request);
+        round.setTournament(tournament);
+        round.setCreatedBy(currentUser);
+
+        return roundMapper.toRoundResponse(roundRepository.save(round));
+    }
+
+    private User getCurrentUser() {
+        var context = SecurityContextHolder.getContext();
+        String username = context.getAuthentication().getName();
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+}
