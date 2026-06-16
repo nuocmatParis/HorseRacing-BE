@@ -42,5 +42,5 @@ public class PrizeStructure {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)
-    Tournaments tournament;
+    Tournament tournament;
 }
