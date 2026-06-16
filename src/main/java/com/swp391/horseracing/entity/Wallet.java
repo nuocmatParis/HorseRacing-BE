@@ -35,14 +35,17 @@ public class Wallet {
     WalletOwnerType ownerType;
 
     @Column(name = "balance", nullable = false, precision = 15, scale = 2)
-    BigDecimal balance;
+    @Builder.Default
+    BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "currency", nullable = false, length = 10)
-    String currency;
+    @Builder.Default
+    String currency = "VND";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    WalletStatus status;
+    @Builder.Default
+    WalletStatus status = WalletStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

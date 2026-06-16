@@ -18,6 +18,7 @@ public class WalletResponse {
 
     UUID walletId;
     WalletOwnerType ownerType;
+    UUID userId;
     BigDecimal balance;
     String currency;
     WalletStatus status;
