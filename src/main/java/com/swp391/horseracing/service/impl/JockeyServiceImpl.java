@@ -20,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -62,6 +63,7 @@ public class JockeyServiceImpl implements JockeyService {
 
         Jockey jockey = jockeyMapper.toJockey(request);
         jockey.setUser(user);
+        jockey.setCreatedAt(LocalDateTime.now());
 
         return jockeyMapper.toJockeyResponse(jockeyRepository.save(jockey));
     }

@@ -3,10 +3,12 @@ package com.swp391.horseracing.exception;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.List;
 
 
 @RestControllerAdvice
@@ -41,39 +43,34 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception){
-        String enumKey = exception.getFieldError().getDefaultMessage();
+    public ResponseEntity<ApiResponse<List<String>>> handleValidationException(MethodArgumentNotValidException exception) {
+        List<String> errors = exception.getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .toList();
 
-        ErrorCode errorCode = ErrorCode.INVALID_KEY;
-
-        try {
-            errorCode = ErrorCode.valueOf(enumKey);
-        }catch (IllegalArgumentException e){
-
-        }
-
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
-                .code(errorCode.getCode())
-                .message(errorCode.getMessage())
-                .build();
         return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(apiResponse);
+                .badRequest()
+                .body(ApiResponse.<List<String>>builder()
+                        .code(ErrorCode.INVALID_REQUEST.getCode())
+                        .message("Validation failed")
+                        .result(errors)
+                        .build());
     }
 
     @ExceptionHandler(value = HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMessageNotReadableException(
+    public ResponseEntity<ApiResponse<String>> handleMessageNotReadableException(
             HttpMessageNotReadableException exception){
-        ErrorCode errorCode = ErrorCode.ROLE_NOT_FOUND;
+        ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
 
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
-                .code(errorCode.getCode())
-                .message(errorCode.getMessage())
-                .build();
+        String detail = "Invalid request format. Please check your input data.";
 
         return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(apiResponse);
+                .badRequest()
+                .body(ApiResponse.<String>builder()
+                        .code(errorCode.getCode())
+                        .message(errorCode.getMessage())
+                        .result(detail)
+                        .build());
     }
 
 }

@@ -30,12 +30,14 @@ public class JockeyCreationRequest {
     @Min(value = 0, message = "Experience year must be at least 0")
     int experienceYears;
 
+    @NotBlank(message = "License number is required")
     @Size(max = 50,message = "License number must not exceed 50 character")
     String licenseNumber;
 
     @Size(max = 50,message = "Specialization must not exceed 50 character")
     String specialization;
 
+    @NotNull(message = "Hire fee is required")
     @DecimalMin(value = "1", message = "Hire fee must be at least 0")
     BigDecimal hireFee;
 

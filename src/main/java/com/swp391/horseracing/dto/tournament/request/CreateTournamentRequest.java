@@ -24,6 +24,7 @@ public class CreateTournamentRequest {
     @Size(max = 150, message = "Tournament name must not exceed 150 characters")
     String name;
 
+    @NotBlank(message = "Description is required")
     @Size(max = 150, message = "Description must not exceed 150 characters")
     String description;
 
@@ -35,6 +36,7 @@ public class CreateTournamentRequest {
     @FutureOrPresent(message = "End date must be today or in the future")
     LocalDate endDate;
 
+    @NotBlank(message = "Location is required")
     @Size(max = 200, message = "Location must not exceed 200 characters")
     String location;
 
@@ -50,29 +52,39 @@ public class CreateTournamentRequest {
     @Positive(message = "Total prize pool must be positive")
     BigDecimal totalPrizePool;
 
+    @NotBlank(message = "Allowed breed is required")
     @Size(max = 100, message = "Allowed breed must not exceed 100 characters")
     String allowedBreed;
 
+    @NotBlank(message = "Race class is required")
     @Size(max = 50, message = "Race class must not exceed 50 characters")
     String raceClass;
 
+    @NotBlank(message = "Weight class is required")
     @Size(max = 50, message = "Weight class must not exceed 50 characters")
     String weightClass;
 
+    @NotNull(message = "Min horse age is required")
     @Min(value = 0, message = "Min horse age must be at least 0")
-    int minHorseAge;
+    Integer minHorseAge;
 
+    @NotNull(message = "Max horse age is required")
     @Min(value = 0, message = "Max horse age must be at least 0")
-    int maxHorseAge;
+    Integer maxHorseAge;
 
+    @NotBlank(message = "Tournament division is required")
     @Size(max = 100, message = "Tournament division must not exceed 100 characters")
     String tournamentDivision;
 
+    @NotBlank(message = "Handicap rule is required")
     String handicapRule;
 
+    @NotNull(message = "Prediction open time is required")
     LocalDateTime predictionOpenAt;
 
+    @NotNull(message = "Prediction close time is required")
     LocalDateTime predictionCloseAt;
 
+    @NotBlank(message = "Prediction reward rule is required")
     String predictionRewardRule;
 }
