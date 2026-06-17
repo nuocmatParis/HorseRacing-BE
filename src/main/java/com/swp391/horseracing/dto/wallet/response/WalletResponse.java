@@ -1,6 +1,7 @@
 package com.swp391.horseracing.dto.wallet.response;
 
 import com.swp391.horseracing.enums.WalletOwnerType;
+import com.swp391.horseracing.enums.WalletPurpose;
 import com.swp391.horseracing.enums.WalletStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -22,6 +23,7 @@ public class WalletResponse {
     BigDecimal balance;
     String currency;
     WalletStatus status;
+    WalletPurpose walletPurpose;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 }

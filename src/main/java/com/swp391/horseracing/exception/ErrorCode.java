@@ -164,6 +164,7 @@ public enum ErrorCode {
 
     WALLET_CLOSED(1416, HttpStatus.CONFLICT, "Wallet is closed"),
 
+    WALLET_ALREADY_EXISTS(1417, HttpStatus.CONFLICT, "Wallet already exists")
     ;
 
 

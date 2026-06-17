@@ -1,6 +1,7 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.WalletOwnerType;
+import com.swp391.horseracing.enums.WalletPurpose;
 import com.swp391.horseracing.enums.WalletStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -54,6 +55,11 @@ public class Wallet {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wallet_purpose", nullable = false, length = 30)
+    WalletPurpose walletPurpose;
+
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
