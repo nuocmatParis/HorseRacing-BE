@@ -26,7 +26,7 @@ public class CreateRoundRequest {
     @Min(value = 1, message = "Sequence order must be at least 1")
     int sequenceOrder;
 
-    boolean isFinal;
+    Boolean isFinal;
 
     @NotNull(message = "Prediction type is required")
     PredictionType predictionType;

@@ -16,7 +16,6 @@ public interface RaceMapper {
     @Mapping(target = "raceId", ignore = true)
     @Mapping(target = "startedAt", ignore = true)
     @Mapping(target = "finishedAt", ignore = true)
-    @Mapping(target = "schedulePublishedAt", ignore = true)
     @Mapping(target = "round", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "startedBy", ignore = true)
