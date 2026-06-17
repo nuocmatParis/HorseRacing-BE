@@ -229,20 +229,59 @@ CREATE TABLE horses (
 CREATE TABLE wallets (
                         wallet_id CHAR(36) PRIMARY KEY,
 
-                        owner_type ENUM('USER', 'SYSTEM') NOT NULL,
+                        owner_type ENUM(
+                            'USER',
+                            'SYSTEM'
+                            ) NOT NULL,
+
                         user_id CHAR(36) NULL,
+
+                        wallet_purpose ENUM(
+                            'USER_MAIN',
+                            'SYSTEM_REVENUE',
+                            'SYSTEM_ESCROW',
+                            'SYSTEM_PRIZE_POOL'
+                            ) NOT NULL,
 
                         balance DECIMAL(15,2) NOT NULL DEFAULT 0,
                         currency VARCHAR(10) NOT NULL DEFAULT 'VND',
-                        status ENUM('ACTIVE', 'FROZEN', 'CLOSED') NOT NULL DEFAULT 'ACTIVE',
+
+                        status ENUM(
+                            'ACTIVE',
+                            'FROZEN',
+                            'CLOSED'
+                            ) NOT NULL DEFAULT 'ACTIVE',
 
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
 
                         CONSTRAINT fk_wallet_user
-                            FOREIGN KEY (user_id) REFERENCES users(user_id),
+                            FOREIGN KEY (user_id)
+                                REFERENCES users(user_id),
 
-                        UNIQUE KEY uk_wallet_user_id (user_id)
+                        CONSTRAINT chk_wallet_owner_purpose
+                            CHECK (
+                                (
+                                    owner_type = 'USER'
+                                        AND user_id IS NOT NULL
+                                        AND wallet_purpose = 'USER_MAIN'
+                                    )
+                                    OR
+                                (
+                                    owner_type = 'SYSTEM'
+                                        AND user_id IS NULL
+                                        AND wallet_purpose IN (
+                                                               'SYSTEM_REVENUE',
+                                                               'SYSTEM_ESCROW',
+                                                               'SYSTEM_PRIZE_POOL'
+                                        )
+                                    )
+                                ),
+
+                        CONSTRAINT uk_wallet_user_purpose
+                            UNIQUE (user_id, wallet_purpose)
 );
 
 -- =========================
