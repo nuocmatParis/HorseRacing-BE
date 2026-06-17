@@ -21,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +49,7 @@ public class HorseServiceImpl implements HorseService {
         horse.setTotalRaces(0);
         horse.setTotalWins(0);
         horse.setWinRate(0.0);
+        horse.setCreatedAt(LocalDateTime.now());
 
         return horseMapper.toHorseResponse(horseRepository.save(horse));
     }

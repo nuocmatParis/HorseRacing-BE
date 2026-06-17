@@ -1,5 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
+import java.time.LocalDateTime;
+
 import com.swp391.horseracing.dto.HorseOwner.request.OwnerCreationRequest;
 import com.swp391.horseracing.dto.HorseOwner.request.OwnerUpdateRequest;
 import com.swp391.horseracing.dto.HorseOwner.response.OwnerResponse;
@@ -43,6 +45,7 @@ public class OwnerServiceImpl implements OwnerService {
         }
         HorseOwner owner = ownerMapper.toOwner(request);
         owner.setUser(user);
+        owner.setCreatedAt(LocalDateTime.now());
 
         return ownerMapper.toOwnerResponse(ownerRepository.save(owner));
     }
