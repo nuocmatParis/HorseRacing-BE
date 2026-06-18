@@ -1,5 +1,7 @@
 package com.swp391.horseracing.service;
 
+import com.swp391.horseracing.dto.wallet.request.DepositRequest;
+import com.swp391.horseracing.dto.wallet.response.DepositResponse;
 import com.swp391.horseracing.dto.wallet.response.WalletResponse;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.entity.Wallet;
@@ -15,4 +17,6 @@ public interface WalletService {
     List<WalletResponse> createSystemWallets();
 
     List<WalletResponse> getSystemWallets();
+
+    DepositResponse deposit(DepositRequest request);
 }

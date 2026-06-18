@@ -5,10 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 @RestControllerAdvice
@@ -43,21 +47,29 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException exception){
-        String enumKey = exception.getFieldError().getDefaultMessage();
+    public ResponseEntity<ApiResponse<List<ValidationErrorResponse>>> handleValidationException(MethodArgumentNotValidException exception){
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
 
-        ErrorCode errorCode = ErrorCode.INVALID_KEY;
+        List<ValidationErrorResponse> validationErrorResponses = new ArrayList<>();
 
-        try {
-            errorCode = ErrorCode.valueOf(enumKey);
-        }catch (IllegalArgumentException e){
+        List<FieldError> fieldErrors = exception.getBindingResult().getFieldErrors();
 
+        for(FieldError fieldError : fieldErrors){
+            ValidationErrorResponse error = ValidationErrorResponse.builder()
+                    .field(fieldError.getField())
+                    .message(fieldError.getDefaultMessage())
+                    .build();
+
+            validationErrorResponses.add(error);
         }
 
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
+        ApiResponse<List<ValidationErrorResponse>> apiResponse = ApiResponse
+                .<List<ValidationErrorResponse>>builder()
                 .code(errorCode.getCode())
                 .message(errorCode.getMessage())
+                .result(validationErrorResponses)
                 .build();
+
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(apiResponse);
@@ -92,6 +104,7 @@ public class GlobalExceptionHandler {
                 .status(errorCode.getHttpStatus())
                 .body(apiResponse);
     }
+
     // Bắt 403
     @ExceptionHandler(value = AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException exception){
