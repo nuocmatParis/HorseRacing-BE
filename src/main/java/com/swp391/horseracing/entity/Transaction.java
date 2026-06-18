@@ -78,6 +78,7 @@ public class Transaction {
     CounterpartyType counterpartyType;
 
     @Column(name = "transaction_group_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID transactionGroupId;
 
     @Enumerated(EnumType.STRING)

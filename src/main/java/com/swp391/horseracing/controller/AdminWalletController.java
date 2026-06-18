@@ -18,7 +18,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequestMapping("/api/admin/wallets")
-public class AminWalletController {
+public class AdminWalletController {
     WalletService walletService;
 
     @PostMapping("/system/initialize")
