@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,20 +40,25 @@ public class UserServiceImpl implements UserService {
             RoleName.JOCKEY);
 
     @Override
+    @Transactional
     public UserResponse create(UserCreationRequest request) {
+
+        if(!SELF_REGISTER_ALLOWED_ROLES.contains(request.getRoleName())){
+            throw new AppException(ErrorCode.ROLE_NOT_ALLOWED);
+        }
+
         Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
                 -> new AppException(ErrorCode.ROLE_NOT_FOUND));
 
         if(userRepository.existsByUsername(request.getUsername()))
             throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
 
-        if(!SELF_REGISTER_ALLOWED_ROLES.contains(request.getRoleName())){
-            throw new AppException(ErrorCode.ROLE_NOT_ALLOWED);
-        }
-
         if(userRepository.existsByEmail(request.getEmail())){
             throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
+
+        if(userRepository.existsByPhoneNumber(request.getPhoneNumber()))
+            throw new AppException(ErrorCode.PHONE_NUMBER_ALREADY_EXISTS);
 
         User user = userMapper.toUser(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -77,7 +83,6 @@ public class UserServiceImpl implements UserService {
         for(User user : list){
             responseList.add(userMapper.toUserResponse(user));
         }
-
         return responseList;
     }
 }
