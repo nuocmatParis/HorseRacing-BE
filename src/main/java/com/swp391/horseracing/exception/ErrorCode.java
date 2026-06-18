@@ -195,7 +195,39 @@ public enum ErrorCode {
 
     INVALID_ROUND_DATES(1514, HttpStatus.BAD_REQUEST, "End date must be after start date"),
 
-    INVALID_RACE_DATES(1515, HttpStatus.BAD_REQUEST, "End time must be after start time");
+    INVALID_RACE_DATES(1515, HttpStatus.BAD_REQUEST, "End time must be after start time"),
+
+    INVALID_ROUND_COUNT(1516, HttpStatus.BAD_REQUEST, "Each tournament must have exactly 2 rounds"),
+
+    ROUND_WITHOUT_RACE(1517, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
+
+    ROUND_DATES_OUT_OF_TOURNAMENT(1518, HttpStatus.BAD_REQUEST, "Round dates must be within tournament dates"),
+
+    RACE_DATES_OUT_OF_ROUND(1519, HttpStatus.BAD_REQUEST, "Race times must be within round dates"),
+
+    PRIZE_PERCENTAGE_EXCEEDS_100(1520, HttpStatus.BAD_REQUEST, "Total prize percentage must not exceed 100%"),
+
+    TOURNAMENT_ELIGIBILITY_NOT_FOUND(1521, HttpStatus.NOT_FOUND, "Tournament eligibility not found"),
+
+    TOURNAMENT_MISSING_PRIZE(1522, HttpStatus.BAD_REQUEST, "Tournament must have at least one prize structure"),
+
+    TOURNAMENT_MISSING_ELIGIBILITY(1523, HttpStatus.BAD_REQUEST, "Tournament must have at least one eligibility rule"),
+
+    TOURNAMENT_MISSING_ROUNDS(1524, HttpStatus.BAD_REQUEST, "Tournament must have exactly 2 rounds"),
+
+    ROUND_MISSING_RACES(1525, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
+
+    INVALID_PREDICTION_TIMES(1526, HttpStatus.BAD_REQUEST, "Prediction open time must be before close time and before race start time"),
+
+    TOURNAMENT_NAME_EXISTS(1527, HttpStatus.CONFLICT, "Tournament name already exists"),
+
+    DUPLICATE_ROUND_SEQUENCE(1528, HttpStatus.CONFLICT, "Round sequence order already exists in this tournament"),
+
+    DUPLICATE_PRIZE_RANK(1529, HttpStatus.CONFLICT, "Prize rank already exists in this tournament"),
+
+    INVALID_HORSE_AGE_RANGE(1530, HttpStatus.BAD_REQUEST, "Min horse age must be less than max horse age"),
+
+    PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount");
 
 
     int code;
