@@ -25,7 +25,7 @@ public class PrizeStructure {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID prizeStructureId;
 
-    @Column(name = "rank", nullable = false)
+    @Column(name = "prize_rank", nullable = false)
     int rank;
 
     @Column(name = "percentage")
@@ -42,5 +42,5 @@ public class PrizeStructure {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)
-    Tournaments tournament;
+    Tournament tournament;
 }
