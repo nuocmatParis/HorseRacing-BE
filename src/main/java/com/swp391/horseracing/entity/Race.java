@@ -57,6 +57,12 @@ public class Race {
     @Column(name = "schedule_published_at", nullable = false)
     LocalDateTime schedulePublishedAt;
 
+    @Column(name = "prediction_open_at", nullable = false)
+    LocalDateTime predictionOpenAt;
+
+    @Column(name = "prediction_close_at", nullable = false)
+    LocalDateTime predictionCloseAt;
+
     // ---- Relationships ----
 
     @ManyToOne(fetch = FetchType.LAZY)

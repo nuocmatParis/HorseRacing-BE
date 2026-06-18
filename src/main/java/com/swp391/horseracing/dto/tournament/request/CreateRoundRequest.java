@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.request;
 
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RoundStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +12,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -51,4 +53,7 @@ public class CreateRoundRequest {
 
     @NotNull(message = "Status is required")
     RoundStatus status;
+
+    @Valid
+    List<CreateRaceRequest> races;
 }

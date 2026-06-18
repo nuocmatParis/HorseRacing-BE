@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -57,9 +59,12 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_ALREADY_REGISTERED_TOURNAMENT);
         }
 
+        validateHorseEligibility(horse, tournament);
+
         HorseTournamentRegistration registration = HorseTournamentRegistration.builder()
                 .tournament(tournament)
                 .horse(horse)
+                .owner(owner)
                 .status(RegistrationStatus.PENDING_PAYMENT)
                 .build();
         registration = horseRegistrationRepository.save(registration);
@@ -157,6 +162,90 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setRejectedReason(reason);
 
         return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(jockeyRegistrationRepository.save(registration));
+    }
+
+    private void validateHorseEligibility(Horse horse, Tournament tournament) {
+        if (horse.getHealthStatus() != HealthStatus.HEALTHY) {
+            throw new AppException(ErrorCode.HORSE_HEALTH_NOT_VALID);
+        }
+
+        int age = horse.getAge();
+        if (age < tournament.getMinHorseAge() || age > tournament.getMaxHorseAge()) {
+            throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
+        }
+
+        List<String> allowedBreeds = Arrays.stream(tournament.getAllowedBreed().split("\\s*,\\s*"))
+                .map(String::toUpperCase)
+                .toList();
+        if (allowedBreeds.stream().noneMatch(b -> b.equals(horse.getBreed().name()))) {
+            throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
+        }
+
+        if (!tournament.getRaceClass().equalsIgnoreCase(horse.getRaceClass())) {
+            throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
+        }
+
+        List<TournamentEligibility> eligibilityRules = tournament.getEligibilityRules();
+        if (eligibilityRules != null) {
+            for (TournamentEligibility rule : eligibilityRules) {
+                if (rule.getTargetType() == EligibilityTargetType.HORSE && rule.isActive()) {
+                    applyEligibilityRule(horse, rule);
+                }
+            }
+        }
+    }
+
+    private void applyEligibilityRule(Horse horse, TournamentEligibility rule) {
+        String condition = rule.getConditionName().toLowerCase();
+        String operator = rule.getConditionOperator();
+        String value = rule.getConditionValue();
+
+        boolean passed = switch (condition) {
+            case "age" -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
+            case "weight" -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
+            case "winrate" -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
+            case "totalraces" -> compareInt(horse.getTotalRaces(), operator, Integer.parseInt(value));
+            case "totalwins" -> compareInt(horse.getTotalWins(), operator, Integer.parseInt(value));
+            case "raceclass" -> value.equalsIgnoreCase(horse.getRaceClass());
+            case "breed" -> value.equalsIgnoreCase(horse.getBreed().name());
+            default -> true;
+        };
+
+        if (!passed) {
+            throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
+        }
+    }
+
+    private boolean compareInt(int actual, String operator, int expected) {
+        return switch (operator) {
+            case ">=" -> actual >= expected;
+            case "<=" -> actual <= expected;
+            case ">" -> actual > expected;
+            case "<" -> actual < expected;
+            case "==" -> actual == expected;
+            case "!=" -> actual != expected;
+            default -> true;
+        };
+    }
+
+    private boolean compareFloat(float actual, String operator, float expected) {
+        return switch (operator) {
+            case ">=" -> actual >= expected;
+            case "<=" -> actual <= expected;
+            case ">" -> actual > expected;
+            case "<" -> actual < expected;
+            default -> true;
+        };
+    }
+
+    private boolean compareDouble(double actual, String operator, double expected) {
+        return switch (operator) {
+            case ">=" -> actual >= expected;
+            case "<=" -> actual <= expected;
+            case ">" -> actual > expected;
+            case "<" -> actual < expected;
+            default -> true;
+        };
     }
 
     private void validatePendingStatus(RegistrationStatus status) {

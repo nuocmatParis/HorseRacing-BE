@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface RoundRepository extends JpaRepository<Round, UUID> {
     List<Round> findByTournament_TournamentIdOrderBySequenceOrderAsc(UUID tournamentId);
+
+    boolean existsByTournament_TournamentIdAndSequenceOrder(UUID tournamentId, int sequenceOrder);
 }
