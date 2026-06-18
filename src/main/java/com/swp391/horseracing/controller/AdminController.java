@@ -1,16 +1,9 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
-import com.swp391.horseracing.dto.tournament.request.CreatePrizeStructureRequest;
-import com.swp391.horseracing.dto.tournament.request.CreateRaceRequest;
-import com.swp391.horseracing.dto.tournament.request.CreateRoundRequest;
-import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
+import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
-import com.swp391.horseracing.service.PrizeStructureService;
-import com.swp391.horseracing.service.RaceService;
-import com.swp391.horseracing.service.RoundService;
-import com.swp391.horseracing.service.TournamentRegistrationService;
-import com.swp391.horseracing.service.TournamentService;
+import com.swp391.horseracing.service.*;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +24,13 @@ public class AdminController {
     RoundService roundService;
     RaceService raceService;
     PrizeStructureService prizeStructureService;
+    TournamentEligibilityService tournamentEligibilityService;
     TournamentRegistrationService tournamentRegistrationService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
         return ApiResponse.<TournamentResponse>builder()
-                .result(tournamentService.create(request))
+                .result(tournamentService.createTournament(request))
                 .build();
     }
 
@@ -61,6 +55,21 @@ public class AdminController {
                                                                      @RequestBody @Valid CreatePrizeStructureRequest request) {
         return ApiResponse.<PrizeStructureResponse>builder()
                 .result(prizeStructureService.create(id, request))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/eligibility")
+    public ApiResponse<TournamentEligibilityResponse> createEligibility(@PathVariable UUID id,
+                                                                         @RequestBody @Valid CreateEligibilityRequest request) {
+        return ApiResponse.<TournamentEligibilityResponse>builder()
+                .result(tournamentEligibilityService.create(id, request))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/publish")
+    public ApiResponse<TournamentResponse> publishTournament(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.publish(id))
                 .build();
     }
 

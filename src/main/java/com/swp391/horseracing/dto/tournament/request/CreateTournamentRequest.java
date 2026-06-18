@@ -79,12 +79,14 @@ public class CreateTournamentRequest {
     @NotBlank(message = "Handicap rule is required")
     String handicapRule;
 
-    @NotNull(message = "Prediction open time is required")
-    LocalDateTime predictionOpenAt;
-
-    @NotNull(message = "Prediction close time is required")
-    LocalDateTime predictionCloseAt;
-
     @NotBlank(message = "Prediction reward rule is required")
     String predictionRewardRule;
+
+    @Builder.Default
+    @Min(value = 1, message = "Prediction open minutes must be at least 1")
+    Integer predictionOpenMinutesBefore = 120;
+
+    @Builder.Default
+    @Min(value = 0, message = "Prediction close minutes must be at least 0")
+    Integer predictionCloseMinutesBefore = 5;
 }
