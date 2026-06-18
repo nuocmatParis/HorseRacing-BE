@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -43,4 +44,7 @@ public class HorseOwner {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
+
+    @OneToMany(mappedBy = "owner")
+    List<HorseTournamentRegistration> tournamentRegistrations;
 }
