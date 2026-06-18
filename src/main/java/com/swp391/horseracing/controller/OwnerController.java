@@ -7,10 +7,15 @@ import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.service.OwnerService;
 import jakarta.validation.Valid;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequestMapping("/api/owners")
 public class OwnerController {
 

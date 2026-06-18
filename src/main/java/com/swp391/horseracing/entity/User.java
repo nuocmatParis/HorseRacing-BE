@@ -75,7 +75,7 @@ public class User {
 
     @OneToMany(mappedBy = "createdBy",
             cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Tournaments> createdTournaments;
+    List<Tournament> createdTournament;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Round> createdRounds;

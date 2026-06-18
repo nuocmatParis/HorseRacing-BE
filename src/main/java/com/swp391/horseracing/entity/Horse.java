@@ -11,6 +11,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Table(name = "horses")
@@ -70,4 +71,7 @@ public class Horse {
     @ManyToOne
     @JoinColumn(name = "owner_id", nullable = false)
     HorseOwner owner;
+
+    @OneToMany(mappedBy = "horse")
+    List<HorseTournamentRegistration> tournamentRegistrations;
 }

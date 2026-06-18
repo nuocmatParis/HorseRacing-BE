@@ -151,8 +151,51 @@ public enum ErrorCode {
     INVOICE_NOT_PAID(1411, HttpStatus.BAD_REQUEST, "Invoice is not paid"),
 // Hóa đơn chưa được thanh toán
 
-    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled");
+    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled"),
 // Hóa đơn đã bị hủy
+
+
+    // TOURNAMENT / REGISTRATION
+    TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
+// Không tìm thấy giải đấu
+
+    TOURNAMENT_NOT_OPEN(1502, HttpStatus.BAD_REQUEST, "Tournament is not open for registration"),
+// Giải đấu chưa mở đăng ký
+
+    TOURNAMENT_REGISTRATION_NOT_FOUND(1503, HttpStatus.NOT_FOUND, "Tournament registration not found"),
+// Không tìm thấy đăng ký giải đấu
+
+    JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND(1504, HttpStatus.NOT_FOUND, "Jockey tournament registration not found"),
+// Không tìm thấy đăng ký giải đấu của nài ngựa
+
+    REGISTRATION_ALREADY_REVIEWED(1505, HttpStatus.CONFLICT, "Registration has already been reviewed"),
+// Đăng ký đã được duyệt/từ chối trước đó
+
+    REGISTRATION_NOT_PENDING(1506, HttpStatus.BAD_REQUEST, "Registration is not in pending status"),
+// Đăng ký không ở trạng thái chờ duyệt
+
+    ROUND_NOT_FOUND(1507, HttpStatus.NOT_FOUND, "Round not found"),
+// Không tìm thấy vòng đấu
+
+    RACE_NOT_FOUND(1508, HttpStatus.NOT_FOUND, "Race not found"),
+// Không tìm thấy cuộc đua
+
+    PRIZE_STRUCTURE_NOT_FOUND(1509, HttpStatus.NOT_FOUND, "Prize structure not found"),
+// Không tìm thấy cơ cấu giải thưởng
+
+    HORSE_ALREADY_REGISTERED_TOURNAMENT(1510, HttpStatus.CONFLICT, "Horse is already registered for this tournament"),
+// Ngựa đã được đăng ký cho giải đấu này
+
+    JOCKEY_ALREADY_REGISTERED_TOURNAMENT(1511, HttpStatus.CONFLICT, "Jockey is already registered for this tournament"),
+// Nài ngựa đã được đăng ký cho giải đấu này
+
+    TOURNAMENT_NOT_IN_DRAFT(1512, HttpStatus.BAD_REQUEST, "Tournament is not in draft status"),
+
+    INVALID_TOURNAMENT_DATES(1513, HttpStatus.BAD_REQUEST, "End date must be after start date"),
+
+    INVALID_ROUND_DATES(1514, HttpStatus.BAD_REQUEST, "End date must be after start date"),
+
+    INVALID_RACE_DATES(1515, HttpStatus.BAD_REQUEST, "End time must be after start time");
 
 
     int code;
