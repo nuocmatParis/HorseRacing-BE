@@ -78,6 +78,9 @@ public enum ErrorCode {
     CAN_NOT_CREATE_TOKEN(1111, HttpStatus.INTERNAL_SERVER_ERROR, "Can not create token"),
 // Không thể tạo token
 
+    PHONE_NUMBER_ALREADY_EXISTS(1112, HttpStatus.CONFLICT, "Phone number already exists"),
+
+
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
 // Không tìm thấy hồ sơ chủ ngựa

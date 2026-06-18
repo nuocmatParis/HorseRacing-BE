@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.wallet.response.WalletResponse;
 import com.swp391.horseracing.entity.Transaction;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.entity.Wallet;
+import com.swp391.horseracing.enums.WalletOwnerType;
 import com.swp391.horseracing.enums.WalletPurpose;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -17,9 +18,13 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
+import static com.swp391.horseracing.enums.WalletPurpose.*;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -31,6 +36,7 @@ public class TransactionServiceImpl implements TransactionService {
     TransactionMapper transactionMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<TransactionResponse> getMyTransactions() {
         User currentUser = userCurrentService.getCurrentUser();
 
@@ -44,6 +50,46 @@ public class TransactionServiceImpl implements TransactionService {
                 wallet.getWalletId());
 
         for(Transaction transaction : transactions){
+            responseList.add(transactionMapper.toTransactionResponse(transaction));
+        }
+
+        return responseList;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getSystemTransactions() {
+        List<Transaction> list = transactionRepository.findAllByWallet_OwnerTypeAndWallet_UserIsNullOrderByCreatedAtDesc(WalletOwnerType.SYSTEM);
+
+        List<TransactionResponse> responseList = new ArrayList<>();
+
+        for(Transaction transaction : list){
+            responseList.add(transactionMapper.toTransactionResponse(transaction));
+        }
+
+        return responseList;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getSystemTransactions(WalletPurpose walletPurpose) {
+        Set<WalletPurpose> walletPurposes = Set.of(
+                SYSTEM_REVENUE,
+                SYSTEM_ESCROW,
+                SYSTEM_PRIZE_POOL
+        );
+
+        if(walletPurpose != )
+
+
+        List<Transaction> list = transactionRepository.findAllByWallet_OwnerTypeAndWallet_WalletPurposeAndWallet_UserIsNullOrderByCreatedAtDesc(
+                WalletOwnerType.SYSTEM,
+                walletPurpose
+        );
+
+        List<TransactionResponse> responseList = new ArrayList<>();
+
+        for(Transaction transaction : list){
             responseList.add(transactionMapper.toTransactionResponse(transaction));
         }
 

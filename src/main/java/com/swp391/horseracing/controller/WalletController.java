@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -19,6 +20,7 @@ public class WalletController {
     WalletService walletService;
 
     @GetMapping("/my-wallet")
+    @PreAuthorize("hasAnyRole('HORSE_OWNER', 'JOCKEY')")
     public ApiResponse<WalletResponse> getMyWallet(){
         return ApiResponse.<WalletResponse>builder()
                 .result(walletService.getMyWallet())
@@ -26,6 +28,7 @@ public class WalletController {
     }
 
     @PostMapping("/deposit")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ApiResponse<DepositResponse> deposit(
             @RequestBody @Valid DepositRequest request){
         return ApiResponse.<DepositResponse>builder()
