@@ -17,7 +17,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@FieldDefaults( level = AccessLevel.PRIVATE)
 public class Race {
 
     @Id
@@ -29,19 +29,19 @@ public class Race {
     @Column(name = "name", nullable = false, length = 150)
     String name;
 
-    @Column(name = "start_time")
+    @Column(name = "start_time", nullable = false)
     LocalDateTime startTime;
 
-    @Column(name = "end_time")
+    @Column(name = "end_time", nullable = false)
     LocalDateTime endTime;
 
-    @Column(name = "track_condition", length = 100)
+    @Column(name = "track_condition", nullable = false, length = 100)
     String trackCondition;
 
-    @Column(name = "distance")
+    @Column(name = "distance", nullable = false)
     Float distance;
 
-    @Column(name = "max_entries")
+    @Column(name = "max_entries", nullable = false)
     int maxEntries;
 
     @Enumerated(EnumType.STRING)
@@ -54,8 +54,14 @@ public class Race {
     @Column(name = "finished_at")
     LocalDateTime finishedAt;
 
-    @Column(name = "schedule_published_at")
+    @Column(name = "schedule_published_at", nullable = false)
     LocalDateTime schedulePublishedAt;
+
+    @Column(name = "prediction_open_at", nullable = false)
+    LocalDateTime predictionOpenAt;
+
+    @Column(name = "prediction_close_at", nullable = false)
+    LocalDateTime predictionCloseAt;
 
     // ---- Relationships ----
 

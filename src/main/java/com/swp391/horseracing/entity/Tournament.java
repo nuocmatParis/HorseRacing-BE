@@ -23,7 +23,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Tournaments {
+public class Tournament {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -34,62 +34,61 @@ public class Tournaments {
     @Column(name = "name", nullable = false, length = 150)
     String name;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
     String description;
 
-    @Column(name = "start_date")
+    @Column(name = "start_date", nullable = false)
     LocalDate startDate;
 
-    @Column(name = "end_date")
+    @Column(name = "end_date", nullable = false)
     LocalDate endDate;
 
     @Column(name = "finished_at")
     LocalDateTime finishedAt;
 
-    @Column(name = "location", length = 200)
+    @Column(name = "location", nullable = false, length = 200)
     String location;
 
-    @Column(name = "registration_fee", precision = 15, scale = 2)
+    @Column(name = "registration_fee", nullable = false, precision = 15, scale = 2)
     BigDecimal registrationFee;
 
-    @Column(name = "jockey_registration_fee", precision = 15, scale = 2)
-    BigDecimal jockeyRegistrationFee;
-
-    @Column(name = "system_contract_fee", precision = 15, scale = 2)
+    @Column(name = "system_contract_fee", nullable = false, precision = 15, scale = 2)
     BigDecimal systemContractFee;
 
-    @Column(name = "total_prize_pool", precision = 15, scale = 2)
+    @Column(name = "total_prize_pool", nullable = false, precision = 15, scale = 2)
     BigDecimal totalPrizePool;
 
-    @Column(name = "allowed_breed", length = 100)
+    @Column(name = "allowed_breed", nullable = false, length = 100)
     String allowedBreed;
 
-    @Column(name = "race_class", length = 50)
+    @Column(name = "race_class", nullable = false, length = 50)
     String raceClass;
 
-    @Column(name = "weight_class", length = 50)
+    @Column(name = "weight_class", nullable = false, length = 50)
     String weightClass;
 
-    @Column(name = "min_horse_age")
+    @Column(name = "min_horse_age", nullable = false)
     int minHorseAge;
 
-    @Column(name = "max_horse_age")
+    @Column(name = "max_horse_age", nullable = false)
     int maxHorseAge;
 
-    @Column(name = "tournament_division", length = 100)
+    @Column(name = "tournament_division", nullable = false, length = 100)
     String tournamentDivision;
 
-    @Column(name = "handicap_rule", columnDefinition = "TEXT")
+    @Column(name = "handicap_rule", nullable = false, columnDefinition = "TEXT")
     String handicapRule;
 
-    @Column(name = "prediction_open_at")
-    LocalDateTime predictionOpenAt;
-
-    @Column(name = "prediction_close_at")
-    LocalDateTime predictionCloseAt;
-
-    @Column(name = "prediction_reward_rule", columnDefinition = "TEXT")
+    @Column(name = "prediction_reward_rule", nullable = false, columnDefinition = "TEXT")
     String predictionRewardRule;
+
+    @Builder.Default
+    @Column(name = "prediction_open_minutes_before", nullable = false)
+    int predictionOpenMinutesBefore = 120;
+
+    @Builder.Default
+    @Column(name = "prediction_close_minutes_before", nullable = false)
+    int predictionCloseMinutesBefore = 5;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -118,4 +117,10 @@ public class Tournaments {
 
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Round> rounds;
+
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<HorseTournamentRegistration> horseRegistrations;
+
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<JockeyTournamentRegistration> jockeyRegistrations;
 }
