@@ -51,7 +51,7 @@ public class User {
     @Column(name = "full_name", nullable = false, length = 100)
     String fullName;
 
-    @Column(name = "phone_number", length = 20)
+    @Column(name = "phone_number", length = 20, unique = true)
     String phoneNumber;
 
     @Enumerated(EnumType.STRING)
@@ -75,7 +75,7 @@ public class User {
 
     @OneToMany(mappedBy = "createdBy",
             cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Tournaments> createdTournaments;
+    List<Tournament> createdTournament;
 
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Round> createdRounds;
