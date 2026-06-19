@@ -283,9 +283,9 @@ public class DataSeeder implements CommandLineRunner {
                 .maxHorseAge(10)
                 .tournamentDivision("Professional")
                 .handicapRule("Standard handicap based on past performance")
-                .predictionOpenAt(LocalDateTime.of(2026, 7, 1, 8, 0))
-                .predictionCloseAt(LocalDateTime.of(2026, 7, 15, 18, 0))
                 .predictionRewardRule("Top 3 predictors share 10% of total prize pool")
+                .predictionOpenMinutesBefore(120)
+                .predictionCloseMinutesBefore(5)
                 .status(TournamentStatus.DRAFT)
                 .phase(TournamentPhase.REGISTRATION)
                 .createdBy(admin)
@@ -389,6 +389,8 @@ public class DataSeeder implements CommandLineRunner {
                         .maxEntries(8)
                         .status(RoundStatus.SCHEDULED)
                         .schedulePublishedAt(LocalDateTime.now())
+                        .predictionOpenAt(LocalDateTime.of(2026, 7, 1, 0, 0))
+                        .predictionCloseAt(LocalDateTime.of(2026, 7, 3, 23, 59))
                         .createdBy(admin)
                         .build(),
                 Race.builder()
@@ -401,6 +403,8 @@ public class DataSeeder implements CommandLineRunner {
                         .maxEntries(8)
                         .status(RoundStatus.SCHEDULED)
                         .schedulePublishedAt(LocalDateTime.now())
+                        .predictionOpenAt(LocalDateTime.of(2026, 7, 1, 0, 0))
+                        .predictionCloseAt(LocalDateTime.of(2026, 7, 4, 23, 59))
                         .createdBy(admin)
                         .build(),
                 Race.builder()
@@ -413,6 +417,8 @@ public class DataSeeder implements CommandLineRunner {
                         .maxEntries(8)
                         .status(RoundStatus.SCHEDULED)
                         .schedulePublishedAt(LocalDateTime.now())
+                        .predictionOpenAt(LocalDateTime.of(2026, 7, 1, 0, 0))
+                        .predictionCloseAt(LocalDateTime.of(2026, 7, 11, 23, 59))
                         .createdBy(admin)
                         .build()
         );

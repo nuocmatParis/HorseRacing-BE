@@ -34,9 +34,9 @@ public class TournamentResponse {
     int maxHorseAge;
     String tournamentDivision;
     String handicapRule;
-    LocalDateTime predictionOpenAt;
-    LocalDateTime predictionCloseAt;
     String predictionRewardRule;
+    int predictionOpenMinutesBefore;
+    int predictionCloseMinutesBefore;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;

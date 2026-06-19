@@ -8,7 +8,9 @@ import java.util.UUID;
 
 public interface TournamentService {
 
-    TournamentResponse create(CreateTournamentRequest request);
+    TournamentResponse createTournament(CreateTournamentRequest request);
+
+    TournamentResponse publish(UUID id);
 
     List<TournamentResponse> getAll();
 

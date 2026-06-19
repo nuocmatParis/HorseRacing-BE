@@ -79,14 +79,16 @@ public class Tournament {
     @Column(name = "handicap_rule", nullable = false, columnDefinition = "TEXT")
     String handicapRule;
 
-    @Column(name = "prediction_open_at", nullable = false)
-    LocalDateTime predictionOpenAt;
-
-    @Column(name = "prediction_close_at", nullable = false)
-    LocalDateTime predictionCloseAt;
-
     @Column(name = "prediction_reward_rule", nullable = false, columnDefinition = "TEXT")
     String predictionRewardRule;
+
+    @Builder.Default
+    @Column(name = "prediction_open_minutes_before", nullable = false)
+    int predictionOpenMinutesBefore = 120;
+
+    @Builder.Default
+    @Column(name = "prediction_close_minutes_before", nullable = false)
+    int predictionCloseMinutesBefore = 5;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
