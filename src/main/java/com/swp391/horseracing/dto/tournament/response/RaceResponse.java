@@ -25,6 +25,8 @@ public class RaceResponse {
     LocalDateTime startedAt;
     LocalDateTime finishedAt;
     LocalDateTime schedulePublishedAt;
+    LocalDateTime predictionOpenAt;
+    LocalDateTime predictionCloseAt;
     UUID roundId;
     UUID createdById;
 }

@@ -48,4 +48,10 @@ public class CreateRaceRequest {
 
     @NotNull(message = "Schedule published time is required")
     LocalDateTime schedulePublishedAt;
+
+    @NotNull(message = "Prediction open time is required")
+    LocalDateTime predictionOpenAt;
+
+    @NotNull(message = "Prediction close time is required")
+    LocalDateTime predictionCloseAt;
 }
