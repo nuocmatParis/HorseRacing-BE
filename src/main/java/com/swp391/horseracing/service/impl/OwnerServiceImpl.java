@@ -2,9 +2,9 @@ package com.swp391.horseracing.service.impl;
 
 import java.time.LocalDateTime;
 
-import com.swp391.horseracing.dto.HorseOwner.request.OwnerCreationRequest;
-import com.swp391.horseracing.dto.HorseOwner.request.OwnerUpdateRequest;
-import com.swp391.horseracing.dto.HorseOwner.response.OwnerResponse;
+import com.swp391.horseracing.dto.horseowner.request.OwnerCreationRequest;
+import com.swp391.horseracing.dto.horseowner.request.OwnerUpdateRequest;
+import com.swp391.horseracing.dto.horseowner.response.OwnerResponse;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.exception.AppException;
