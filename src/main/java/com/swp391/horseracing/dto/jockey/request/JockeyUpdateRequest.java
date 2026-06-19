@@ -7,10 +7,10 @@ import java.math.BigDecimal;
 public class JockeyUpdateRequest {
 
     @Positive(message = "Height must be positive")
-    BigDecimal height;
+    float height;
 
     @Positive(message = "Weight must be positive")
-    BigDecimal weight;
+    float weight;
 
     @NotNull(message = "Experience year is required")
     @Min(value = 0, message = "Experience year must be at least 0")

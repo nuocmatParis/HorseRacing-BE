@@ -4,6 +4,7 @@ import com.swp391.horseracing.enums.RegistrationStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -19,6 +20,15 @@ public class JockeyTournamentRegistrationResponse {
     String tournamentName;
     UUID jockeyId;
     String jockeyName;
+    float height;
+    float weight;
+    int experienceYears;
+    String licenseNumber;
+    String specialization;
+    BigDecimal hireFee;
+    String jockeyStatus;
+    String email;
+    String phoneNumber;
     RegistrationStatus status;
     LocalDateTime submittedAt;
     UUID reviewedById;

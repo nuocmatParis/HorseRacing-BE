@@ -12,6 +12,15 @@ public interface JockeyTournamentRegistrationMapper {
     @Mapping(target = "tournamentName", source = "tournament.name")
     @Mapping(target = "jockeyId", source = "jockey.jockeyId")
     @Mapping(target = "jockeyName", source = "jockey.user.fullName")
+    @Mapping(target = "height", source = "jockey.height")
+    @Mapping(target = "weight", source = "jockey.weight")
+    @Mapping(target = "experienceYears", source = "jockey.experienceYears")
+    @Mapping(target = "licenseNumber", source = "jockey.licenseNumber")
+    @Mapping(target = "specialization", source = "jockey.specialization")
+    @Mapping(target = "hireFee", source = "jockey.hireFee")
+    @Mapping(target = "jockeyStatus", source = "jockey.status")
+    @Mapping(target = "email", source = "jockey.user.email")
+    @Mapping(target = "phoneNumber", source = "jockey.user.phoneNumber")
     @Mapping(target = "reviewedById", source = "reviewedBy.userId")
     JockeyTournamentRegistrationResponse toJockeyTournamentRegistrationResponse(JockeyTournamentRegistration registration);
 }
