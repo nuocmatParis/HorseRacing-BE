@@ -1,6 +1,7 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.WalletOwnerType;
+import com.swp391.horseracing.enums.WalletPurpose;
 import com.swp391.horseracing.enums.WalletStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -35,14 +36,17 @@ public class Wallet {
     WalletOwnerType ownerType;
 
     @Column(name = "balance", nullable = false, precision = 15, scale = 2)
-    BigDecimal balance;
+    @Builder.Default
+    BigDecimal balance = BigDecimal.ZERO;
 
     @Column(name = "currency", nullable = false, length = 10)
-    String currency;
+    @Builder.Default
+    String currency = "VND";
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    WalletStatus status;
+    @Builder.Default
+    WalletStatus status = WalletStatus.ACTIVE;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -51,6 +55,11 @@ public class Wallet {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     LocalDateTime updatedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "wallet_purpose", nullable = false, length = 30)
+    WalletPurpose walletPurpose;
+
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

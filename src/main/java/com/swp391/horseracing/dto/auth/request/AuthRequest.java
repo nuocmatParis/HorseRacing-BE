@@ -12,9 +12,9 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AuthRequest {
 
-    @Size(min = 4, max = 15, message = "INVALID_USERNAME")
+    @Size(min = 4, max = 15, message = "Username must be at least 3 characters")
     String username;
 
-    @Size(min = 8, max = 255, message = "INVALID_PASSWORD")
+    @Size(min = 8, max = 255, message = "Password must be at least 8 characters")
     String password;
 }

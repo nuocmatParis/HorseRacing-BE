@@ -41,6 +41,8 @@ public enum ErrorCode {
     INVALID_KEY(1009, HttpStatus.BAD_REQUEST, "Invalid error key"),
 // Key lỗi không hợp lệ
 
+    VALIDATION_FAILED(1010, HttpStatus.BAD_REQUEST, "Validation failed"),
+
 
     // AUTH / USER
     USER_NOT_FOUND(1101, HttpStatus.NOT_FOUND, "User not found"),
@@ -76,9 +78,8 @@ public enum ErrorCode {
     CAN_NOT_CREATE_TOKEN(1111, HttpStatus.INTERNAL_SERVER_ERROR, "Can not create token"),
 // Không thể tạo token
 
-    INVALID_USERNAME(1112, HttpStatus.BAD_REQUEST, "Username must be at least 3 characters"),
+    PHONE_NUMBER_ALREADY_EXISTS(1112, HttpStatus.CONFLICT, "Phone number already exists"),
 
-    INVALID_PASSWORD(1113, HttpStatus.BAD_REQUEST, "Password must be at least 8 characters"),
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
@@ -153,6 +154,27 @@ public enum ErrorCode {
 
     INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled"),
 // Hóa đơn đã bị hủy
+
+    WALLET_FROZEN(1415, HttpStatus.CONFLICT, "Wallet is frozen"),
+
+    WALLET_CLOSED(1416, HttpStatus.CONFLICT, "Wallet is closed"),
+
+    WALLET_ALREADY_EXISTS(1417, HttpStatus.CONFLICT, "Wallet already exists"),
+
+    INVALID_SYSTEM_WALLET_PURPOSE(1418, HttpStatus.CONFLICT, "Invalid wallet purpose"),
+
+    INVOICE_ALREADY_EXISTS(1419, HttpStatus.CONFLICT, "Invoice already exists"),
+
+    PAID_INVOICE_CANNOT_BE_CANCELLED(1420, HttpStatus.CONFLICT, "Paid invoice cannot be cancelled"),
+
+    INVOICE_ALREADY_REFUNDED(1421, HttpStatus.CONFLICT, "Invoice already refunded"),
+
+    INVOICE_ACCESS_DENIED(1422, HttpStatus.FORBIDDEN, "Invoice access denied"),
+
+    INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
+
+
+    ;
 
 
     // TOURNAMENT / REGISTRATION

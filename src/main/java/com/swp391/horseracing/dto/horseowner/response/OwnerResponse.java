@@ -1,24 +1,23 @@
-package com.swp391.horseracing.dto.HorseOwner.request;
+package com.swp391.horseracing.dto.horseowner.response;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.FieldDefaults;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OwnerCreationRequest {
-    @Size(max = 100)
+public class OwnerResponse {
+    UUID userId;
+    String fullName;
     String farmName;
-
     String address;
-
-    @NotBlank
-    @Size(max = 50)
     String licenseNumber;
+    LocalDateTime createdAt;
 }
