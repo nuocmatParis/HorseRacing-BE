@@ -1,6 +1,6 @@
 package com.swp391.horseracing.mapper;
 
-import com.swp391.horseracing.dto.tournament.response.JockeyTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.entity.JockeyTournamentRegistration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
