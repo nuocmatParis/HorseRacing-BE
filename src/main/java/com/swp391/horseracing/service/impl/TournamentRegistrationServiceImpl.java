@@ -1,7 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
-import com.swp391.horseracing.dto.tournament.response.HorseTournamentRegistrationResponse;
-import com.swp391.horseracing.dto.tournament.response.JockeyTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.exception.AppException;
