@@ -4,14 +4,18 @@ import com.swp391.horseracing.dto.HorseOwner.request.OwnerCreationRequest;
 import com.swp391.horseracing.dto.HorseOwner.request.OwnerUpdateRequest;
 import com.swp391.horseracing.dto.HorseOwner.response.OwnerResponse;
 import com.swp391.horseracing.dto.common.ApiResponse;
-import com.swp391.horseracing.entity.HorseOwner;
+import com.swp391.horseracing.dto.tournament.request.RegisterHorseRequest;
+import com.swp391.horseracing.dto.tournament.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.service.OwnerService;
+import com.swp391.horseracing.service.TournamentRegistrationService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -20,6 +24,16 @@ import org.springframework.web.bind.annotation.*;
 public class OwnerController {
 
     OwnerService ownerService;
+    TournamentRegistrationService tournamentRegistrationService;
+
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PostMapping("/tournaments/{id}/register-horse")
+    public ApiResponse<HorseTournamentRegistrationResponse> registerHorse(@PathVariable UUID id,
+                                                                           @RequestBody @Valid RegisterHorseRequest request) {
+        return ApiResponse.<HorseTournamentRegistrationResponse>builder()
+                .result(tournamentRegistrationService.registerHorse(id, request.getHorseId()))
+                .build();
+    }
 
     @PostMapping("/profile")
     public ApiResponse<OwnerResponse> createMyProfile(@RequestBody @Valid OwnerCreationRequest request){

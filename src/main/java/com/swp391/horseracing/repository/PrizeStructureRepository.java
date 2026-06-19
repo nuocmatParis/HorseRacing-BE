@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface PrizeStructureRepository extends JpaRepository<PrizeStructure, UUID> {
 
     List<PrizeStructure> findByTournament_TournamentId(UUID tournamentId);
+
+    boolean existsByTournament_TournamentIdAndRank(UUID tournamentId, int rank);
 }

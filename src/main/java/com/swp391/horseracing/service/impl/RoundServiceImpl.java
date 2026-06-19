@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.tournament.response.RoundResponse;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
@@ -41,6 +42,20 @@ public class RoundServiceImpl implements RoundService {
 
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (roundRepository.existsByTournament_TournamentIdAndSequenceOrder(tournamentId, request.getSequenceOrder())) {
+            throw new AppException(ErrorCode.DUPLICATE_ROUND_SEQUENCE);
+        }
+
+        if (request.getStartDate().toLocalDate().isBefore(tournament.getStartDate())
+                || request.getEndDate().toLocalDate().isAfter(tournament.getEndDate())) {
+            throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
+        }
+
         User currentUser = getCurrentUser();
 
         Round round = roundMapper.toRound(request);

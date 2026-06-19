@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceMapper;
@@ -40,6 +41,21 @@ public class RaceServiceImpl implements RaceService {
 
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+
+        if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (request.getPredictionOpenAt().isAfter(request.getPredictionCloseAt())
+                || request.getPredictionCloseAt().isAfter(request.getStartTime())) {
+            throw new AppException(ErrorCode.INVALID_PREDICTION_TIMES);
+        }
+
+        if (request.getStartTime().isBefore(round.getStartDate())
+                || request.getEndTime().isAfter(round.getEndDate())) {
+            throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
+        }
+
         User currentUser = getCurrentUser();
 
         Race race = raceMapper.toRace(request);

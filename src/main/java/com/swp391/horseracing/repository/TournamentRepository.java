@@ -14,4 +14,5 @@ public interface TournamentRepository extends JpaRepository<Tournament, UUID> {
     List<Tournament> findAllByOrderByCreatedAtDesc();
 
     List<Tournament> findByStatus(TournamentStatus status);
+    boolean existsByName(String name);
 }
