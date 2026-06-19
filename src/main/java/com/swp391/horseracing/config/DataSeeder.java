@@ -210,8 +210,8 @@ public class DataSeeder implements CommandLineRunner {
         List<Jockey> jockeys = List.of(
                 Jockey.builder()
                         .user(user1)
-                        .height(new BigDecimal("165"))
-                        .weight(new BigDecimal("52"))
+                        .height(165f)
+                        .weight(52f)
                         .experienceYears(5)
                         .licenseNumber("LIC-JOC-001")
                         .specialization("Flat Racing")
