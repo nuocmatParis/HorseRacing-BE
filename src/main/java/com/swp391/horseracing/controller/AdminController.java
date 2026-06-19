@@ -1,6 +1,7 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
 import com.swp391.horseracing.service.*;

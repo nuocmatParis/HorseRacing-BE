@@ -1,4 +1,4 @@
-package com.swp391.horseracing.dto.tournament.response;
+package com.swp391.horseracing.dto.registration.response;
 
 import com.swp391.horseracing.enums.RegistrationStatus;
 import lombok.*;
@@ -19,6 +19,23 @@ public class HorseTournamentRegistrationResponse {
     String tournamentName;
     UUID horseId;
     String horseName;
+    String horseBreed;
+    String horseGender;
+    Integer horseAge;
+    Float horseWeight;
+    String horseColor;
+    String horseHealthStatus;
+    String horseRaceClass;
+    Integer horseTotalRaces;
+    Integer horseTotalWins;
+    Double horseWinRate;
+
+    UUID ownerId;
+    String ownerName;
+    String farmName;
+    String ownerAddress;
+    String licenseNumber;
+
     RegistrationStatus status;
     LocalDateTime submittedAt;
     UUID reviewedById;

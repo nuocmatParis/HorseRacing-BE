@@ -1,4 +1,4 @@
-package com.swp391.horseracing.dto.tournament.response;
+package com.swp391.horseracing.dto.registration.response;
 
 import com.swp391.horseracing.enums.RegistrationStatus;
 import lombok.*;
