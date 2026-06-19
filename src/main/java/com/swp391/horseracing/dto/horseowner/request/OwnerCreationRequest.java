@@ -1,4 +1,4 @@
-package com.swp391.horseracing.dto.HorseOwner.request;
+package com.swp391.horseracing.dto.horseowner.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -12,12 +12,13 @@ import lombok.experimental.FieldDefaults;
 @NoArgsConstructor
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class OwnerUpdateRequest {
+public class OwnerCreationRequest {
     @Size(max = 100)
     String farmName;
 
     String address;
 
+    @NotBlank
     @Size(max = 50)
     String licenseNumber;
 }
