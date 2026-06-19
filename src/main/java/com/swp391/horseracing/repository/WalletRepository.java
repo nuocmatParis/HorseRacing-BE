@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+
 public interface WalletRepository extends JpaRepository<Wallet, UUID> {
 
     boolean existsByUser_UserIdAndWalletPurpose(UUID userId, WalletPurpose walletPurpose);
@@ -29,8 +30,6 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     Optional<Wallet> findForUpdateByUser_UserIdAndWalletPurpose(UUID userId, WalletPurpose walletPurpose);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Wallet> findForUpdateByWalletIdAndWalletPurpose(UUID walletId, WalletPurpose walletPurpose);
-
-
+    Optional<Wallet> findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType ownerType, WalletPurpose walletPurpose);
 
 }

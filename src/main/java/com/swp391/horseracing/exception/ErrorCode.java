@@ -159,7 +159,21 @@ public enum ErrorCode {
 
     WALLET_CLOSED(1416, HttpStatus.CONFLICT, "Wallet is closed"),
 
-    WALLET_ALREADY_EXISTS(1417, HttpStatus.CONFLICT, "Wallet already exists")
+    WALLET_ALREADY_EXISTS(1417, HttpStatus.CONFLICT, "Wallet already exists"),
+
+    INVALID_SYSTEM_WALLET_PURPOSE(1418, HttpStatus.CONFLICT, "Invalid wallet purpose"),
+
+    INVOICE_ALREADY_EXISTS(1419, HttpStatus.CONFLICT, "Invoice already exists"),
+
+    PAID_INVOICE_CANNOT_BE_CANCELLED(1420, HttpStatus.CONFLICT, "Paid invoice cannot be cancelled"),
+
+    INVOICE_ALREADY_REFUNDED(1421, HttpStatus.CONFLICT, "Invoice already refunded"),
+
+    INVOICE_ACCESS_DENIED(1422, HttpStatus.FORBIDDEN, "Invoice access denied"),
+
+    INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
+
+
     ;
 
 

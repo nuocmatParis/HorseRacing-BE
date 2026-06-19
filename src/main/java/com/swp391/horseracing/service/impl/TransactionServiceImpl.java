@@ -35,6 +35,13 @@ public class TransactionServiceImpl implements TransactionService {
     WalletRepository walletRepository;
     TransactionMapper transactionMapper;
 
+    static Set<WalletPurpose> walletPurposes = Set.of(
+            SYSTEM_REVENUE,
+            SYSTEM_ESCROW,
+            SYSTEM_PRIZE_POOL
+    );
+
+
     @Override
     @Transactional(readOnly = true)
     public List<TransactionResponse> getMyTransactions() {
@@ -73,19 +80,14 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     @Transactional(readOnly = true)
     public List<TransactionResponse> getSystemTransactions(WalletPurpose walletPurpose) {
-        Set<WalletPurpose> walletPurposes = Set.of(
-                SYSTEM_REVENUE,
-                SYSTEM_ESCROW,
-                SYSTEM_PRIZE_POOL
-        );
+        if(!walletPurposes.contains(walletPurpose)){
+            throw new AppException(ErrorCode.INVALID_SYSTEM_WALLET_PURPOSE);
+        }
 
-        if(walletPurpose != )
+        Wallet wallet = walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM,
+                walletPurpose).orElseThrow(() -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
 
-
-        List<Transaction> list = transactionRepository.findAllByWallet_OwnerTypeAndWallet_WalletPurposeAndWallet_UserIsNullOrderByCreatedAtDesc(
-                WalletOwnerType.SYSTEM,
-                walletPurpose
-        );
+        List<Transaction> list = transactionRepository.findByWallet_WalletIdOrderByCreatedAtDesc(wallet.getWalletId());
 
         List<TransactionResponse> responseList = new ArrayList<>();
 

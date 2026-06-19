@@ -10,5 +10,6 @@ import org.mapstruct.Mapping;
 public interface TransactionMapper {
 
     @Mapping(target = "walletId", source = "wallet.walletId")
+    @Mapping(target = "walletPurpose", source = "wallet.walletPurpose")
     TransactionResponse toTransactionResponse(Transaction transaction);
 }
