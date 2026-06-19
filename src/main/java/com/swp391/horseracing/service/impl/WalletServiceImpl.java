@@ -140,7 +140,7 @@ public class WalletServiceImpl implements WalletService {
 
         Transaction transaction = Transaction.builder()
                 .wallet(savedWallet)
-                .invoiceId(null)
+                .invoice(null)
                 .raceResultId(null)
                 .contractId(null)
                 .type(TransactionType.DEPOSIT)

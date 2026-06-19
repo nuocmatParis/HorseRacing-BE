@@ -34,23 +34,20 @@ public class Transaction {
     @JoinColumn(name = "wallet_id", nullable = false)
     Wallet wallet;
 
-    /**
-     * Tạm thời để UUID vì BE1 chưa có Invoice entity.
-     * Sau này có Invoice thì đổi sang @ManyToOne.
-     */
-    @Column(name = "invoice_id", columnDefinition = "CHAR(36)")
-    UUID invoiceId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "invoice_id")
+    Invoice invoice;
 
     /**
-     * Tạm thời để UUID vì RaceResult entity làm sau.
+     * RaceResult entity làm sau.
      */
     @Column(name = "race_result_id", columnDefinition = "CHAR(36)")
     UUID raceResultId;
 
     /**
-     * Tạm thời để UUID vì JockeyHorseContract entity làm sau.
+     * JockeyHorseContract entity làm sau.
      */
-    @Column(name = "contract_id", columnDefinition = "CHAR(36)")
+    @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = false)
     UUID contractId;
 
     @Enumerated(EnumType.STRING)
@@ -71,6 +68,7 @@ public class Transaction {
     BigDecimal balanceAfter;
 
     @Column(name = "counterparty_wallet_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID counterpartyWalletId;
 
     @Enumerated(EnumType.STRING)
