@@ -12,6 +12,7 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.UserMapper;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.AuthService;
+import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -33,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
     UserRepository userRepository;
     UserMapper userMapper;
     PasswordEncoder passwordEncoder;
+    UserCurrentService userCurrentService;
 
     @NonFinal
     @Value("${jwt.signer-key}")
@@ -87,12 +89,7 @@ public class AuthServiceImpl implements AuthService {
     public UserResponse getMyProfile() {
         var context = SecurityContextHolder.getContext();
 
-        String name = context.getAuthentication().getName();
-
-        User user = userRepository.findByUsername(name).orElseThrow(()
-                -> new AppException(ErrorCode.USER_NOT_FOUND));
-
-        return userMapper.toUserResponse(user);
+        return userMapper.toUserResponse(userCurrentService.getCurrentUser());
     }
 
 }
