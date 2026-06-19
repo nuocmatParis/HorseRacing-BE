@@ -1,5 +1,6 @@
 package com.swp391.horseracing.dto.transaction.response;
 
+import com.swp391.horseracing.enums.WalletPurpose;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -41,6 +42,8 @@ public class TransactionResponse {
     String status;
 
     String note;
+
+    WalletPurpose walletPurpose;
 
     LocalDateTime createdAt;
 }

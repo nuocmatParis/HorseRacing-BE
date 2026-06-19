@@ -1,5 +1,6 @@
 package com.swp391.horseracing.config;
 
+import org.springframework.web.filter.CorsFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,8 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import javax.crypto.spec.SecretKeySpec;
 
@@ -24,6 +27,13 @@ public class SecurityConfig {
 
     private String[] PUBLIC_ENDPOINTS = {"/api/auth/register",
             "/api/auth/login"
+    };
+
+    private static final String[] SWAGGER_ENDPOINTS = {
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**"
     };
 
     @Value("${jwt.signer-key}")
@@ -38,6 +48,7 @@ public class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception{
         httpSecurity.authorizeHttpRequests(request
                 -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
+                .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                 .anyRequest().authenticated());
 
         httpSecurity.oauth2ResourceServer(oath2
@@ -75,6 +86,20 @@ public class SecurityConfig {
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
 
         return jwtAuthenticationConverter;
+    }
+
+    @Bean
+    public CorsFilter corsFilter(){
+        CorsConfiguration corsConfiguration = new CorsConfiguration();
+
+        corsConfiguration.addAllowedOrigin("http://localhost:5173");
+        corsConfiguration.addAllowedMethod("*");
+        corsConfiguration.addAllowedHeader("*");
+
+        UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+        urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", corsConfiguration);
+
+        return new CorsFilter(urlBasedCorsConfigurationSource);
     }
 
 

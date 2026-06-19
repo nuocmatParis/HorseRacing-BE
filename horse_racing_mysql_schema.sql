@@ -547,7 +547,6 @@ CREATE TABLE invoices (
 
                          invoice_type ENUM(
         'OWNER_TOURNAMENT_REGISTRATION_FEE',
-        'JOCKEY_TOURNAMENT_REGISTRATION_FEE',
         'JOCKEY_HIRING_FEE',
         'CONTRACT_CREATION_FEE'
     ) NOT NULL,
@@ -872,7 +871,6 @@ CREATE TABLE wallet_transactions (
                                      type ENUM(
         'DEPOSIT',
         'OWNER_REGISTRATION_FEE',
-        'JOCKEY_REGISTRATION_FEE',
         'JOCKEY_HIRING_FEE',
         'JOCKEY_HIRING_ESCROW',
         'JOCKEY_HIRING_ADVANCE_PAYOUT',
