@@ -9,6 +9,7 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.HorseTournamentRegistrationMapper;
 import com.swp391.horseracing.mapper.JockeyTournamentRegistrationMapper;
 import com.swp391.horseracing.repository.*;
+import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
@@ -36,6 +37,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     UserCurrentService userCurrentService;
     HorseTournamentRegistrationMapper horseRegistrationMapper;
     JockeyTournamentRegistrationMapper jockeyRegistrationMapper;
+    InvoiceService invoiceService;
 
     @Override
     @Transactional
@@ -68,6 +70,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .status(RegistrationStatus.PENDING_PAYMENT)
                 .build();
         registration = horseRegistrationRepository.save(registration);
+
+        invoiceService.createOwnerRegistrationInvoice(owner.getUser().getUserId(), registration.getRegistrationId(), tournament.getRegistrationFee());
 
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(registration);
     }
@@ -283,7 +287,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     }
 
     private void validatePendingStatus(RegistrationStatus status) {
-        if (status != RegistrationStatus.PENDING_PAYMENT) {
+        if (status != RegistrationStatus.PENDING_REVIEW) {
             throw new AppException(ErrorCode.REGISTRATION_NOT_PENDING);
         }
     }
