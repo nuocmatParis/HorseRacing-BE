@@ -1,15 +1,14 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.invoice.response.PaymentResponse;
-import com.swp391.horseracing.entity.Invoice;
-import com.swp391.horseracing.entity.Transaction;
-import com.swp391.horseracing.entity.User;
-import com.swp391.horseracing.entity.Wallet;
+import com.swp391.horseracing.entity.*;
+import com.swp391.horseracing.enums.RegistrationStatus;
 import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.InvoiceMapper;
 import com.swp391.horseracing.mapper.TransactionMapper;
+import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.InvoiceRepository;
 import com.swp391.horseracing.repository.WalletRepository;
 import com.swp391.horseracing.repository.WalletTransactionRepository;
@@ -39,6 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
     WalletTransactionRepository walletTransactionRepository;
     InvoiceMapper invoiceMapper;
     TransactionMapper transactionMapper;
+    HorseTournamentRegistrationRepository horseRegistrationRepository;
 
     @Override
     @Transactional
@@ -124,6 +124,15 @@ public class PaymentServiceImpl implements PaymentService {
         invoice.setPaidAt(LocalDateTime.now());
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        if (invoice.getTournamentRegId() != null) {
+            horseRegistrationRepository.findById(invoice.getTournamentRegId()).ifPresent(reg -> {
+                if (reg.getStatus() == RegistrationStatus.PENDING_PAYMENT) {
+                    reg.setStatus(RegistrationStatus.PENDING_REVIEW);
+                    horseRegistrationRepository.save(reg);
+                }
+            });
+        }
 
         return PaymentResponse.builder()
                 .invoiceResponse(invoiceMapper.toInvoiceResponse(savedInvoice))

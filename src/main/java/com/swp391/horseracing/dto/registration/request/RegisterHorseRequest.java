@@ -1,4 +1,4 @@
-package com.swp391.horseracing.dto.tournament.request;
+package com.swp391.horseracing.dto.registration.request;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
