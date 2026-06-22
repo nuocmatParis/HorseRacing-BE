@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -69,4 +71,13 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
 
         return prizeStructureMapper.toPrizeStructureResponse(prizeStructureRepository.save(prizeStructure));
     }
+
+    @Override
+    public List<PrizeStructureResponse> getByTournament( UUID tournamentId){
+        tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        return prizeStructureRepository.findByTournament_TournamentId(tournamentId)
+                .stream().map(prizeStructureMapper :: toPrizeStructureResponse).collect(Collectors.toList());
+    }
+
 }
