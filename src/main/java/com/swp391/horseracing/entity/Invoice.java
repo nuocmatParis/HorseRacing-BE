@@ -39,7 +39,7 @@ public class Invoice {
     /**
      * Jockey_Horse_Contract ch lamf.
      */
-    @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = false)
+    @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = true)
     UUID contractId;
 
     @Enumerated(EnumType.STRING)

@@ -134,7 +134,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_RegistrationId(registrationId).orElseThrow(()
                 -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
 
-        paymentService.payInvoice(invoice.getInvoiceId());
+        paymentService.refundInvoice(invoice.getInvoiceId());
 
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);

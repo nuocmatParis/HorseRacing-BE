@@ -47,7 +47,7 @@ public class Transaction {
     /**
      * JockeyHorseContract entity làm sau.
      */
-    @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = false)
+    @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = true)
     UUID contractId;
 
     @Enumerated(EnumType.STRING)
