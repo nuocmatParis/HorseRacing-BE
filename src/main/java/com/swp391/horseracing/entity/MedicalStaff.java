@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,7 +23,8 @@ public class MedicalStaff {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "med_staff_id")
+    @Column(name = "med_staff_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID medStaffId;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -42,5 +45,5 @@ public class MedicalStaff {
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    private LocalDateTime createdAt;
 }

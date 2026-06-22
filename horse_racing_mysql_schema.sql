@@ -14,8 +14,6 @@
 -- Your Spring Boot app should connect using horse_app, not root.
 -- ============================================================
 
-
-
 CREATE DATABASE IF NOT EXISTS SWP391_Project_HRTMS
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
@@ -31,38 +29,38 @@ USE SWP391_Project_HRTMS;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
-DROP TABLE IF EXISTS notification;
-DROP TABLE IF EXISTS ai_prediction;
-DROP TABLE IF EXISTS prediction_detail;
-DROP TABLE IF EXISTS prediction;
-DROP TABLE IF EXISTS appeal_evidence;
-DROP TABLE IF EXISTS appeal;
-DROP TABLE IF EXISTS appeal_category;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS ai_predictions;
+DROP TABLE IF EXISTS prediction_details;
+DROP TABLE IF EXISTS predictions;
+DROP TABLE IF EXISTS appeal_evidences;
+DROP TABLE IF EXISTS appeals;
+DROP TABLE IF EXISTS appeal_categories;
 DROP TABLE IF EXISTS wallet_transactions;
-DROP TABLE IF EXISTS race_report;
-DROP TABLE IF EXISTS race_result;
-DROP TABLE IF EXISTS violation;
-DROP TABLE IF EXISTS jockey_inspection;
-DROP TABLE IF EXISTS horse_inspection;
-DROP TABLE IF EXISTS race_entry;
-DROP TABLE IF EXISTS race_referee;
-DROP TABLE IF EXISTS race;
+DROP TABLE IF EXISTS race_reports;
+DROP TABLE IF EXISTS race_results;
+DROP TABLE IF EXISTS violations;
+DROP TABLE IF EXISTS jockey_inspections;
+DROP TABLE IF EXISTS horse_inspections;
+DROP TABLE IF EXISTS race_entries;
+DROP TABLE IF EXISTS race_referees;
+DROP TABLE IF EXISTS races;
 DROP TABLE IF EXISTS rounds;
-DROP TABLE IF EXISTS invoice;
-DROP TABLE IF EXISTS jockey_horse_contract;
-DROP TABLE IF EXISTS jockey_tournament_registration;
-DROP TABLE IF EXISTS tournament_registration;
-DROP TABLE IF EXISTS prize_structure;
-DROP TABLE IF EXISTS tournament_eligibility;
-DROP TABLE IF EXISTS tournament;
-DROP TABLE IF EXISTS wallet;
-DROP TABLE IF EXISTS horse;
-DROP TABLE IF EXISTS medical_staff;
-DROP TABLE IF EXISTS veterinarian;
-DROP TABLE IF EXISTS spectator;
-DROP TABLE IF EXISTS referee;
-DROP TABLE IF EXISTS jockey;
-DROP TABLE IF EXISTS horse_owner;
+DROP TABLE IF EXISTS invoices;
+DROP TABLE IF EXISTS jockey_horse_contracts;
+DROP TABLE IF EXISTS jockey_tournament_registrations;
+DROP TABLE IF EXISTS tournament_registrations;
+DROP TABLE IF EXISTS prize_structures;
+DROP TABLE IF EXISTS tournament_eligibilities;
+DROP TABLE IF EXISTS tournaments;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS horses;
+DROP TABLE IF EXISTS medical_staffs;
+DROP TABLE IF EXISTS veterinarians;
+DROP TABLE IF EXISTS spectators;
+DROP TABLE IF EXISTS referees;
+DROP TABLE IF EXISTS jockeys;
+DROP TABLE IF EXISTS horse_owners;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 
@@ -105,7 +103,7 @@ CREATE TABLE users (
 -- =========================
 -- 3. HORSE OWNER
 -- =========================
-CREATE TABLE horse_owner (
+CREATE TABLE horse_owners (
                              owner_id CHAR(36) PRIMARY KEY,
                              user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -121,7 +119,7 @@ CREATE TABLE horse_owner (
 -- =========================
 -- 4. JOCKEY
 -- =========================
-CREATE TABLE jockey (
+CREATE TABLE jockeys (
                         jockey_id CHAR(36) PRIMARY KEY,
                         user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -141,7 +139,7 @@ CREATE TABLE jockey (
 -- =========================
 -- 5. REFEREE
 -- =========================
-CREATE TABLE referee (
+CREATE TABLE referees (
                          referee_id CHAR(36) PRIMARY KEY,
                          user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -157,7 +155,7 @@ CREATE TABLE referee (
 -- =========================
 -- 6. SPECTATOR
 -- =========================
-CREATE TABLE spectator (
+CREATE TABLE spectators (
                            spectator_id CHAR(36) PRIMARY KEY,
                            user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -171,7 +169,7 @@ CREATE TABLE spectator (
 -- =========================
 -- 7. VETERINARIAN
 -- =========================
-CREATE TABLE veterinarian (
+CREATE TABLE veterinarians (
                               vet_id CHAR(36) PRIMARY KEY,
                               user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -188,7 +186,7 @@ CREATE TABLE veterinarian (
 -- =========================
 -- 8. MEDICAL STAFF
 -- =========================
-CREATE TABLE medical_staff (
+CREATE TABLE medical_staffs (
                                med_staff_id CHAR(36) PRIMARY KEY,
                                user_id CHAR(36) NOT NULL UNIQUE,
 
@@ -204,7 +202,7 @@ CREATE TABLE medical_staff (
 -- =========================
 -- 9. HORSE
 -- =========================
-CREATE TABLE horse (
+CREATE TABLE horses (
                        horse_id CHAR(36) PRIMARY KEY,
                        owner_id CHAR(36) NOT NULL,
 
@@ -222,35 +220,74 @@ CREATE TABLE horse (
                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                        CONSTRAINT fk_horse_owner
-                           FOREIGN KEY (owner_id) REFERENCES horse_owner(owner_id)
+                           FOREIGN KEY (owner_id) REFERENCES horse_owners(owner_id)
 );
 
 -- =========================
 -- 10. WALLET
 -- =========================
-CREATE TABLE wallet (
+CREATE TABLE wallets (
                         wallet_id CHAR(36) PRIMARY KEY,
 
-                        owner_type ENUM('USER', 'SYSTEM') NOT NULL,
+                        owner_type ENUM(
+                            'USER',
+                            'SYSTEM'
+                            ) NOT NULL,
+
                         user_id CHAR(36) NULL,
+
+                        wallet_purpose ENUM(
+                            'USER_MAIN',
+                            'SYSTEM_REVENUE',
+                            'SYSTEM_ESCROW',
+                            'SYSTEM_PRIZE_POOL'
+                            ) NOT NULL,
 
                         balance DECIMAL(15,2) NOT NULL DEFAULT 0,
                         currency VARCHAR(10) NOT NULL DEFAULT 'VND',
-                        status ENUM('ACTIVE', 'FROZEN', 'CLOSED') NOT NULL DEFAULT 'ACTIVE',
+
+                        status ENUM(
+                            'ACTIVE',
+                            'FROZEN',
+                            'CLOSED'
+                            ) NOT NULL DEFAULT 'ACTIVE',
 
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+
+                        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                            ON UPDATE CURRENT_TIMESTAMP,
 
                         CONSTRAINT fk_wallet_user
-                            FOREIGN KEY (user_id) REFERENCES users(user_id),
+                            FOREIGN KEY (user_id)
+                                REFERENCES users(user_id),
 
-                        UNIQUE KEY uk_wallet_user_id (user_id)
+                        CONSTRAINT chk_wallet_owner_purpose
+                            CHECK (
+                                (
+                                    owner_type = 'USER'
+                                        AND user_id IS NOT NULL
+                                        AND wallet_purpose = 'USER_MAIN'
+                                    )
+                                    OR
+                                (
+                                    owner_type = 'SYSTEM'
+                                        AND user_id IS NULL
+                                        AND wallet_purpose IN (
+                                                               'SYSTEM_REVENUE',
+                                                               'SYSTEM_ESCROW',
+                                                               'SYSTEM_PRIZE_POOL'
+                                        )
+                                    )
+                                ),
+
+                        CONSTRAINT uk_wallet_user_purpose
+                            UNIQUE (user_id, wallet_purpose)
 );
 
 -- =========================
 -- 13. TOURNAMENT
 -- =========================
-CREATE TABLE tournament (
+CREATE TABLE tournaments (
                             tournament_id CHAR(36) PRIMARY KEY,
                             created_by CHAR(36) NOT NULL,
 
@@ -262,7 +299,6 @@ CREATE TABLE tournament (
                             location VARCHAR(200),
 
                             registration_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
-                            jockey_registration_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             system_contract_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             total_prize_pool DECIMAL(15,2) NOT NULL DEFAULT 0,
 
@@ -302,7 +338,7 @@ CREATE TABLE tournament (
 -- =========================
 -- 14. TOURNAMENT ELIGIBILITY
 -- =========================
-CREATE TABLE tournament_eligibility (
+CREATE TABLE tournament_eligibilities (
                                         eligibility_id CHAR(36) PRIMARY KEY,
                                         tournament_id CHAR(36) NOT NULL,
 
@@ -313,13 +349,13 @@ CREATE TABLE tournament_eligibility (
                                         is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
                                         CONSTRAINT fk_eligibility_tournament
-                                            FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id)
+                                            FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id)
 );
 
 -- =========================
 -- 15. PRIZE STRUCTURE
 -- =========================
-CREATE TABLE prize_structure (
+CREATE TABLE prize_structures (
                                  prize_structure_id CHAR(36) PRIMARY KEY,
                                  tournament_id CHAR(36) NOT NULL,
 
@@ -329,7 +365,7 @@ CREATE TABLE prize_structure (
                                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
 
                                  CONSTRAINT fk_prize_structure_tournament
-                                     FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id),
+                                     FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                                  UNIQUE KEY uk_prize_tournament_rank (tournament_id, `rank`)
 );
@@ -337,7 +373,7 @@ CREATE TABLE prize_structure (
 -- =========================
 -- 16. TOURNAMENT REGISTRATION
 -- =========================
-CREATE TABLE tournament_registration (
+CREATE TABLE tournament_registrations (
                                          tournament_reg_id CHAR(36) PRIMARY KEY,
                                          tournament_id CHAR(36) NOT NULL,
                                          horse_id CHAR(36) NOT NULL,
@@ -360,13 +396,13 @@ CREATE TABLE tournament_registration (
                                          note TEXT,
 
                                          CONSTRAINT fk_tournament_registration_tournament
-                                             FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id),
+                                             FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                                          CONSTRAINT fk_tournament_registration_horse
-                                             FOREIGN KEY (horse_id) REFERENCES horse(horse_id),
+                                             FOREIGN KEY (horse_id) REFERENCES horses(horse_id),
 
                                          CONSTRAINT fk_tournament_registration_owner
-                                             FOREIGN KEY (owner_id) REFERENCES horse_owner(owner_id),
+                                             FOREIGN KEY (owner_id) REFERENCES horse_owners(owner_id),
 
                                          CONSTRAINT fk_tournament_registration_reviewed_by
                                              FOREIGN KEY (reviewed_by) REFERENCES users(user_id),
@@ -377,7 +413,7 @@ CREATE TABLE tournament_registration (
 -- =========================
 -- 17. JOCKEY TOURNAMENT REGISTRATION
 -- =========================
-CREATE TABLE jockey_tournament_registration (
+CREATE TABLE jockey_tournament_registrations (
                                                 jockey_tournament_reg_id CHAR(36) PRIMARY KEY,
                                                 tournament_id CHAR(36) NOT NULL,
                                                 jockey_id CHAR(36) NOT NULL,
@@ -398,10 +434,10 @@ CREATE TABLE jockey_tournament_registration (
                                                 note TEXT,
 
                                                 CONSTRAINT fk_jockey_tournament_registration_tournament
-                                                    FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id),
+                                                    FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                                                 CONSTRAINT fk_jockey_tournament_registration_jockey
-                                                    FOREIGN KEY (jockey_id) REFERENCES jockey(jockey_id),
+                                                    FOREIGN KEY (jockey_id) REFERENCES jockeys(jockey_id),
 
                                                 CONSTRAINT fk_jockey_tournament_registration_reviewed_by
                                                     FOREIGN KEY (reviewed_by) REFERENCES users(user_id),
@@ -412,7 +448,7 @@ CREATE TABLE jockey_tournament_registration (
 -- =========================
 -- 18. JOCKEY HORSE CONTRACT
 -- =========================
-CREATE TABLE jockey_horse_contract (
+CREATE TABLE jockey_horse_contracts (
                                        contract_id CHAR(36) PRIMARY KEY,
 
                                        tournament_id CHAR(36) NOT NULL,
@@ -476,22 +512,22 @@ CREATE TABLE jockey_horse_contract (
                                        contract_note TEXT,
 
                                        CONSTRAINT fk_contract_tournament
-                                           FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id),
+                                           FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                                        CONSTRAINT fk_contract_tournament_registration
-                                           FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registration(tournament_reg_id),
+                                           FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registrations(tournament_reg_id),
 
                                        CONSTRAINT fk_contract_jockey_tournament_registration
-                                           FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registration(jockey_tournament_reg_id),
+                                           FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registrations(jockey_tournament_reg_id),
 
                                        CONSTRAINT fk_contract_owner
-                                           FOREIGN KEY (owner_id) REFERENCES horse_owner(owner_id),
+                                           FOREIGN KEY (owner_id) REFERENCES horse_owners(owner_id),
 
                                        CONSTRAINT fk_contract_horse
-                                           FOREIGN KEY (horse_id) REFERENCES horse(horse_id),
+                                           FOREIGN KEY (horse_id) REFERENCES horses(horse_id),
 
                                        CONSTRAINT fk_contract_jockey
-                                           FOREIGN KEY (jockey_id) REFERENCES jockey(jockey_id),
+                                           FOREIGN KEY (jockey_id) REFERENCES jockeys(jockey_id),
 
                                        CONSTRAINT fk_contract_reviewed_by
                                            FOREIGN KEY (reviewed_by) REFERENCES users(user_id)
@@ -500,7 +536,7 @@ CREATE TABLE jockey_horse_contract (
 -- =========================
 -- 12. INVOICE
 -- =========================
-CREATE TABLE invoice (
+CREATE TABLE invoices (
                          invoice_id CHAR(36) PRIMARY KEY,
 
                          payer_user_id CHAR(36) NOT NULL,
@@ -510,7 +546,6 @@ CREATE TABLE invoice (
 
                          invoice_type ENUM(
         'OWNER_TOURNAMENT_REGISTRATION_FEE',
-        'JOCKEY_TOURNAMENT_REGISTRATION_FEE',
         'JOCKEY_HIRING_FEE',
         'CONTRACT_CREATION_FEE'
     ) NOT NULL,
@@ -528,13 +563,13 @@ CREATE TABLE invoice (
                              FOREIGN KEY (payer_user_id) REFERENCES users(user_id),
 
                          CONSTRAINT fk_invoice_tournament_registration
-                             FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registration(tournament_reg_id),
+                             FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registrations(tournament_reg_id),
 
                          CONSTRAINT fk_invoice_jockey_tournament_registration
-                             FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registration(jockey_tournament_reg_id),
+                             FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registrations(jockey_tournament_reg_id),
 
                          CONSTRAINT fk_invoice_contract
-                             FOREIGN KEY (contract_id) REFERENCES jockey_horse_contract(contract_id)
+                             FOREIGN KEY (contract_id) REFERENCES jockey_horse_contracts(contract_id)
 );
 
 -- =========================
@@ -549,12 +584,16 @@ CREATE TABLE rounds (
                         sequence_order INT NOT NULL,
                         is_final BOOLEAN NOT NULL DEFAULT FALSE,
                         prediction_type ENUM('TOP1', 'TOP3') NOT NULL DEFAULT 'TOP1',
-                        advancement_rule TEXT,
+                        advancement_rule TEXT NOT NULL,
+                        start_date DATETIME NOT NULL,
+                        end_date DATETIME NOT NULL,
+                        description TEXT NOT NULL,
+                        max_races INT NOT NULL,
                         status ENUM('SCHEDULED', 'ONGOING', 'FINISHED') NOT NULL DEFAULT 'SCHEDULED',
                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                         CONSTRAINT fk_round_tournament
-                            FOREIGN KEY (tournament_id) REFERENCES tournament(tournament_id),
+                            FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                         CONSTRAINT fk_round_created_by
                             FOREIGN KEY (created_by) REFERENCES users(user_id),
@@ -565,16 +604,16 @@ CREATE TABLE rounds (
 -- =========================
 -- 20. RACE
 -- =========================
-CREATE TABLE race (
+CREATE TABLE races (
                       race_id CHAR(36) PRIMARY KEY,
                       round_id CHAR(36) NOT NULL,
                       created_by CHAR(36) NOT NULL,
 
                       name VARCHAR(150) NOT NULL,
                       start_time DATETIME NOT NULL,
-                      end_time DATETIME NULL,
-                      track_condition VARCHAR(100),
-                      distance DECIMAL(8,2),
+                      end_time DATETIME NOT NULL,
+                      track_condition VARCHAR(100) NOT NULL,
+                      distance DECIMAL(8,2) NOT NULL,
                       max_entries INT NOT NULL,
 
                       status ENUM(
@@ -603,7 +642,7 @@ CREATE TABLE race (
 -- =========================
 -- 21. RACE REFEREE
 -- =========================
-CREATE TABLE race_referee (
+CREATE TABLE race_referees (
                               race_id CHAR(36) NOT NULL,
                               referee_id CHAR(36) NOT NULL,
 
@@ -614,10 +653,10 @@ CREATE TABLE race_referee (
                               PRIMARY KEY (race_id, referee_id),
 
                               CONSTRAINT fk_race_referee_race
-                                  FOREIGN KEY (race_id) REFERENCES race(race_id),
+                                  FOREIGN KEY (race_id) REFERENCES races(race_id),
 
                               CONSTRAINT fk_race_referee_referee
-                                  FOREIGN KEY (referee_id) REFERENCES referee(referee_id),
+                                  FOREIGN KEY (referee_id) REFERENCES referees(referee_id),
 
                               CONSTRAINT fk_race_referee_assigned_by
                                   FOREIGN KEY (assigned_by) REFERENCES users(user_id)
@@ -626,7 +665,7 @@ CREATE TABLE race_referee (
 -- =========================
 -- 22. RACE ENTRY
 -- =========================
-CREATE TABLE race_entry (
+CREATE TABLE race_entries (
                             entry_id CHAR(36) PRIMARY KEY,
                             race_id CHAR(36) NOT NULL,
                             contract_id CHAR(36) NOT NULL,
@@ -653,10 +692,10 @@ CREATE TABLE race_entry (
                             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                             CONSTRAINT fk_race_entry_race
-                                FOREIGN KEY (race_id) REFERENCES race(race_id),
+                                FOREIGN KEY (race_id) REFERENCES races(race_id),
 
                             CONSTRAINT fk_race_entry_contract
-                                FOREIGN KEY (contract_id) REFERENCES jockey_horse_contract(contract_id),
+                                FOREIGN KEY (contract_id) REFERENCES jockey_horse_contracts(contract_id),
 
                             CONSTRAINT fk_race_entry_assigned_by
                                 FOREIGN KEY (assigned_by) REFERENCES users(user_id),
@@ -668,7 +707,7 @@ CREATE TABLE race_entry (
 -- =========================
 -- 23. HORSE INSPECTION
 -- =========================
-CREATE TABLE horse_inspection (
+CREATE TABLE horse_inspections (
                                   horse_inspection_id CHAR(36) PRIMARY KEY,
                                   entry_id CHAR(36) NOT NULL,
                                   vet_id CHAR(36) NOT NULL,
@@ -684,10 +723,10 @@ CREATE TABLE horse_inspection (
                                   status ENUM('DRAFT', 'SUBMITTED', 'CONFIRMED') NOT NULL DEFAULT 'DRAFT',
 
                                   CONSTRAINT fk_horse_inspection_entry
-                                      FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                                      FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                                   CONSTRAINT fk_horse_inspection_vet
-                                      FOREIGN KEY (vet_id) REFERENCES veterinarian(vet_id),
+                                      FOREIGN KEY (vet_id) REFERENCES veterinarians(vet_id),
 
                                   UNIQUE KEY uk_horse_inspection_entry (entry_id)
 );
@@ -695,7 +734,7 @@ CREATE TABLE horse_inspection (
 -- =========================
 -- 24. JOCKEY INSPECTION
 -- =========================
-CREATE TABLE jockey_inspection (
+CREATE TABLE jockey_inspections (
                                    jockey_inspection_id CHAR(36) PRIMARY KEY,
                                    entry_id CHAR(36) NOT NULL,
                                    med_staff_id CHAR(36) NOT NULL,
@@ -706,10 +745,10 @@ CREATE TABLE jockey_inspection (
                                    status ENUM('DRAFT', 'SUBMITTED', 'CONFIRMED') NOT NULL DEFAULT 'DRAFT',
 
                                    CONSTRAINT fk_jockey_inspection_entry
-                                       FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                                       FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                                    CONSTRAINT fk_jockey_inspection_med_staff
-                                       FOREIGN KEY (med_staff_id) REFERENCES medical_staff(med_staff_id),
+                                       FOREIGN KEY (med_staff_id) REFERENCES medical_staffs(med_staff_id),
 
                                    UNIQUE KEY uk_jockey_inspection_entry (entry_id)
 );
@@ -717,7 +756,7 @@ CREATE TABLE jockey_inspection (
 -- =========================
 -- 25. VIOLATION
 -- =========================
-CREATE TABLE violation (
+CREATE TABLE violations (
                            violation_id CHAR(36) PRIMARY KEY,
                            entry_id CHAR(36) NOT NULL,
                            referee_id CHAR(36) NOT NULL,
@@ -742,16 +781,16 @@ CREATE TABLE violation (
                            status ENUM('ACTIVE', 'RESOLVED', 'CANCELLED') NOT NULL DEFAULT 'ACTIVE',
 
                            CONSTRAINT fk_violation_entry
-                               FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                               FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                            CONSTRAINT fk_violation_referee
-                               FOREIGN KEY (referee_id) REFERENCES referee(referee_id)
+                               FOREIGN KEY (referee_id) REFERENCES referees(referee_id)
 );
 
 -- =========================
 -- 26. RACE RESULT
 -- =========================
-CREATE TABLE race_result (
+CREATE TABLE race_results (
                              result_id CHAR(36) PRIMARY KEY,
                              race_id CHAR(36) NOT NULL,
                              entry_id CHAR(36) NOT NULL,
@@ -774,10 +813,10 @@ CREATE TABLE race_result (
                              updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
 
                              CONSTRAINT fk_race_result_race
-                                 FOREIGN KEY (race_id) REFERENCES race(race_id),
+                                 FOREIGN KEY (race_id) REFERENCES races(race_id),
 
                              CONSTRAINT fk_race_result_entry
-                                 FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                                 FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                              CONSTRAINT fk_race_result_recorded_by
                                  FOREIGN KEY (recorded_by) REFERENCES users(user_id),
@@ -788,7 +827,7 @@ CREATE TABLE race_result (
 -- =========================
 -- 27. RACE REPORT
 -- =========================
-CREATE TABLE race_report (
+CREATE TABLE race_reports (
                              report_id CHAR(36) PRIMARY KEY,
                              race_id CHAR(36) NOT NULL,
                              referee_id CHAR(36) NOT NULL,
@@ -807,13 +846,13 @@ CREATE TABLE race_report (
                              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                              CONSTRAINT fk_race_report_race
-                                 FOREIGN KEY (race_id) REFERENCES race(race_id),
+                                 FOREIGN KEY (race_id) REFERENCES races(race_id),
 
                              CONSTRAINT fk_race_report_referee
-                                 FOREIGN KEY (referee_id) REFERENCES referee(referee_id),
+                                 FOREIGN KEY (referee_id) REFERENCES referees(referee_id),
 
                              CONSTRAINT fk_race_report_signed_by
-                                 FOREIGN KEY (signed_by) REFERENCES referee(referee_id),
+                                 FOREIGN KEY (signed_by) REFERENCES referees(referee_id),
 
                              CONSTRAINT fk_race_report_published_by
                                  FOREIGN KEY (published_by) REFERENCES users(user_id),
@@ -835,7 +874,6 @@ CREATE TABLE wallet_transactions (
                                      type ENUM(
         'DEPOSIT',
         'OWNER_REGISTRATION_FEE',
-        'JOCKEY_REGISTRATION_FEE',
         'JOCKEY_HIRING_FEE',
         'JOCKEY_HIRING_ESCROW',
         'JOCKEY_HIRING_ADVANCE_PAYOUT',
@@ -864,25 +902,25 @@ CREATE TABLE wallet_transactions (
                                      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                                      CONSTRAINT fk_transaction_wallet
-                                         FOREIGN KEY (wallet_id) REFERENCES wallet(wallet_id),
+                                         FOREIGN KEY (wallet_id) REFERENCES wallets(wallet_id),
 
                                      CONSTRAINT fk_transaction_invoice
-                                         FOREIGN KEY (invoice_id) REFERENCES invoice(invoice_id),
+                                         FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id),
 
                                      CONSTRAINT fk_transaction_race_result
-                                         FOREIGN KEY (race_result_id) REFERENCES race_result(result_id),
+                                         FOREIGN KEY (race_result_id) REFERENCES race_results(result_id),
 
                                      CONSTRAINT fk_transaction_contract
-                                         FOREIGN KEY (contract_id) REFERENCES jockey_horse_contract(contract_id),
+                                         FOREIGN KEY (contract_id) REFERENCES jockey_horse_contracts(contract_id),
 
                                      CONSTRAINT fk_transaction_counterparty_wallet
-                                         FOREIGN KEY (counterparty_wallet_id) REFERENCES wallet(wallet_id)
+                                         FOREIGN KEY (counterparty_wallet_id) REFERENCES wallets(wallet_id)
 );
 
 -- =========================
 -- 28. APPEAL CATEGORY
 -- =========================
-CREATE TABLE appeal_category (
+CREATE TABLE appeal_categories (
                                  category_id CHAR(36) PRIMARY KEY,
 
                                  code VARCHAR(50) NOT NULL UNIQUE,
@@ -895,7 +933,7 @@ CREATE TABLE appeal_category (
 -- =========================
 -- 29. APPEAL
 -- =========================
-CREATE TABLE appeal (
+CREATE TABLE appeals (
                         appeal_id CHAR(36) PRIMARY KEY,
 
                         entry_id CHAR(36) NOT NULL,
@@ -921,28 +959,28 @@ CREATE TABLE appeal (
                         resolution TEXT,
 
                         CONSTRAINT fk_appeal_entry
-                            FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                            FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                         CONSTRAINT fk_appeal_race_result
-                            FOREIGN KEY (race_result_id) REFERENCES race_result(result_id),
+                            FOREIGN KEY (race_result_id) REFERENCES race_results(result_id),
 
                         CONSTRAINT fk_appeal_violation
-                            FOREIGN KEY (related_violation_id) REFERENCES violation(violation_id),
+                            FOREIGN KEY (related_violation_id) REFERENCES violations(violation_id),
 
                         CONSTRAINT fk_appeal_category
-                            FOREIGN KEY (category_id) REFERENCES appeal_category(category_id),
+                            FOREIGN KEY (category_id) REFERENCES appeal_categories(category_id),
 
                         CONSTRAINT fk_appeal_submitted_by
                             FOREIGN KEY (submitted_by_user_id) REFERENCES users(user_id),
 
                         CONSTRAINT fk_appeal_reviewed_by_referee
-                            FOREIGN KEY (reviewed_by_referee_id) REFERENCES referee(referee_id)
+                            FOREIGN KEY (reviewed_by_referee_id) REFERENCES referees(referee_id)
 );
 
 -- =========================
 -- 30. APPEAL EVIDENCE
 -- =========================
-CREATE TABLE appeal_evidence (
+CREATE TABLE appeal_evidences (
                                  evidence_id CHAR(36) PRIMARY KEY,
                                  appeal_id CHAR(36) NOT NULL,
 
@@ -953,13 +991,13 @@ CREATE TABLE appeal_evidence (
                                  uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                                  CONSTRAINT fk_appeal_evidence_appeal
-                                     FOREIGN KEY (appeal_id) REFERENCES appeal(appeal_id)
+                                     FOREIGN KEY (appeal_id) REFERENCES appeals(appeal_id)
 );
 
 -- =========================
 -- 31. PREDICTION
 -- =========================
-CREATE TABLE prediction (
+CREATE TABLE predictions (
                             prediction_id CHAR(36) PRIMARY KEY,
 
                             spectator_id CHAR(36) NOT NULL,
@@ -980,10 +1018,10 @@ CREATE TABLE prediction (
                             scored_at TIMESTAMP NULL,
 
                             CONSTRAINT fk_prediction_spectator
-                                FOREIGN KEY (spectator_id) REFERENCES spectator(spectator_id),
+                                FOREIGN KEY (spectator_id) REFERENCES spectators(spectator_id),
 
                             CONSTRAINT fk_prediction_race
-                                FOREIGN KEY (race_id) REFERENCES race(race_id),
+                                FOREIGN KEY (race_id) REFERENCES races(race_id),
 
                             UNIQUE KEY uk_prediction_spectator_race (spectator_id, race_id)
 );
@@ -991,7 +1029,7 @@ CREATE TABLE prediction (
 -- =========================
 -- 32. PREDICTION DETAIL
 -- =========================
-CREATE TABLE prediction_detail (
+CREATE TABLE prediction_details (
                                    prediction_detail_id CHAR(36) PRIMARY KEY,
 
                                    prediction_id CHAR(36) NOT NULL,
@@ -1002,10 +1040,10 @@ CREATE TABLE prediction_detail (
                                    awarded_points INT NOT NULL DEFAULT 0,
 
                                    CONSTRAINT fk_prediction_detail_prediction
-                                       FOREIGN KEY (prediction_id) REFERENCES prediction(prediction_id),
+                                       FOREIGN KEY (prediction_id) REFERENCES predictions(prediction_id),
 
                                    CONSTRAINT fk_prediction_detail_entry
-                                       FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                                       FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                                    UNIQUE KEY uk_prediction_rank (prediction_id, predicted_rank),
                                    UNIQUE KEY uk_prediction_entry (prediction_id, entry_id)
@@ -1014,7 +1052,7 @@ CREATE TABLE prediction_detail (
 -- =========================
 -- 33. AI PREDICTION
 -- =========================
-CREATE TABLE ai_prediction (
+CREATE TABLE ai_predictions (
                                ai_prediction_id CHAR(36) PRIMARY KEY,
 
                                entry_id CHAR(36) NOT NULL,
@@ -1031,7 +1069,7 @@ CREATE TABLE ai_prediction (
                                generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
                                CONSTRAINT fk_ai_prediction_entry
-                                   FOREIGN KEY (entry_id) REFERENCES race_entry(entry_id),
+                                   FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
 
                                UNIQUE KEY uk_ai_prediction_entry (entry_id)
 );
@@ -1039,7 +1077,7 @@ CREATE TABLE ai_prediction (
 -- =========================
 -- 34. NOTIFICATION
 -- =========================
-CREATE TABLE notification (
+CREATE TABLE notifications (
                               noti_id CHAR(36) PRIMARY KEY,
 
                               user_id CHAR(36) NOT NULL,

@@ -41,6 +41,8 @@ public enum ErrorCode {
     INVALID_KEY(1009, HttpStatus.BAD_REQUEST, "Invalid error key"),
 // Key lỗi không hợp lệ
 
+    VALIDATION_FAILED(1010, HttpStatus.BAD_REQUEST, "Validation failed"),
+
 
     // AUTH / USER
     USER_NOT_FOUND(1101, HttpStatus.NOT_FOUND, "User not found"),
@@ -76,9 +78,8 @@ public enum ErrorCode {
     CAN_NOT_CREATE_TOKEN(1111, HttpStatus.INTERNAL_SERVER_ERROR, "Can not create token"),
 // Không thể tạo token
 
-    INVALID_USERNAME(1112, HttpStatus.BAD_REQUEST, "Username must be at least 3 characters"),
+    PHONE_NUMBER_ALREADY_EXISTS(1112, HttpStatus.CONFLICT, "Phone number already exists"),
 
-    INVALID_PASSWORD(1113, HttpStatus.BAD_REQUEST, "Password must be at least 8 characters"),
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
@@ -86,6 +87,8 @@ public enum ErrorCode {
 
     JOCKEY_PROFILE_NOT_FOUND(1202, HttpStatus.NOT_FOUND, "Jockey profile not found"),
 // Không tìm thấy hồ sơ nài ngựa
+
+    JOCKEY_NOT_AVAILABLE(1203, HttpStatus.BAD_REQUEST, "Jockey is not available for registration"),
 
     SPECTATOR_PROFILE_NOT_FOUND(1203, HttpStatus.NOT_FOUND, "Spectator profile not found"),
 // Không tìm thấy hồ sơ khán giả
@@ -115,6 +118,8 @@ public enum ErrorCode {
 
     HORSE_ALREADY_REGISTERED(1305, HttpStatus.CONFLICT, "Horse is already registered in this tournament"),
 // Ngựa đã được đăng ký vào giải đấu này rồi
+
+    JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for this tournament"),
 
 
     // WALLET / PAYMENT
@@ -151,8 +156,107 @@ public enum ErrorCode {
     INVOICE_NOT_PAID(1411, HttpStatus.BAD_REQUEST, "Invoice is not paid"),
 // Hóa đơn chưa được thanh toán
 
-    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled");
+    INVOICE_CANCELLED(1412, HttpStatus.BAD_REQUEST, "Invoice has been cancelled"),
 // Hóa đơn đã bị hủy
+
+    WALLET_FROZEN(1415, HttpStatus.CONFLICT, "Wallet is frozen"),
+
+    WALLET_CLOSED(1416, HttpStatus.CONFLICT, "Wallet is closed"),
+
+    WALLET_ALREADY_EXISTS(1417, HttpStatus.CONFLICT, "Wallet already exists"),
+
+    INVALID_SYSTEM_WALLET_PURPOSE(1418, HttpStatus.CONFLICT, "Invalid wallet purpose"),
+
+    INVOICE_ALREADY_EXISTS(1419, HttpStatus.CONFLICT, "Invoice already exists"),
+
+    PAID_INVOICE_CANNOT_BE_CANCELLED(1420, HttpStatus.CONFLICT, "Paid invoice cannot be cancelled"),
+
+    INVOICE_ALREADY_REFUNDED(1421, HttpStatus.CONFLICT, "Invoice already refunded"),
+
+    INVOICE_ACCESS_DENIED(1422, HttpStatus.FORBIDDEN, "Invoice access denied"),
+
+    INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
+<<<<<<< Updated upstream
+=======
+
+
+    ;
+
+>>>>>>> Stashed changes
+
+    // TOURNAMENT / REGISTRATION
+    TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
+// Không tìm thấy giải đấu
+
+    TOURNAMENT_NOT_OPEN(1502, HttpStatus.BAD_REQUEST, "Tournament is not open for registration"),
+// Giải đấu chưa mở đăng ký
+
+    TOURNAMENT_REGISTRATION_NOT_FOUND(1503, HttpStatus.NOT_FOUND, "Tournament registration not found"),
+// Không tìm thấy đăng ký giải đấu
+
+    JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND(1504, HttpStatus.NOT_FOUND, "Jockey tournament registration not found"),
+// Không tìm thấy đăng ký giải đấu của nài ngựa
+
+    REGISTRATION_ALREADY_REVIEWED(1505, HttpStatus.CONFLICT, "Registration has already been reviewed"),
+// Đăng ký đã được duyệt/từ chối trước đó
+
+    REGISTRATION_NOT_PENDING(1506, HttpStatus.BAD_REQUEST, "Registration is not in pending status"),
+// Đăng ký không ở trạng thái chờ duyệt
+
+    ROUND_NOT_FOUND(1507, HttpStatus.NOT_FOUND, "Round not found"),
+// Không tìm thấy vòng đấu
+
+    RACE_NOT_FOUND(1508, HttpStatus.NOT_FOUND, "Race not found"),
+// Không tìm thấy cuộc đua
+
+    PRIZE_STRUCTURE_NOT_FOUND(1509, HttpStatus.NOT_FOUND, "Prize structure not found"),
+// Không tìm thấy cơ cấu giải thưởng
+
+    HORSE_ALREADY_REGISTERED_TOURNAMENT(1510, HttpStatus.CONFLICT, "Horse is already registered for this tournament"),
+// Ngựa đã được đăng ký cho giải đấu này
+
+    JOCKEY_ALREADY_REGISTERED_TOURNAMENT(1511, HttpStatus.CONFLICT, "Jockey is already registered for this tournament"),
+// Nài ngựa đã được đăng ký cho giải đấu này
+
+    TOURNAMENT_NOT_IN_DRAFT(1512, HttpStatus.BAD_REQUEST, "Tournament is not in draft status"),
+
+    INVALID_TOURNAMENT_DATES(1513, HttpStatus.BAD_REQUEST, "End date must be after start date"),
+
+    INVALID_ROUND_DATES(1514, HttpStatus.BAD_REQUEST, "End date must be after start date"),
+
+    INVALID_RACE_DATES(1515, HttpStatus.BAD_REQUEST, "End time must be after start time"),
+
+    INVALID_ROUND_COUNT(1516, HttpStatus.BAD_REQUEST, "Each tournament must have exactly 2 rounds"),
+
+    ROUND_WITHOUT_RACE(1517, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
+
+    ROUND_DATES_OUT_OF_TOURNAMENT(1518, HttpStatus.BAD_REQUEST, "Round dates must be within tournament dates"),
+
+    RACE_DATES_OUT_OF_ROUND(1519, HttpStatus.BAD_REQUEST, "Race times must be within round dates"),
+
+    PRIZE_PERCENTAGE_EXCEEDS_100(1520, HttpStatus.BAD_REQUEST, "Total prize percentage must not exceed 100%"),
+
+    TOURNAMENT_ELIGIBILITY_NOT_FOUND(1521, HttpStatus.NOT_FOUND, "Tournament eligibility not found"),
+
+    TOURNAMENT_MISSING_PRIZE(1522, HttpStatus.BAD_REQUEST, "Tournament must have at least one prize structure"),
+
+    TOURNAMENT_MISSING_ELIGIBILITY(1523, HttpStatus.BAD_REQUEST, "Tournament must have at least one eligibility rule"),
+
+    TOURNAMENT_MISSING_ROUNDS(1524, HttpStatus.BAD_REQUEST, "Tournament must have exactly 2 rounds"),
+
+    ROUND_MISSING_RACES(1525, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
+
+    INVALID_PREDICTION_TIMES(1526, HttpStatus.BAD_REQUEST, "Prediction open time must be before close time and before race start time"),
+
+    TOURNAMENT_NAME_EXISTS(1527, HttpStatus.CONFLICT, "Tournament name already exists"),
+
+    DUPLICATE_ROUND_SEQUENCE(1528, HttpStatus.CONFLICT, "Round sequence order already exists in this tournament"),
+
+    DUPLICATE_PRIZE_RANK(1529, HttpStatus.CONFLICT, "Prize rank already exists in this tournament"),
+
+    INVALID_HORSE_AGE_RANGE(1530, HttpStatus.BAD_REQUEST, "Min horse age must be less than max horse age"),
+
+    PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount");
 
 
     int code;

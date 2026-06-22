@@ -8,10 +8,12 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 
+import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -44,12 +46,12 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "gender")
-    private Gender gender;
+    Gender gender;
 
     @Column(name = "full_name", nullable = false, length = 100)
     String fullName;
 
-    @Column(name = "phone_number", length = 20)
+    @Column(name = "phone_number", length = 20, unique = true)
     String phoneNumber;
 
     @Enumerated(EnumType.STRING)
@@ -60,11 +62,27 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "last_login_at")
     LocalDateTime lastLoginAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    Role role;
 
+    @OneToOne(mappedBy = "user")
+    Wallet wallet;
+
+    @OneToMany(mappedBy = "createdBy",
+            cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Tournament> createdTournament;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Round> createdRounds;
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Race> createdRaces;
+
+    @OneToMany(mappedBy = "startedBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Race> startedRaces;
 }

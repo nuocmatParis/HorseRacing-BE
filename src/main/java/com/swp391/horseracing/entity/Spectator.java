@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,7 +22,8 @@ public class Spectator {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "spectator_id")
+    @Column(name = "spectator_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID spectatorId;
 
     @OneToOne(fetch = FetchType.LAZY)
