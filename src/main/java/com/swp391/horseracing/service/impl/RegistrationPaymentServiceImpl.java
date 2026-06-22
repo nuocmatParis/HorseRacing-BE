@@ -27,7 +27,7 @@ public class RegistrationPaymentServiceImpl implements RegistrationPaymentServic
         HorseTournamentRegistration horseTournamentRegistration = horseTournamentRegistrationRepository.findById(
                 tournamentRegId).orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
 
-        if(horseTournamentRegistration.getStatus() != RegistrationStatus.PENDING_REVIEW)
+        if(horseTournamentRegistration.getStatus() != RegistrationStatus.PENDING_PAYMENT)
             throw new AppException(ErrorCode.INVALID_REGISTRATION_STATUS);
 
 
