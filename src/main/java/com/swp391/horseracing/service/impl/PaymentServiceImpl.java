@@ -12,6 +12,7 @@ import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.InvoiceRepository;
 import com.swp391.horseracing.repository.WalletRepository;
 import com.swp391.horseracing.repository.WalletTransactionRepository;
+import com.swp391.horseracing.service.InvoicePaymentCompleteService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.PaymentService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -39,6 +40,7 @@ public class PaymentServiceImpl implements PaymentService {
     InvoiceMapper invoiceMapper;
     TransactionMapper transactionMapper;
     HorseTournamentRegistrationRepository horseRegistrationRepository;
+    InvoicePaymentCompleteService invoicePaymentCompleteService;
 
     @Override
     @Transactional
@@ -124,14 +126,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         Invoice savedInvoice = invoiceRepository.save(invoice);
 
-        if (invoice.getTournamentRegId() != null) {
-            horseRegistrationRepository.findById(invoice.getTournamentRegId()).ifPresent(reg -> {
-                if (reg.getStatus() == RegistrationStatus.PENDING_PAYMENT) {
-                    reg.setStatus(RegistrationStatus.PENDING_REVIEW);
-                    horseRegistrationRepository.save(reg);
-                }
-            });
-        }
+        invoicePaymentCompleteService.handleAfterPaid(savedInvoice);
 
         return PaymentResponse.builder()
                 .invoiceResponse(invoiceMapper.toInvoiceResponse(savedInvoice))

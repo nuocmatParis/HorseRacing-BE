@@ -13,7 +13,7 @@ import java.util.UUID;
 
 import static jakarta.persistence.FetchType.LAZY;
 
-@Table(name = "horse_tournament_registration",
+@Table(name = "horse_tournament_registrations",
         uniqueConstraints = @UniqueConstraint(columnNames = {"tournament_id", "horse_id"}))
 @Entity
 @Getter

@@ -10,6 +10,7 @@ import com.swp391.horseracing.mapper.HorseTournamentRegistrationMapper;
 import com.swp391.horseracing.mapper.JockeyTournamentRegistrationMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.InvoiceService;
+import com.swp391.horseracing.service.PaymentService;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
@@ -38,6 +39,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     HorseTournamentRegistrationMapper horseRegistrationMapper;
     JockeyTournamentRegistrationMapper jockeyRegistrationMapper;
     InvoiceService invoiceService;
+    PaymentService paymentService;
+    InvoiceRepository invoiceRepository;
 
     @Override
     @Transactional
@@ -69,11 +72,11 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .owner(owner)
                 .status(RegistrationStatus.PENDING_PAYMENT)
                 .build();
-        registration = horseRegistrationRepository.save(registration);
+        HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
 
-        invoiceService.createOwnerRegistrationInvoice(owner.getUser().getUserId(), registration.getRegistrationId(), tournament.getRegistrationFee());
+        invoiceService.createOwnerRegistrationInvoice(owner.getUser().getUserId(), savedRegistration, tournament.getRegistrationFee());
 
-        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(registration);
+        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
 
     @Override
@@ -128,11 +131,17 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
+        Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_RegistrationId(registrationId).orElseThrow(()
+                -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+
+        paymentService.payInvoice(invoice.getInvoiceId());
+
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
+
 
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(horseRegistrationRepository.save(registration));
     }
