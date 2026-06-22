@@ -1,7 +1,7 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
-import com.swp391.horseracing.dto.tournament.response.JockeyTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;

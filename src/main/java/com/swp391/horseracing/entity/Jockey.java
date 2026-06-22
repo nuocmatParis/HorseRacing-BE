@@ -33,11 +33,11 @@ public class Jockey {
     @JoinColumn(name = "user_id", unique = true, nullable = false)
     User user;
 
-    @Column(name = "height", precision = 5, scale = 2)
-    BigDecimal height;
+    @Column(name = "height")
+    float height;
 
-    @Column(name = "weight", precision = 5, scale = 2)
-    BigDecimal weight;
+    @Column(name = "weight")
+    float weight;
 
     @Builder.Default
     @Column(name = "experience_years", nullable = false)
