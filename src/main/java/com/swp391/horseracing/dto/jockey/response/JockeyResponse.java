@@ -16,8 +16,8 @@ public class JockeyResponse {
     UUID jockeyId;
     UUID userId;
     String fullName;
-    BigDecimal height;
-    BigDecimal weight;
+    float height;
+    float weight;
     int experienceYears ;
     String licenseNumber;
     String specialization;

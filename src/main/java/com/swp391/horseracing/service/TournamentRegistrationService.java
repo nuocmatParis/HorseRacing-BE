@@ -1,7 +1,7 @@
 package com.swp391.horseracing.service;
 
-import com.swp391.horseracing.dto.tournament.response.HorseTournamentRegistrationResponse;
-import com.swp391.horseracing.dto.tournament.response.JockeyTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 
 import java.util.UUID;
 

@@ -1,7 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
-import com.swp391.horseracing.dto.tournament.response.HorseTournamentRegistrationResponse;
-import com.swp391.horseracing.dto.tournament.response.JockeyTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.exception.AppException;
@@ -9,11 +9,12 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.HorseTournamentRegistrationMapper;
 import com.swp391.horseracing.mapper.JockeyTournamentRegistrationMapper;
 import com.swp391.horseracing.repository.*;
+import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.TournamentRegistrationService;
+import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,9 +34,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     HorseRepository horseRepository;
     HorseOwnerRepository horseOwnerRepository;
     JockeyRepository jockeyRepository;
-    UserRepository userRepository;
+    UserCurrentService userCurrentService;
     HorseTournamentRegistrationMapper horseRegistrationMapper;
     JockeyTournamentRegistrationMapper jockeyRegistrationMapper;
+    InvoiceService invoiceService;
 
     @Override
     @Transactional
@@ -69,6 +71,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .build();
         registration = horseRegistrationRepository.save(registration);
 
+        invoiceService.createOwnerRegistrationInvoice(owner.getUser().getUserId(), registration.getRegistrationId(), tournament.getRegistrationFee());
+
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(registration);
     }
 
@@ -88,6 +92,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.JOCKEY_ALREADY_REGISTERED_TOURNAMENT);
         }
 
+        validateJockeyEligibility(jockey, tournament);
+
         JockeyTournamentRegistration registration = JockeyTournamentRegistration.builder()
                 .tournament(tournament)
                 .jockey(jockey)
@@ -106,7 +112,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        User currentUser = getCurrentUser();
+        User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.APPROVED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
@@ -122,7 +128,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        User currentUser = getCurrentUser();
+        User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
@@ -139,7 +145,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        User currentUser = getCurrentUser();
+        User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.APPROVED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
@@ -155,13 +161,45 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        User currentUser = getCurrentUser();
+        User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
 
         return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(jockeyRegistrationRepository.save(registration));
+    }
+
+    private void validateJockeyEligibility(Jockey jockey, Tournament tournament) {
+        if (jockey.getStatus() != JockeyStatus.AVAILABLE) {
+            throw new AppException(ErrorCode.JOCKEY_NOT_AVAILABLE);
+        }
+
+        List<TournamentEligibility> eligibilityRules = tournament.getEligibilityRules();
+        if (eligibilityRules != null) {
+            for (TournamentEligibility rule : eligibilityRules) {
+                if (rule.getTargetType() == EligibilityTargetType.JOCKEY && rule.isActive()) {
+                    applyJockeyEligibilityRule(jockey, rule);
+                }
+            }
+        }
+    }
+
+    private void applyJockeyEligibilityRule(Jockey jockey, TournamentEligibility rule) {
+        String condition = rule.getConditionName().toLowerCase();
+        String operator = rule.getConditionOperator();
+        String value = rule.getConditionValue();
+
+        boolean passed = switch (condition) {
+            case "height" -> compareFloat(jockey.getHeight(), operator, Float.parseFloat(value));
+            case "weight" -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
+            case "experienceyears" -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
+            default -> true;
+        };
+
+        if (!passed) {
+            throw new AppException(ErrorCode.JOCKEY_NOT_ELIGIBLE);
+        }
     }
 
     private void validateHorseEligibility(Horse horse, Tournament tournament) {
@@ -249,26 +287,19 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     }
 
     private void validatePendingStatus(RegistrationStatus status) {
-        if (status != RegistrationStatus.PENDING_PAYMENT) {
+        if (status != RegistrationStatus.PENDING_REVIEW) {
             throw new AppException(ErrorCode.REGISTRATION_NOT_PENDING);
         }
     }
 
-    private User getCurrentUser() {
-        var context = SecurityContextHolder.getContext();
-        String username = context.getAuthentication().getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
-    }
-
     private HorseOwner getCurrentOwner() {
-        User user = getCurrentUser();
+        User user = userCurrentService.getCurrentUser();
         return horseOwnerRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.OWNER_PROFILE_NOT_FOUND));
     }
 
     private Jockey getCurrentJockey() {
-        User user = getCurrentUser();
+        User user = userCurrentService.getCurrentUser();
         return jockeyRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_PROFILE_NOT_FOUND));
     }
