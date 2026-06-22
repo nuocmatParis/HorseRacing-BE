@@ -32,11 +32,9 @@ public class Invoice {
     @JoinColumn(name = "payer_user_id", nullable = false)
     User payerUser;
 
-    /**
-     * Tournament_Registration ch làm.
-     */
-    @Column(name = "tournament_reg_id", columnDefinition = "CHAR(36)")
-    UUID tournamentRegId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tournament_reg_id")
+    HorseTournamentRegistration horseTournamentRegistration;
 
     /**
      * Jockey_Horse_Contract ch lamf.

@@ -49,6 +49,7 @@ public class Horse {
     @Column(name = "color", nullable = false, length = 50)
     String color;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "health_status", nullable = false)
     HealthStatus healthStatus;
 
