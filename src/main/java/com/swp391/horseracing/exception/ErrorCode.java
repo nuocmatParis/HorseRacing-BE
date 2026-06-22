@@ -176,6 +176,13 @@ public enum ErrorCode {
     INVOICE_ACCESS_DENIED(1422, HttpStatus.FORBIDDEN, "Invoice access denied"),
 
     INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
+<<<<<<< Updated upstream
+=======
+
+
+    ;
+
+>>>>>>> Stashed changes
 
     // TOURNAMENT / REGISTRATION
     TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
