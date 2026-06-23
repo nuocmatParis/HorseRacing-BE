@@ -434,6 +434,7 @@ CREATE TABLE jockey_tournament_registrations (
                                                 reviewed_at TIMESTAMP NULL,
                                                 rejected_reason TEXT,
                                                 withdrawn_at TIMESTAMP NULL,
+                                                withdraw_reason TEXT,
                                                 note TEXT,
 
                                                 CONSTRAINT fk_jockey_tournament_registration_tournament
