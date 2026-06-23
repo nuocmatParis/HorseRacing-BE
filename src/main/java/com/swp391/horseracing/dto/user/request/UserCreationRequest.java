@@ -42,7 +42,7 @@ public class UserCreationRequest {
     String fullName;
 
     @NotBlank(message = "Phone number is required")
-    @Pattern(regexp = "^[35789]//d{8}$", message = "Phone number is invalid")
+    @Pattern(regexp = "^0[35789]\\d{8}$", message = "Phone number is invalid")
     @Size(max = 20, message = "Phone number must not exceed 20 characters")
     String phoneNumber;
 }

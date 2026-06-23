@@ -287,7 +287,7 @@ public class DataSeeder implements CommandLineRunner {
                 .predictionOpenMinutesBefore(120)
                 .predictionCloseMinutesBefore(5)
                 .status(TournamentStatus.DRAFT)
-                .phase(TournamentPhase.REGISTRATION)
+                .phase(TournamentPhase.DRAFT)
                 .createdBy(admin)
                 .createdAt(LocalDateTime.now())
                 .build();

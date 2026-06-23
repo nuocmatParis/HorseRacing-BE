@@ -8,6 +8,7 @@ import com.swp391.horseracing.service.PaymentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,5 +36,14 @@ public class InvoiceController {
                 .result(paymentService.payInvoice(id))
                 .build();
 
+    }
+
+    @PostMapping("/{id}/refund")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<PaymentResponse> refundInvoice(@PathVariable UUID id){
+        return ApiResponse.<PaymentResponse>builder()
+                .message("Refund invoice successfully")
+                .result(paymentService.refundInvoice(id))
+                .build();
     }
 }
