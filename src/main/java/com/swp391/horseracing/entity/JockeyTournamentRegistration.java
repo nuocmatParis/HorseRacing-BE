@@ -11,7 +11,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table(name = "jockey_tournament_registration",
+@Table(name = "jockey_tournament_registrations",
         uniqueConstraints = @UniqueConstraint(columnNames = {"tournament_id", "jockey_id"}))
 @Entity
 @Getter

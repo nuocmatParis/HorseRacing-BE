@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.invoice.response.InvoiceResponse;
+import com.swp391.horseracing.entity.HorseTournamentRegistration;
 import com.swp391.horseracing.entity.Invoice;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.InvoiceStatus;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -52,9 +52,9 @@ public class InvoiceServiceImpl implements InvoiceService {
 
     @Override
     @Transactional
-    public Invoice createOwnerRegistrationInvoice(UUID payerUserId, UUID tournamentRegId, BigDecimal amount) {
-        if(invoiceRepository.existsByTournamentRegIdAndInvoiceType(
-                tournamentRegId, InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
+    public Invoice createOwnerRegistrationInvoice(UUID payerUserId, HorseTournamentRegistration registration, BigDecimal amount) {
+        if(invoiceRepository.existsByHorseTournamentRegistration_RegistrationIdAndInvoiceType(
+                registration.getRegistrationId(), InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
             throw new AppException(ErrorCode.INVOICE_ALREADY_EXISTS);
 
         User payer = userRepository.findByUserId(payerUserId).orElseThrow(()
@@ -63,7 +63,7 @@ public class InvoiceServiceImpl implements InvoiceService {
         Invoice invoice = Invoice.builder()
                 .payerUser(payer)
                 .amount(amount)
-                .tournamentRegId(tournamentRegId)
+                .horseTournamentRegistration(registration)
                 .contractId(null)
                 .invoiceType(InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE)
                 .status(InvoiceStatus.UNPAID)
