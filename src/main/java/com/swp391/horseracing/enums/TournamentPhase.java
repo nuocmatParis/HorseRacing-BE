@@ -1,10 +1,13 @@
 package com.swp391.horseracing.enums;
 
 public enum TournamentPhase {
-    REGISTRATION,
-    QUALIFICATION,
-    PREPARATION,
+    DRAFT,
+    REGISTRATION_OPEN,
+    REGISTRATION_REVIEW,
+    JOCKEY_MATCHING,
+    SCHEDULING,
     RACING,
-    REVIEW,
-    COMPLETED
+    RESULT_PENDING,
+    RESULT_PUBLISHED,
+    FINISHED
 }

@@ -88,8 +88,6 @@ public enum ErrorCode {
     JOCKEY_PROFILE_NOT_FOUND(1202, HttpStatus.NOT_FOUND, "Jockey profile not found"),
 // Không tìm thấy hồ sơ nài ngựa
 
-    JOCKEY_NOT_AVAILABLE(1203, HttpStatus.BAD_REQUEST, "Jockey is not available for registration"),
-
     SPECTATOR_PROFILE_NOT_FOUND(1203, HttpStatus.NOT_FOUND, "Spectator profile not found"),
 // Không tìm thấy hồ sơ khán giả
 
@@ -101,6 +99,7 @@ public enum ErrorCode {
 
     MEDICAL_STAFF_PROFILE_NOT_FOUND(1206, HttpStatus.NOT_FOUND, "Medical staff profile not found"),
 // Không tìm thấy hồ sơ nhân viên y tế
+   JOCKEY_NOT_AVAILABLE(1207, HttpStatus.BAD_REQUEST, "Jockey is not available for registration"),
 
 
     // HORSE
@@ -118,8 +117,7 @@ public enum ErrorCode {
 
     HORSE_ALREADY_REGISTERED(1305, HttpStatus.CONFLICT, "Horse is already registered in this tournament"),
 // Ngựa đã được đăng ký vào giải đấu này rồi
-
-    JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for this tournament"),
+JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for this tournament"),
 
 
     // WALLET / PAYMENT
@@ -176,6 +174,7 @@ public enum ErrorCode {
     INVOICE_ACCESS_DENIED(1422, HttpStatus.FORBIDDEN, "Invoice access denied"),
 
     INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
+
 
     // TOURNAMENT / REGISTRATION
     TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
@@ -249,7 +248,12 @@ public enum ErrorCode {
 
     INVALID_HORSE_AGE_RANGE(1530, HttpStatus.BAD_REQUEST, "Min horse age must be less than max horse age"),
 
-    PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount");
+    PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount"),
+
+    INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status");
+
+
+    ;
 
 
     int code;

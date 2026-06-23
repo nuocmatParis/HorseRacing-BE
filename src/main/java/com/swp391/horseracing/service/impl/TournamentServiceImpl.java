@@ -69,7 +69,7 @@ public class TournamentServiceImpl implements TournamentService {
 
         Tournament tournament = tournamentMapper.toTournament(request);
         tournament.setStatus(TournamentStatus.DRAFT);
-        tournament.setPhase(TournamentPhase.REGISTRATION);
+        tournament.setPhase(TournamentPhase.DRAFT);
         tournament.setCreatedBy(currentUser);
         tournament.setCreatedAt(LocalDateTime.now());
 
@@ -106,6 +106,7 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         tournament.setStatus(TournamentStatus.OPEN);
+        tournament.setPhase(TournamentPhase.REGISTRATION_OPEN);
         tournament.setPublishedAt(LocalDateTime.now());
         return tournamentMapper.toTournamentResponse(tournamentRepository.save(tournament));
     }

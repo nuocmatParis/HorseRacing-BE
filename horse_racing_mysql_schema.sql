@@ -63,6 +63,7 @@ DROP TABLE IF EXISTS jockeys;
 DROP TABLE IF EXISTS horse_owners;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
+DROP TABLE IF EXISTS horse_tournament_registrations;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -123,8 +124,8 @@ CREATE TABLE jockeys (
                         jockey_id CHAR(36) PRIMARY KEY,
                         user_id CHAR(36) NOT NULL UNIQUE,
 
-                        height DECIMAL(5,2),
-                        weight DECIMAL(5,2),
+                        height FLOAT,
+                        weight FLOAT,
                         experience_years INT DEFAULT 0,
                         license_number VARCHAR(50) UNIQUE,
                         specialization VARCHAR(100),
@@ -309,6 +310,8 @@ CREATE TABLE tournaments (
                             max_horse_age INT,
                             tournament_division VARCHAR(100),
                             handicap_rule TEXT,
+                            prediction_open_minutes_before INT NOT NULL DEFAULT 120,
+                            prediction_close_minutes_before INT NOT NULL DEFAULT 5,
 
                             prediction_open_at DATETIME NULL,
                             prediction_close_at DATETIME NULL,
@@ -359,7 +362,7 @@ CREATE TABLE prize_structures (
                                  prize_structure_id CHAR(36) PRIMARY KEY,
                                  tournament_id CHAR(36) NOT NULL,
 
-                                 `rank` INT NOT NULL,
+                                 prize_rank INT NOT NULL,
                                  percentage DECIMAL(5,2),
                                  fixed_amount DECIMAL(15,2),
                                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -367,14 +370,14 @@ CREATE TABLE prize_structures (
                                  CONSTRAINT fk_prize_structure_tournament
                                      FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
-                                 UNIQUE KEY uk_prize_tournament_rank (tournament_id, `rank`)
+                                 UNIQUE KEY uk_prize_tournament_rank (tournament_id, prize_rank)
 );
 
 -- =========================
 -- 16. TOURNAMENT REGISTRATION
 -- =========================
-CREATE TABLE tournament_registrations (
-                                         tournament_reg_id CHAR(36) PRIMARY KEY,
+CREATE TABLE horse_tournament_registrations (
+                                         horse_tournament_reg_id CHAR(36) PRIMARY KEY,
                                          tournament_id CHAR(36) NOT NULL,
                                          horse_id CHAR(36) NOT NULL,
                                          owner_id CHAR(36) NOT NULL,
@@ -431,6 +434,7 @@ CREATE TABLE jockey_tournament_registrations (
                                                 reviewed_at TIMESTAMP NULL,
                                                 rejected_reason TEXT,
                                                 withdrawn_at TIMESTAMP NULL,
+                                                withdraw_reason TEXT,
                                                 note TEXT,
 
                                                 CONSTRAINT fk_jockey_tournament_registration_tournament
@@ -515,7 +519,7 @@ CREATE TABLE jockey_horse_contracts (
                                            FOREIGN KEY (tournament_id) REFERENCES tournaments(tournament_id),
 
                                        CONSTRAINT fk_contract_tournament_registration
-                                           FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registrations(tournament_reg_id),
+                                           FOREIGN KEY (tournament_reg_id) REFERENCES horse_tournament_registrations(horse_tournament_reg_id),
 
                                        CONSTRAINT fk_contract_jockey_tournament_registration
                                            FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registrations(jockey_tournament_reg_id),
@@ -563,7 +567,7 @@ CREATE TABLE invoices (
                              FOREIGN KEY (payer_user_id) REFERENCES users(user_id),
 
                          CONSTRAINT fk_invoice_tournament_registration
-                             FOREIGN KEY (tournament_reg_id) REFERENCES tournament_registrations(tournament_reg_id),
+                             FOREIGN KEY (tournament_reg_id) REFERENCES horse_tournament_registrations(horse_tournament_reg_id),
 
                          CONSTRAINT fk_invoice_jockey_tournament_registration
                              FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registrations(jockey_tournament_reg_id),
@@ -615,7 +619,8 @@ CREATE TABLE races (
                       track_condition VARCHAR(100) NOT NULL,
                       distance DECIMAL(8,2) NOT NULL,
                       max_entries INT NOT NULL,
-
+                      prediction_open_at DATETIME NOT NULL,
+                      prediction_close_at DATETIME NOT NULL,
                       status ENUM(
         'SCHEDULED',
         'RUNNING',
