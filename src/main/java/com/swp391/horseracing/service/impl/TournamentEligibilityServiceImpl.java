@@ -17,16 +17,18 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class TournamentEligibilityServiceImpl implements TournamentEligibilityService {
 
-    TournamentEligibilityRepository repository;
+    TournamentEligibilityRepository tournamentEligibilityRepository;
     TournamentRepository tournamentRepository;
-    TournamentEligibilityMapper mapper;
+     TournamentEligibilityMapper tournamentEligibilityMapper;
 
     @Override
     @Transactional
@@ -38,9 +40,17 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
-        TournamentEligibility eligibility = mapper.toEligibility(request);
+        TournamentEligibility eligibility = tournamentEligibilityMapper.toEligibility(request);
         eligibility.setTournament(tournament);
 
-        return mapper.toEligibilityResponse(repository.save(eligibility));
+        return tournamentEligibilityMapper.toEligibilityResponse(tournamentEligibilityRepository.save(eligibility));
+    }
+
+    @Override
+    public List<TournamentEligibilityResponse> getByTournament(UUID tournamentId){
+        tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        return tournamentEligibilityRepository.findByTournament_TournamentId(tournamentId)
+                .stream().map(tournamentEligibilityMapper :: toEligibilityResponse).collect(Collectors.toList());
     }
 }
