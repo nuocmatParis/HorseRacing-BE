@@ -250,7 +250,17 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
 
     PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount"),
 
-    INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status");
+    INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status"),
+
+    MAX_ROUNDS_REACHED(1533, HttpStatus.BAD_REQUEST, "Maximum number of rounds (2) reached for this tournament"),
+
+    MAX_RACES_REACHED(1534, HttpStatus.BAD_REQUEST, "Maximum number of races reached for this round"),
+
+    HORSE_TOURNAMENT_TIME_CONFLICT(1535, HttpStatus.BAD_REQUEST,
+            "Horse is already registered in another tournament with overlapping dates"),
+
+    JOCKEY_TOURNAMENT_TIME_CONFLICT(1536, HttpStatus.BAD_REQUEST,
+            "Jockey is already registered in another tournament with overlapping dates");
 
 
     ;
