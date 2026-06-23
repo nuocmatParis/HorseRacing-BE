@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -311,5 +312,21 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         User user = userCurrentService.getCurrentUser();
         return jockeyRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_PROFILE_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional
+    public List<HorseTournamentRegistrationResponse> getAllHorseRegistrations(){
+        return horseRegistrationRepository.findAll()
+                .stream().map(horseRegistrationMapper :: toHorseTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public List<JockeyTournamentRegistrationResponse> getAllJockeyRegistrations(){
+        return jockeyRegistrationRepository.findAll()
+                .stream().map(jockeyRegistrationMapper :: toJockeyTournamentRegistrationResponse)
+                .collect(Collectors.toList());
     }
 }
