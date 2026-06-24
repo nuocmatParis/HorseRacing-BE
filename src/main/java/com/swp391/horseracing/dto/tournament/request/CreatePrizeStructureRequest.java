@@ -25,6 +25,7 @@ public class CreatePrizeStructureRequest {
     Float percentage;
 
     @Positive(message = "Fixed amount must be positive")
+    @NotNull(message = "Fixed amount is Required")
     BigDecimal fixedAmount;
 
     @NotNull(message = "Active status is required")

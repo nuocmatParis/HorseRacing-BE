@@ -1,2 +1,2 @@
-DROP DATABASE SWP391_Project_HRTMS;
-CREATE DATABASE SWP391_Project_HRTMS;
+select * from horseowner
+
