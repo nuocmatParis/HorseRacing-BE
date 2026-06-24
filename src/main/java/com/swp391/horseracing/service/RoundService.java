@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface RoundService {
     RoundResponse create(UUID tournamentId, CreateRoundRequest request);
+    List<RoundResponse> getRoundsByTournamentId(UUID tournamentId);
 }

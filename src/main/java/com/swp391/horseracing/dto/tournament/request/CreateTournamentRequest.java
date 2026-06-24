@@ -89,4 +89,19 @@ public class CreateTournamentRequest {
     @Builder.Default
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore = 5;
+
+    @NotNull(message = "Registration open time is required")
+    LocalDateTime registrationOpenAt;
+
+    @NotNull(message = "Registration close time is required")
+    LocalDateTime registrationCloseAt;
+
+    @NotNull(message = "Review deadline is required")
+    LocalDateTime reviewDeadlineAt;
+
+    @NotNull(message = "Jockey matching deadline is required")
+    LocalDateTime jockeyMatchingDeadlineAt;
+
+    @NotNull(message = "Scheduling deadline is required")
+    LocalDateTime schedulingDeadlineAt;
 }

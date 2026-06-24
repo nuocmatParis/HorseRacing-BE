@@ -12,6 +12,14 @@ public interface TournamentService {
 
     TournamentResponse publish(UUID id);
 
+    TournamentResponse completeReview(UUID id);
+
+    TournamentResponse completeMatching(UUID id);
+
+    TournamentResponse publishSchedule(UUID id);
+
+    TournamentResponse publishResults(UUID id);
+
     List<TournamentResponse> getAll();
 
     TournamentResponse getById(UUID id);
