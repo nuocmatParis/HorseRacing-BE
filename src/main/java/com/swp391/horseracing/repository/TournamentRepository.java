@@ -1,6 +1,7 @@
 package com.swp391.horseracing.repository;
 
 import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -14,5 +15,8 @@ public interface TournamentRepository extends JpaRepository<Tournament, UUID> {
     List<Tournament> findAllByOrderByCreatedAtDesc();
 
     List<Tournament> findByStatus(TournamentStatus status);
+
+    List<Tournament> findByPhase(TournamentPhase phase);
+
     boolean existsByName(String name);
 }
