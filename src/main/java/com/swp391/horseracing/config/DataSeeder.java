@@ -299,24 +299,28 @@ public class DataSeeder implements CommandLineRunner {
         if (prizeStructureRepository.count() > 0) return;
 
         Tournament tournament = tournamentRepository.findAllByOrderByCreatedAtDesc().get(0);
+        BigDecimal totalPrizePool = tournament.getTotalPrizePool();
 
         List<PrizeStructure> prizes = List.of(
                 PrizeStructure.builder()
                         .tournament(tournament)
                         .rank(1)
                         .percentage(50.0f)
+                        .fixedAmount(totalPrizePool.multiply(BigDecimal.valueOf(0.5)))
                         .isActive(true)
                         .build(),
                 PrizeStructure.builder()
                         .tournament(tournament)
                         .rank(2)
                         .percentage(30.0f)
+                        .fixedAmount(totalPrizePool.multiply(BigDecimal.valueOf(0.3)))
                         .isActive(true)
                         .build(),
                 PrizeStructure.builder()
                         .tournament(tournament)
                         .rank(3)
                         .percentage(20.0f)
+                        .fixedAmount(totalPrizePool.multiply(BigDecimal.valueOf(0.2)))
                         .isActive(true)
                         .build()
         );
