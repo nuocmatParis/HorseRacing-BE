@@ -545,7 +545,6 @@ CREATE TABLE invoices (
 
                          payer_user_id CHAR(36) NOT NULL,
                          tournament_reg_id CHAR(36) NULL,
-                         jockey_tournament_reg_id CHAR(36) NULL,
                          contract_id CHAR(36) NULL,
 
                          invoice_type ENUM(
@@ -568,9 +567,6 @@ CREATE TABLE invoices (
 
                          CONSTRAINT fk_invoice_tournament_registration
                              FOREIGN KEY (tournament_reg_id) REFERENCES horse_tournament_registrations(horse_tournament_reg_id),
-
-                         CONSTRAINT fk_invoice_jockey_tournament_registration
-                             FOREIGN KEY (jockey_tournament_reg_id) REFERENCES jockey_tournament_registrations(jockey_tournament_reg_id),
 
                          CONSTRAINT fk_invoice_contract
                              FOREIGN KEY (contract_id) REFERENCES jockey_horse_contracts(contract_id)
