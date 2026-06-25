@@ -41,6 +41,12 @@ public class TournamentResponse {
     TournamentPhase phase;
     LocalDateTime createdAt;
     LocalDateTime publishedAt;
+    LocalDateTime registrationOpenAt;
+    LocalDateTime registrationCloseAt;
+    LocalDateTime reviewDeadlineAt;
+    LocalDateTime jockeyMatchingDeadlineAt;
+    LocalDateTime schedulingDeadlineAt;
+    boolean overdue;
     UUID createdById;
     String createdByName;
 }

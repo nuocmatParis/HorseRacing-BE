@@ -1,6 +1,7 @@
 package com.swp391.horseracing.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -25,13 +26,13 @@ public class PrizeStructure {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID prizeStructureId;
 
-    @Column(name = "prize_rank", nullable = false)
+    @Column(name = "prize_rank", nullable = false, unique = true)
     int rank;
 
     @Column(name = "percentage")
     Float percentage;
 
-    @Column(name = "fixed_amount", precision = 15, scale = 2)
+    @Column(name = "fixed_amount", precision = 15, scale = 2, nullable = false)
     BigDecimal fixedAmount;
 
     @Builder.Default

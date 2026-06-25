@@ -88,6 +88,34 @@ public class AdminController {
                 .build();
     }
 
+    @PostMapping("/tournaments/{id}/complete-review")
+    public ApiResponse<TournamentResponse> completeReview(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.completeReview(id))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/complete-matching")
+    public ApiResponse<TournamentResponse> completeMatching(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.completeMatching(id))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/publish-schedule")
+    public ApiResponse<TournamentResponse> publishSchedule(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.publishSchedule(id))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/publish-results")
+    public ApiResponse<TournamentResponse> publishResults(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.publishResults(id))
+                .build();
+    }
+
     @PostMapping("/horse-registrations/{id}/approve")
     public ApiResponse<HorseTournamentRegistrationResponse> approveHorseRegistration(@PathVariable UUID id) {
         return ApiResponse.<HorseTournamentRegistrationResponse>builder()

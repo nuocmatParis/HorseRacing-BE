@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -64,6 +65,14 @@ public class RoundServiceImpl implements RoundService {
         round.setCreatedAt(LocalDateTime.now());
 
         return roundMapper.toRoundResponse(roundRepository.save(round));
+    }
+
+    @Override
+    public List<RoundResponse> getRoundsByTournamentId(UUID tournamentId) {
+        return roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId)
+                .stream()
+                .map(roundMapper::toRoundResponse)
+                .toList();
     }
 
     private User getCurrentUser() {
