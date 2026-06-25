@@ -250,7 +250,27 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
 
     PRIZE_MISSING_VALUE(1531, HttpStatus.BAD_REQUEST, "Prize must have either percentage or fixed amount"),
 
-    INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status");
+    INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status"),
+
+    MAX_ROUNDS_REACHED(1533, HttpStatus.BAD_REQUEST, "Maximum number of rounds (2) reached for this tournament"),
+
+    MAX_RACES_REACHED(1534, HttpStatus.BAD_REQUEST, "Maximum number of races reached for this round"),
+
+    HORSE_TOURNAMENT_TIME_CONFLICT(1535, HttpStatus.BAD_REQUEST,
+            "Horse is already registered in another tournament with overlapping dates"),
+
+    JOCKEY_TOURNAMENT_TIME_CONFLICT(1536, HttpStatus.BAD_REQUEST,
+            "Jockey is already registered in another tournament with overlapping dates"),
+
+    INVALID_PHASE_TRANSITION(1537, HttpStatus.BAD_REQUEST, "Invalid phase transition"),
+    REGISTRATION_NOT_CLOSED(1538, HttpStatus.BAD_REQUEST, "Registration period has not ended"),
+    REVIEW_NOT_COMPLETED(1539, HttpStatus.BAD_REQUEST, "Registration review not yet completed"),
+    MATCHING_NOT_COMPLETED(1540, HttpStatus.BAD_REQUEST, "Jockey matching not yet completed"),
+    SCHEDULE_NOT_PUBLISHED(1541, HttpStatus.BAD_REQUEST, "Race schedule not yet published"),
+    INVALID_TIMING_ORDER(1542, HttpStatus.BAD_REQUEST,
+            "Timing order must be: registrationOpenAt < registrationCloseAt < reviewDeadlineAt < jockeyMatchingDeadlineAt < schedulingDeadlineAt"),
+    SCHEDULING_DEADLINE_AFTER_ROUND(1543, HttpStatus.BAD_REQUEST,
+            "Scheduling deadline must be before or on the first round start date");
 
 
     ;

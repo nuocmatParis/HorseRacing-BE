@@ -9,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -24,6 +25,13 @@ public class JockeyTournamentController {
     public ApiResponse<JockeyTournamentRegistrationResponse> register(@PathVariable UUID id) {
         return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.registerJockey(id))
+                .build();
+    }
+
+    @GetMapping("/my-registrations")
+    public ApiResponse<List<JockeyTournamentRegistrationResponse>> getMyRegistrations(){
+        return ApiResponse.<List<JockeyTournamentRegistrationResponse>>builder()
+                .result(tournamentRegistrationService.getMyJockeyRegistrations())
                 .build();
     }
 }

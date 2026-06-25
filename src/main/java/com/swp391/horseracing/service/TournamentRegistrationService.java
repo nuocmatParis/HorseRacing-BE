@@ -12,6 +12,10 @@ public interface TournamentRegistrationService {
 
     JockeyTournamentRegistrationResponse registerJockey(UUID tournamentId);
 
+    List<JockeyTournamentRegistrationResponse> getMyJockeyRegistrations();
+
+    List<HorseTournamentRegistrationResponse> getMyHorseRegistrations();
+
     List<HorseTournamentRegistrationResponse> getAllHorseRegistrations();
 
     List<JockeyTournamentRegistrationResponse> getAllJockeyRegistrations();
