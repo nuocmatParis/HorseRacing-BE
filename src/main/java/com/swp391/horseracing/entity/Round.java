@@ -29,7 +29,7 @@ public class Round {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID roundId;
 
-    @Column(name = "round_name", nullable = false, length = 100)
+    @Column(name = "round_name", nullable = false, length = 100, unique = true)
     String roundName;
 
     @Column(name = "sequence_order", nullable = false)

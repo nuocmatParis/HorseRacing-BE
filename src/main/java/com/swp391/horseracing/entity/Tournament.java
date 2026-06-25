@@ -105,6 +105,21 @@ public class Tournament {
     @Column(name = "published_at")
     LocalDateTime publishedAt;
 
+    @Column(name = "registration_open_at", nullable = false)
+    LocalDateTime registrationOpenAt;
+
+    @Column(name = "registration_close_at", nullable = false)
+    LocalDateTime registrationCloseAt;
+
+    @Column(name = "review_deadline_at", nullable = false)
+    LocalDateTime reviewDeadlineAt;
+
+    @Column(name = "jockey_matching_deadline_at", nullable = false)
+    LocalDateTime jockeyMatchingDeadlineAt;
+
+    @Column(name = "scheduling_deadline_at", nullable = false)
+    LocalDateTime schedulingDeadlineAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     User createdBy;

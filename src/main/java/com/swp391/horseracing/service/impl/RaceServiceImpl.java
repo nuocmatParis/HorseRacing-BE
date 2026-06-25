@@ -20,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -63,6 +64,14 @@ public class RaceServiceImpl implements RaceService {
         race.setCreatedBy(currentUser);
 
         return raceMapper.toRaceResponse(raceRepository.save(race));
+    }
+
+    @Override
+    public List<RaceResponse> getRacesByRoundId(UUID roundId) {
+        return raceRepository.findByRound_RoundId(roundId)
+                .stream()
+                .map(raceMapper::toRaceResponse)
+                .toList();
     }
 
     private User getCurrentUser() {
