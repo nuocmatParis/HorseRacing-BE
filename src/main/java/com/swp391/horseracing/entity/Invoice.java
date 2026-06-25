@@ -28,7 +28,7 @@ public class Invoice {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID invoiceId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "payer_user_id", nullable = false)
     User payerUser;
 

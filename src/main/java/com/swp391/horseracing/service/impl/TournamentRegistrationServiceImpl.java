@@ -53,7 +53,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.TOURNAMENT_NOT_OPEN);
         }
 
-        HorseOwner owner = getCurrentOwner();
+        User currentUser = userCurrentService.getCurrentUser();
+        HorseOwner owner = horseOwnerRepository.findByUser_UserId(currentUser.getUserId()).orElseThrow(()
+                -> new AppException(ErrorCode.OWNER_PROFILE_NOT_FOUND));
+
         Horse horse = horseRepository.findById(horseId)
                 .orElseThrow(() -> new AppException(ErrorCode.HORSE_NOT_FOUND));
 
@@ -75,7 +78,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .build();
         HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
 
-        invoiceService.createOwnerRegistrationInvoice(owner.getUser().getUserId(), savedRegistration, tournament.getRegistrationFee());
+        invoiceService.createOwnerRegistrationInvoice(currentUser.getUserId(), savedRegistration, tournament.getRegistrationFee());
 
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
