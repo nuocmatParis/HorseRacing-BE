@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.jockey.request;
 
 
 import com.swp391.horseracing.enums.JockeyStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +33,10 @@ public class JockeyCreationRequest {
 
     @NotBlank(message = "License number is required")
     @Size(max = 50,message = "License number must not exceed 50 character")
+    @Pattern(
+            regexp = "^(JOC)-[A-Z0-9]{8}$",
+            message = "License number must follow format JOC-XXXXXXXX"
+    )
     String licenseNumber;
 
     @Size(max = 50,message = "Specialization must not exceed 50 character")

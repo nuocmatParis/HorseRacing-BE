@@ -206,7 +206,6 @@ public class TournamentServiceImpl implements TournamentService {
     private boolean calculateOverdue(Tournament tournament) {
         LocalDateTime now = LocalDateTime.now();
         return switch (tournament.getPhase()) {
-            case REGISTRATION_OPEN -> now.isAfter(tournament.getRegistrationCloseAt());
             case REGISTRATION_REVIEW -> now.isAfter(tournament.getReviewDeadlineAt());
             case JOCKEY_MATCHING -> now.isAfter(tournament.getJockeyMatchingDeadlineAt());
             case SCHEDULING -> now.isAfter(tournament.getSchedulingDeadlineAt());
