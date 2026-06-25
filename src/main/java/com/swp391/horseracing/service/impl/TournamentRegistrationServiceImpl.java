@@ -19,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -68,6 +69,17 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_ALREADY_REGISTERED_TOURNAMENT);
         }
 
+        List<RegistrationStatus> activeStatuses = List.of(
+                RegistrationStatus.PENDING_PAYMENT,
+                RegistrationStatus.PENDING_REVIEW,
+                RegistrationStatus.APPROVED
+        );
+
+        if (horseRegistrationRepository.existsHorseWithConflictingTournament(
+                horseId, tournament.getStartDate(), tournament.getEndDate(), activeStatuses)) {
+            throw new AppException(ErrorCode.HORSE_TOURNAMENT_TIME_CONFLICT);
+        }
+
         validateHorseEligibility(horse, tournament);
 
         HorseTournamentRegistration registration = HorseTournamentRegistration.builder()
@@ -99,6 +111,17 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.JOCKEY_ALREADY_REGISTERED_TOURNAMENT);
         }
 
+        List<RegistrationStatus> activeStatuses = List.of(
+                RegistrationStatus.PENDING_PAYMENT,
+                RegistrationStatus.PENDING_REVIEW,
+                RegistrationStatus.APPROVED
+        );
+
+        if (jockeyRegistrationRepository.existsJockeyWithConflictingTournament(
+                jockey.getJockeyId(), tournament.getStartDate(), tournament.getEndDate(), activeStatuses)) {
+            throw new AppException(ErrorCode.JOCKEY_TOURNAMENT_TIME_CONFLICT);
+        }
+
         validateJockeyEligibility(jockey, tournament);
 
         JockeyTournamentRegistration registration = JockeyTournamentRegistration.builder()
@@ -109,6 +132,22 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration = jockeyRegistrationRepository.save(registration);
 
         return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(registration);
+    }
+
+    @Override
+    public List<JockeyTournamentRegistrationResponse> getMyJockeyRegistrations() {
+        Jockey jockey = getCurrentJockey();
+        return jockeyRegistrationRepository.findByJockey_JockeyId(jockey.getJockeyId())
+                .stream().map(jockeyRegistrationMapper::toJockeyTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HorseTournamentRegistrationResponse> getMyHorseRegistrations() {
+        HorseOwner owner = getCurrentOwner();
+        return horseRegistrationRepository.findByOwner_OwnerId(owner.getOwnerId())
+                .stream().map(horseRegistrationMapper::toHorseTournamentRegistrationResponse)
+                .collect(Collectors.toList());
     }
 
     @Override

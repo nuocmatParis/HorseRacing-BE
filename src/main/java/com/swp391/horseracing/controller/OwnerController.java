@@ -15,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +33,14 @@ public class OwnerController {
                                                                            @RequestBody @Valid RegisterHorseRequest request) {
         return ApiResponse.<HorseTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.registerHorse(id, request.getHorseId()))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @GetMapping("/my-registrations")
+    public ApiResponse<List<HorseTournamentRegistrationResponse>> getMyHorseRegistration(){
+        return ApiResponse.<List<HorseTournamentRegistrationResponse>>builder()
+                .result(tournamentRegistrationService.getMyHorseRegistrations())
                 .build();
     }
 

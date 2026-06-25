@@ -2,6 +2,7 @@ package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
+import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
@@ -65,6 +66,14 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
         }
 
+        validateTimingOrder(
+                request.getRegistrationOpenAt(),
+                request.getRegistrationCloseAt(),
+                request.getReviewDeadlineAt(),
+                request.getJockeyMatchingDeadlineAt(),
+                request.getSchedulingDeadlineAt()
+        );
+
         User currentUser = getCurrentUser();
 
         Tournament tournament = tournamentMapper.toTournament(request);
@@ -73,7 +82,7 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setCreatedBy(currentUser);
         tournament.setCreatedAt(LocalDateTime.now());
 
-        return tournamentMapper.toTournamentResponse(tournamentRepository.save(tournament));
+        return toResponse(tournamentRepository.save(tournament));
     }
 
     @Override
@@ -105,10 +114,116 @@ public class TournamentServiceImpl implements TournamentService {
             }
         }
 
-        tournament.setStatus(TournamentStatus.OPEN);
-        tournament.setPhase(TournamentPhase.REGISTRATION_OPEN);
+        Round firstRound = rounds.get(0);
+
+        if (tournament.getSchedulingDeadlineAt().toLocalDate().isAfter(firstRound.getStartDate().toLocalDate())) {
+            throw new AppException(ErrorCode.SCHEDULING_DEADLINE_AFTER_ROUND);
+        }
+
         tournament.setPublishedAt(LocalDateTime.now());
-        return tournamentMapper.toTournamentResponse(tournamentRepository.save(tournament));
+
+        setPhaseAndStatus(tournament, TournamentPhase.REGISTRATION_OPEN);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse completeReview(UUID id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        validatePhase(tournament, TournamentPhase.REGISTRATION_REVIEW);
+        setPhaseAndStatus(tournament, TournamentPhase.JOCKEY_MATCHING);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse completeMatching(UUID id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        validatePhase(tournament, TournamentPhase.JOCKEY_MATCHING);
+        setPhaseAndStatus(tournament, TournamentPhase.SCHEDULING);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse publishSchedule(UUID id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        validatePhase(tournament, TournamentPhase.SCHEDULING);
+        setPhaseAndStatus(tournament, TournamentPhase.RACING);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse publishResults(UUID id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        validatePhase(tournament, TournamentPhase.RESULT_PENDING);
+        setPhaseAndStatus(tournament, TournamentPhase.RESULT_PUBLISHED);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    private void setPhaseAndStatus(Tournament tournament, TournamentPhase phase) {
+        tournament.setPhase(phase);
+        tournament.setStatus(matchStatus(phase));
+    }
+
+    private TournamentStatus matchStatus(TournamentPhase phase) {
+        return switch (phase) {
+            case DRAFT -> TournamentStatus.DRAFT;
+            case REGISTRATION_OPEN, REGISTRATION_REVIEW -> TournamentStatus.OPEN;
+            case JOCKEY_MATCHING, SCHEDULING, RACING, RESULT_PENDING -> TournamentStatus.ONGOING;
+            case RESULT_PUBLISHED, FINISHED -> TournamentStatus.FINISHED;
+        };
+    }
+
+    private void validatePhase(Tournament tournament, TournamentPhase expected) {
+        if (tournament.getPhase() != expected) {
+            throw new AppException(ErrorCode.INVALID_PHASE_TRANSITION);
+        }
+    }
+
+    private void validateTimingOrder(LocalDateTime openAt, LocalDateTime closeAt,
+                                      LocalDateTime reviewAt, LocalDateTime matchingAt,
+                                      LocalDateTime schedulingAt) {
+        if (!(openAt.isBefore(closeAt)
+                && closeAt.isBefore(reviewAt)
+                && reviewAt.isBefore(matchingAt)
+                && matchingAt.isBefore(schedulingAt))) {
+            throw new AppException(ErrorCode.INVALID_TIMING_ORDER);
+        }
+    }
+
+    private TournamentResponse toResponse(Tournament tournament) {
+        TournamentResponse response = tournamentMapper.toTournamentResponse(tournament);
+        response.setOverdue(calculateOverdue(tournament));
+        return response;
+    }
+
+    private boolean calculateOverdue(Tournament tournament) {
+        LocalDateTime now = LocalDateTime.now();
+        return switch (tournament.getPhase()) {
+            case REGISTRATION_OPEN -> now.isAfter(tournament.getRegistrationCloseAt());
+            case REGISTRATION_REVIEW -> now.isAfter(tournament.getReviewDeadlineAt());
+            case JOCKEY_MATCHING -> now.isAfter(tournament.getJockeyMatchingDeadlineAt());
+            case SCHEDULING -> now.isAfter(tournament.getSchedulingDeadlineAt());
+            default -> false;
+        };
+    }
+
+    private boolean allRacesFinished(Tournament tournament) {
+        List<Round> rounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(
+                tournament.getTournamentId());
+        for (Round round : rounds) {
+            List<Race> races = raceRepository.findByRound_RoundId(round.getRoundId());
+            if (races.stream().anyMatch(r -> r.getFinishedAt() == null)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private User getCurrentUser() {
@@ -122,7 +237,7 @@ public class TournamentServiceImpl implements TournamentService {
     public List<TournamentResponse> getAll() {
         return tournamentRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
-                .map(tournamentMapper::toTournamentResponse)
+                .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -130,6 +245,6 @@ public class TournamentServiceImpl implements TournamentService {
     public TournamentResponse getById(UUID id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
-        return tournamentMapper.toTournamentResponse(tournament);
+        return toResponse(tournament);
     }
 }
