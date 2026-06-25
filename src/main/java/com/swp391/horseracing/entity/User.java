@@ -41,11 +41,11 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 100)
     String email;
 
-    @Column(name = "dob")
+    @Column(name = "dob", nullable = false)
     LocalDate dob;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "gender")
+    @Column(name = "gender", nullable = false)
     Gender gender;
 
     @Column(name = "full_name", nullable = false, length = 100)

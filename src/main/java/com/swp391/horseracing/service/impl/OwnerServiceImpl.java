@@ -43,6 +43,9 @@ public class OwnerServiceImpl implements OwnerService {
         if (ownerRepository.existsByUser_UserId(user.getUserId())){
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE);
         }
+        if (ownerRepository.existsByLicenseNumber(request.getLicenseNumber())) {
+            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
+        }
         HorseOwner owner = ownerMapper.toOwner(request);
         owner.setUser(user);
         owner.setCreatedAt(LocalDateTime.now());
@@ -55,6 +58,9 @@ public class OwnerServiceImpl implements OwnerService {
         User user = getCurrentUser();
         HorseOwner owner = ownerRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.OWNER_PROFILE_NOT_FOUND));
+        if (ownerRepository.existsByLicenseNumberAndOwnerIdNot(request.getLicenseNumber(), owner.getOwnerId())) {
+            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
+        }
         ownerMapper.updateOwner(owner, request);
         return ownerMapper.toOwnerResponse(ownerRepository.save(owner));
     }
