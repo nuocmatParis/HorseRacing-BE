@@ -1,4 +1,5 @@
 package com.swp391.horseracing.service;
 
-public class EmailService {
+public interface EmailService {
+    void sendOtp(String toEmail, String otpCode);
 }

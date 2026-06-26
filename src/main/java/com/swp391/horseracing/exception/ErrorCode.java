@@ -80,6 +80,16 @@ public enum ErrorCode {
 
     PHONE_NUMBER_ALREADY_EXISTS(1112, HttpStatus.CONFLICT, "Phone number already exists"),
 
+    EMAIL_VERIFICATION_NOT_FOUND(1113,HttpStatus.NOT_FOUND ,"Email verification not found"),
+
+    OTP_EXPIRED(1114, HttpStatus.BAD_REQUEST,"OTP has expired"),
+
+    INVALID_OTP(1115, HttpStatus.BAD_REQUEST,"Invalid OTP"),
+
+    EMAIL_SEND_FAILED(1116, HttpStatus.INTERNAL_SERVER_ERROR,"Failed to send email"),
+
+    USERNAME_PENDING_VERIFICATION(1117, HttpStatus.CONFLICT, "User pending verification"),
+
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),

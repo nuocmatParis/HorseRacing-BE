@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class VerifyEmailRequest {
+public class VerifyEmail {
 
     @Email(message = "Email is invalid")
     @NotBlank(message = "Email is required")
