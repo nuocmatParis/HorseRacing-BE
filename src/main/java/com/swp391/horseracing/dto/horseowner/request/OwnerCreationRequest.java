@@ -1,6 +1,8 @@
 package com.swp391.horseracing.dto.horseowner.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -13,12 +15,19 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class OwnerCreationRequest {
+
+    @NotNull(message = "Farm name is required")
     @Size(max = 100)
     String farmName;
 
+    @NotNull(message = "Address is required")
     String address;
 
-    @NotBlank
+    @NotBlank(message = "License number is required")
     @Size(max = 50)
+    @Pattern(
+            regexp = "^(OWN)-[A-Z0-9]{8}$",
+            message = "License number must follow format OWN-XXXXXXXX"
+    )
     String licenseNumber;
 }
