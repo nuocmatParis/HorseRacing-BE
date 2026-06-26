@@ -33,26 +33,24 @@ public class Jockey {
     @JoinColumn(name = "user_id", unique = true, nullable = false)
     User user;
 
-    @Column(name = "height")
+    @Column(name = "height", nullable = false)
     float height;
 
-    @Column(name = "weight")
+    @Column(name = "weight", nullable = false)
     float weight;
 
     @Builder.Default
     @Column(name = "experience_years", nullable = false)
     int experienceYears = 0;
 
-    @Column(name = "license_number", nullable = false,
-            unique = true, length = 50)
+    @Column(name = "license_number", nullable = false, unique = true, length = 50)
     String licenseNumber;
 
-    @Column(name = "specialization", length = 100)
+    @Column(name = "specialization", length = 100, nullable = false)
     String specialization;
 
     @Builder.Default
-    @Column(name = "hire_fee", nullable = false,
-            precision = 15, scale = 2)
+    @Column(name = "hire_fee", nullable = false, precision = 15, scale = 2)
     BigDecimal hireFee = BigDecimal.ZERO;
 
     @Builder.Default
