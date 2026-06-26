@@ -26,7 +26,7 @@ public class PrizeStructure {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID prizeStructureId;
 
-    @Column(name = "prize_rank", nullable = false, unique = true)
+    @Column(name = "`prize_rank`", nullable = false)
     int rank;
 
     @Column(name = "percentage")
