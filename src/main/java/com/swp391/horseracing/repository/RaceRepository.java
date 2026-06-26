@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface RaceRepository extends JpaRepository<Race, UUID> {
 
     List<Race> findByRound_RoundId(UUID roundId);
+    boolean existsByName(String name);
 }

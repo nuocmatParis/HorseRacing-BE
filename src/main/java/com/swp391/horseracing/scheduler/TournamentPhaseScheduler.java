@@ -15,6 +15,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
@@ -30,7 +31,23 @@ public class TournamentPhaseScheduler {
     @Transactional
     @Scheduled(fixedRate = 60_000)
     public void autoTransitionPhases() {
+        autoStartReview();
         autoFinishRacing();
+    }
+
+    private void autoStartReview() {
+        List<Tournament> tournaments = tournamentRepository.findByPhase(TournamentPhase.REGISTRATION_OPEN);
+        LocalDateTime now = LocalDateTime.now();
+
+        for (Tournament tournament : tournaments) {
+            if (now.isAfter(tournament.getRegistrationCloseAt())) {
+                tournament.setPhase(TournamentPhase.REGISTRATION_REVIEW);
+                tournament.setStatus(TournamentStatus.OPEN);
+                tournamentRepository.save(tournament);
+                log.info("Tournament {} auto-transitioned: REGISTRATION_OPEN → REGISTRATION_REVIEW",
+                        tournament.getTournamentId());
+            }
+        }
     }
 
     private void autoFinishRacing() {
