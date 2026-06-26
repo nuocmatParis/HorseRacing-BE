@@ -10,7 +10,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ResendOtpRequest {
+public class ResendOtp {
     @Email(message = "Email is invalid")
     @NotBlank(message = "Email is required")
     String email;
