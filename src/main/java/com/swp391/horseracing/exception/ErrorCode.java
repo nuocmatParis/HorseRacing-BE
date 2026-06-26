@@ -185,6 +185,11 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
 
     INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
 
+    PAYMENT_TRANSACTION_NOT_FOUND(1424, HttpStatus.NOT_FOUND, "Payment transaction not found"),
+
+    INVALID_PAYMENT_AMOUNT(1425, HttpStatus.BAD_REQUEST, "Invalid payment amount"),
+
+    INVALID_VNPAY_SIGNATURE(1426, HttpStatus.BAD_REQUEST, "Invalid Vnpay signature"),
 
     // TOURNAMENT / REGISTRATION
     TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
