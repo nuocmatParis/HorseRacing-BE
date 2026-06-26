@@ -33,8 +33,10 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private String[] PUBLIC_ENDPOINTS = {"/api/auth/register",
-            "/api/auth/login"
+    private String[] PUBLIC_ENDPOINTS = {"/api/auth/register-otp",
+            "/api/auth/login",
+            "/api/auth/register/verify",
+            "/api/auth/register/resend-otp"
     };
 
     private static final String[] SWAGGER_ENDPOINTS = {

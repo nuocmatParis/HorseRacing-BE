@@ -67,6 +67,25 @@ DROP TABLE IF EXISTS horse_tournament_registrations;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
+
+CREATE TABLE email_verifications (
+                                     verification_id CHAR(36) PRIMARY KEY,
+
+                                     role_name VARCHAR(50) NOT NULL,
+
+                                     username VARCHAR(15) NOT NULL UNIQUE,
+                                     password VARCHAR(255) NOT NULL,
+                                     email VARCHAR(100) NOT NULL UNIQUE,
+
+                                     dob DATE NOT NULL,
+                                     gender VARCHAR(20) NOT NULL,
+                                     full_name VARCHAR(100) NOT NULL,
+                                     phone_number VARCHAR(20) NOT NULL,
+
+                                     otp_code VARCHAR(10) NOT NULL,
+                                     expired_at DATETIME NOT NULL,
+                                     created_at DATETIME NOT NULL
+);
 -- =========================
 -- 1. ROLE
 -- =========================
