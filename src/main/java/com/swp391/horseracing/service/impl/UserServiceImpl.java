@@ -154,6 +154,8 @@ public class UserServiceImpl implements UserService {
             walletService.createUserWallet(savedUser);
         }
 
+        emailVerificationRepository.delete(emailVerification);
+
         return userMapper.toUserResponse(savedUser);
     }
 
