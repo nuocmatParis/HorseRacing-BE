@@ -6,6 +6,8 @@ import com.swp391.horseracing.enums.WalletPurpose;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,9 +29,14 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     List<Wallet> findAllByOwnerTypeAndUserIsNullOrderByWalletPurposeAsc(WalletOwnerType ownerType);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Wallet> findForUpdateByUser_UserIdAndWalletPurpose(UUID userId, WalletPurpose walletPurpose);
+    @Query("SELECT w FROM Wallet w WHERE w.user.userId = :userId AND w.walletPurpose = :walletPurpose")
+    Optional<Wallet> findForUpdateByUser_UserIdAndWalletPurpose(@Param("userId") UUID userId, @Param("walletPurpose") WalletPurpose walletPurpose);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Wallet> findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType ownerType, WalletPurpose walletPurpose);
+    @Query("SELECT w FROM Wallet w WHERE w.ownerType = :ownerType AND w.walletPurpose = :walletPurpose")
+    Optional<Wallet> findForUpdateByOwnerTypeAndWalletPurpose(@Param("ownerType") WalletOwnerType ownerType, @Param("walletPurpose") WalletPurpose walletPurpose);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Wallet w WHERE w.walletId = :walletId")
+    Optional<Wallet> findByWalletIdForUpdate(@Param("walletId") UUID walletId);
 }
