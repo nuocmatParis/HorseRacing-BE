@@ -32,6 +32,7 @@ public class JockeyTournamentRegistrationResponse {
     RegistrationStatus status;
     LocalDateTime submittedAt;
     UUID reviewedById;
+    String reviewedByName;
     LocalDateTime reviewedAt;
     String rejectedReason;
     LocalDateTime withdrawnAt;

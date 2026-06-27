@@ -57,7 +57,7 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
         }
 
-        if (raceRepository.existsByName(request.getName())) {
+        if (raceRepository.existsByRound_RoundIdAndName(roundId, request.getName())) {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
         }
 

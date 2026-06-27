@@ -273,8 +273,8 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
             "Scheduling deadline must be before or on the first round start date"),
 
     LICENSE_NUMBER_ALREADY_EXISTS(1544, HttpStatus.CONFLICT, "License number already exists"),
-    ROUND_NAME_ALREADY_EXISTS(1545, HttpStatus.CONFLICT, "Round name already exists"),
-    RACE_NAME_ALREADY_EXISTS(1546, HttpStatus.CONFLICT, "Race name already exists");
+    ROUND_NAME_ALREADY_EXISTS(1545, HttpStatus.CONFLICT, "Round name already exists in this tournament"),
+    RACE_NAME_ALREADY_EXISTS(1546, HttpStatus.CONFLICT, "Race name already exists in this round");
 
 
 

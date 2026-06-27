@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.jockey.request.JockeyCreationRequest;
 import com.swp391.horseracing.dto.jockey.request.JockeyUpdateRequest;
 import com.swp391.horseracing.dto.jockey.response.JockeyResponse;
 import com.swp391.horseracing.entity.Jockey;
+import com.swp391.horseracing.enums.JockeyStatus;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -66,6 +67,7 @@ public class JockeyServiceImpl implements JockeyService {
 
         Jockey jockey = jockeyMapper.toJockey(request);
         jockey.setUser(user);
+        jockey.setStatus(JockeyStatus.AVAILABLE);
         jockey.setCreatedAt(LocalDateTime.now());
 
         return jockeyMapper.toJockeyResponse(jockeyRepository.save(jockey));

@@ -54,6 +54,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.TOURNAMENT_NOT_OPEN);
         }
 
+        if (tournament.getPhase() != TournamentPhase.REGISTRATION_OPEN) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_OPEN);
+        }
+
         User currentUser = userCurrentService.getCurrentUser();
         HorseOwner owner = horseOwnerRepository.findByUser_UserId(currentUser.getUserId()).orElseThrow(()
                 -> new AppException(ErrorCode.OWNER_PROFILE_NOT_FOUND));
@@ -105,6 +109,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.TOURNAMENT_NOT_OPEN);
         }
 
+        if (tournament.getPhase() != TournamentPhase.REGISTRATION_OPEN) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_OPEN);
+        }
+
         Jockey jockey = getCurrentJockey();
 
         if (jockeyRegistrationRepository.existsByTournament_TournamentIdAndJockey_JockeyId(tournamentId, jockey.getJockeyId())) {
@@ -127,7 +135,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         JockeyTournamentRegistration registration = JockeyTournamentRegistration.builder()
                 .tournament(tournament)
                 .jockey(jockey)
-                .status(RegistrationStatus.PENDING_PAYMENT)
+                .status(RegistrationStatus.PENDING_REVIEW)
                 .build();
         registration = jockeyRegistrationRepository.save(registration);
 
