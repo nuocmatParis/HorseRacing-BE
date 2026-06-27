@@ -22,5 +22,6 @@ public interface JockeyTournamentRegistrationMapper {
     @Mapping(target = "email", source = "jockey.user.email")
     @Mapping(target = "phoneNumber", source = "jockey.user.phoneNumber")
     @Mapping(target = "reviewedById", source = "reviewedBy.userId")
+    @Mapping(target = "reviewedByName", source = "reviewedBy.fullName")
     JockeyTournamentRegistrationResponse toJockeyTournamentRegistrationResponse(JockeyTournamentRegistration registration);
 }

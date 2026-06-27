@@ -36,6 +36,10 @@ public class Invoice {
     @JoinColumn(name = "tournament_reg_id")
     HorseTournamentRegistration horseTournamentRegistration;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "jockey_tournament_reg_id")
+    JockeyTournamentRegistration jockeyTournamentRegistration;
+
     /**
      * Jockey_Horse_Contract ch lamf.
      */
