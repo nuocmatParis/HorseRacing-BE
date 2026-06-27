@@ -39,7 +39,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     public List<InvoiceResponse> getMyInvoices() {
         User currentUser = userCurrentService.getCurrentUser();
 
-        List<Invoice> list = invoiceRepository.findAllByPayerUser_UserIdOrderByCreatedAtDesc(currentUser.getUserId()    );
+        List<Invoice> list = invoiceRepository.findAllByPayerUser_UserIdOrderByCreatedAtDesc(currentUser.getUserId());
 
         List<InvoiceResponse> responses = new ArrayList<>();
 
