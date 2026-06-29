@@ -80,6 +80,16 @@ public enum ErrorCode {
 
     PHONE_NUMBER_ALREADY_EXISTS(1112, HttpStatus.CONFLICT, "Phone number already exists"),
 
+    EMAIL_VERIFICATION_NOT_FOUND(1113,HttpStatus.NOT_FOUND ,"Email verification not found"),
+
+    OTP_EXPIRED(1114, HttpStatus.BAD_REQUEST,"OTP has expired"),
+
+    INVALID_OTP(1115, HttpStatus.BAD_REQUEST,"Invalid OTP"),
+
+    EMAIL_SEND_FAILED(1116, HttpStatus.INTERNAL_SERVER_ERROR,"Failed to send email"),
+
+    USERNAME_PENDING_VERIFICATION(1117, HttpStatus.CONFLICT, "User pending verification"),
+
 
     // PROFILE
     OWNER_PROFILE_NOT_FOUND(1201, HttpStatus.NOT_FOUND, "Horse owner profile not found"),
@@ -98,8 +108,8 @@ public enum ErrorCode {
 // Không tìm thấy hồ sơ bác sĩ thú y
 
     MEDICAL_STAFF_PROFILE_NOT_FOUND(1206, HttpStatus.NOT_FOUND, "Medical staff profile not found"),
-// Không tìm thấy hồ sơ nhân viên y tế
-   JOCKEY_NOT_AVAILABLE(1207, HttpStatus.BAD_REQUEST, "Jockey is not available for registration"),
+    // Không tìm thấy hồ sơ nhân viên y tế
+    JOCKEY_NOT_AVAILABLE(1207, HttpStatus.BAD_REQUEST, "Jockey is not available for registration"),
 
 
     // HORSE
@@ -116,8 +126,8 @@ public enum ErrorCode {
 // Tình trạng sức khỏe của ngựa không hợp lệ
 
     HORSE_ALREADY_REGISTERED(1305, HttpStatus.CONFLICT, "Horse is already registered in this tournament"),
-// Ngựa đã được đăng ký vào giải đấu này rồi
-JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for this tournament"),
+    // Ngựa đã được đăng ký vào giải đấu này rồi
+    JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for this tournament"),
 
 
     // WALLET / PAYMENT
@@ -175,6 +185,11 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
 
     INVOICE_EXPIRED(1423, HttpStatus.CONFLICT, "Invoice expired"),
 
+    PAYMENT_TRANSACTION_NOT_FOUND(1424, HttpStatus.NOT_FOUND, "Payment transaction not found"),
+
+    INVALID_PAYMENT_AMOUNT(1425, HttpStatus.BAD_REQUEST, "Invalid payment amount"),
+
+    INVALID_VNPAY_SIGNATURE(1426, HttpStatus.BAD_REQUEST, "Invalid Vnpay signature"),
 
     // TOURNAMENT / REGISTRATION
     TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
@@ -263,19 +278,31 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
             "Jockey is already registered in another tournament with overlapping dates"),
 
     INVALID_PHASE_TRANSITION(1537, HttpStatus.BAD_REQUEST, "Invalid phase transition"),
+
     REGISTRATION_NOT_CLOSED(1538, HttpStatus.BAD_REQUEST, "Registration period has not ended"),
+
     REVIEW_NOT_COMPLETED(1539, HttpStatus.BAD_REQUEST, "Registration review not yet completed"),
     MATCHING_NOT_COMPLETED(1540, HttpStatus.BAD_REQUEST, "Jockey matching not yet completed"),
+
     SCHEDULE_NOT_PUBLISHED(1541, HttpStatus.BAD_REQUEST, "Race schedule not yet published"),
+
     INVALID_TIMING_ORDER(1542, HttpStatus.BAD_REQUEST,
             "Timing order must be: registrationOpenAt < registrationCloseAt < reviewDeadlineAt < jockeyMatchingDeadlineAt < schedulingDeadlineAt"),
+
     SCHEDULING_DEADLINE_AFTER_ROUND(1543, HttpStatus.BAD_REQUEST,
             "Scheduling deadline must be before or on the first round start date"),
 
     LICENSE_NUMBER_ALREADY_EXISTS(1544, HttpStatus.CONFLICT, "License number already exists"),
-    ROUND_NAME_ALREADY_EXISTS(1545, HttpStatus.CONFLICT, "Round name already exists in this tournament"),
-    RACE_NAME_ALREADY_EXISTS(1546, HttpStatus.CONFLICT, "Race name already exists in this round");
 
+    ROUND_NAME_ALREADY_EXISTS(1545, HttpStatus.CONFLICT, "Round name already exists in this tournament"),
+
+    RACE_NAME_ALREADY_EXISTS(1546, HttpStatus.CONFLICT, "Race name already exists in this round"),
+
+    CONTRACT_NOT_FOUND(1546, HttpStatus.NOT_FOUND, "Contract not found"),
+
+    INVALID_CONTRACT_STATUS(1547, HttpStatus.BAD_REQUEST, "Invalid contract status")
+
+    ;
 
 
 
