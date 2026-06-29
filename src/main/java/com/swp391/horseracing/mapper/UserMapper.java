@@ -2,6 +2,7 @@ package com.swp391.horseracing.mapper;
 
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
+import com.swp391.horseracing.entity.EmailVerification;
 import com.swp391.horseracing.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -19,4 +20,6 @@ public interface UserMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "lastLoginAt", ignore = true)
     User toUser(UserCreationRequest request);
+
+    User toUser(EmailVerification emailVerification);
 }

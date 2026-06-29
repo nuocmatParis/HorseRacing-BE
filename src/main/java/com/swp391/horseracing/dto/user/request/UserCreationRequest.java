@@ -31,8 +31,14 @@ public class UserCreationRequest {
     @Size(max = 100, message = "Email must not exceed 100 characters")
     String email;
 
+    @NotNull(message = "Date of birth is required")
     @Past(message = "Date of birth must be in the past")
     LocalDate dob;
+
+    @AssertTrue(message = "User must be at least 18 years old")
+    public boolean isAtLeast18YearsOld() {
+        return dob != null && !dob.plusYears(18).isAfter(LocalDate.now());
+    }
 
     @NotNull(message = "Gender is required")
     Gender gender;

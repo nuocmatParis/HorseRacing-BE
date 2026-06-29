@@ -33,8 +33,10 @@ import javax.crypto.spec.SecretKeySpec;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private String[] PUBLIC_ENDPOINTS = {"/api/auth/register",
-            "/api/auth/login"
+    private String[] PUBLIC_ENDPOINTS = {"/api/auth/register-otp",
+            "/api/auth/login",
+            "/api/auth/register/verify",
+            "/api/auth/register/resend-otp"
     };
 
     private static final String[] SWAGGER_ENDPOINTS = {
@@ -60,6 +62,9 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request
                 -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
+                .requestMatchers(
+                        "/api/payments/vnpay/return",
+                        "/api/payments/vnpay/ipn").permitAll()
                 .anyRequest().authenticated());
 
         httpSecurity.oauth2ResourceServer(oath2

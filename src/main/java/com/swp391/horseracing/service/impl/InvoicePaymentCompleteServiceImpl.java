@@ -16,16 +16,13 @@ public class InvoicePaymentCompleteServiceImpl implements InvoicePaymentComplete
     RegistrationPaymentService registrationPaymentService;
 
     @Override
-    public void handleAfterPaid(Invoice invoice){
+    public void handleAfterPaid(Invoice invoice) {
         if (invoice.getInvoiceType() == InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE) {
             if (invoice.getHorseTournamentRegistration() != null) {
                 registrationPaymentService.markOwnerRegistrationPaid(
                         invoice.getHorseTournamentRegistration().getRegistrationId());
-            } else if (invoice.getJockeyTournamentRegistration() != null) {
-                registrationPaymentService.markJockeyRegistrationPaid(
-                        invoice.getJockeyTournamentRegistration().getJockeyTournamentRegId());
             }
+
         }
     }
-
 }
