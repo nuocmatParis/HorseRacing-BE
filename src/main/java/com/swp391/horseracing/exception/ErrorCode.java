@@ -278,17 +278,32 @@ JOCKEY_NOT_ELIGIBLE(1306, HttpStatus.BAD_REQUEST, "Jockey is not eligible for th
             "Jockey is already registered in another tournament with overlapping dates"),
 
     INVALID_PHASE_TRANSITION(1537, HttpStatus.BAD_REQUEST, "Invalid phase transition"),
+
     REGISTRATION_NOT_CLOSED(1538, HttpStatus.BAD_REQUEST, "Registration period has not ended"),
+
     REVIEW_NOT_COMPLETED(1539, HttpStatus.BAD_REQUEST, "Registration review not yet completed"),
     MATCHING_NOT_COMPLETED(1540, HttpStatus.BAD_REQUEST, "Jockey matching not yet completed"),
+
     SCHEDULE_NOT_PUBLISHED(1541, HttpStatus.BAD_REQUEST, "Race schedule not yet published"),
+
     INVALID_TIMING_ORDER(1542, HttpStatus.BAD_REQUEST,
             "Timing order must be: registrationOpenAt < registrationCloseAt < reviewDeadlineAt < jockeyMatchingDeadlineAt < schedulingDeadlineAt"),
+
     SCHEDULING_DEADLINE_AFTER_ROUND(1543, HttpStatus.BAD_REQUEST,
-            "Scheduling deadline must be before or on the first round start date");
+            "Scheduling deadline must be before or on the first round start date"),
+
+    CONTRACT_NOT_FOUND(1544, HttpStatus.NOT_FOUND, "Contract not found"),
+
+    INVALID_CONTRACT_STATUS(1545, HttpStatus.BAD_REQUEST, "Invalid contract status")
+
 
 
     ;
+
+
+
+
+
 
 
     int code;
