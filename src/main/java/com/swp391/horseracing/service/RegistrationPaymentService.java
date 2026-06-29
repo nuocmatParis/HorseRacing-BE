@@ -4,4 +4,5 @@ import java.util.UUID;
 
 public interface RegistrationPaymentService {
     void markOwnerRegistrationPaid(UUID tournamentRegId);
+
 }

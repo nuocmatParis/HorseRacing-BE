@@ -30,6 +30,7 @@ public class JockeyController {
                 .build();
     }
 
+    @PreAuthorize("hasRole('JOCKEY')")
     @PostMapping("/profile")
     public ApiResponse<JockeyResponse> createMyProfile(@RequestBody @Valid JockeyCreationRequest request){
         return ApiResponse.<JockeyResponse>builder()

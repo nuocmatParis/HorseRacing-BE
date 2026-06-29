@@ -39,6 +39,7 @@ public class HorseTournamentRegistrationResponse {
     RegistrationStatus status;
     LocalDateTime submittedAt;
     UUID reviewedById;
+    String reviewedByName;
     LocalDateTime reviewedAt;
     String rejectedReason;
     LocalDateTime withdrawnAt;

@@ -13,4 +13,6 @@ public interface JockeyRepository extends JpaRepository<Jockey, UUID> {
     Optional<Jockey> findByUser_Username(String userName);
     boolean existsByUser_UserId(UUID userId);
     Optional<Jockey> findByUser_UserId(UUID userId);
+    boolean existsByLicenseNumber(String licenseNumber);
+    boolean existsByLicenseNumberAndJockeyIdNot(String licenseNumber, UUID jockeyId);
 }

@@ -1,10 +1,12 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.entity.HorseTournamentRegistration;
+import com.swp391.horseracing.entity.JockeyTournamentRegistration;
 import com.swp391.horseracing.enums.RegistrationStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
+import com.swp391.horseracing.repository.JockeyTournamentRegistrationRepository;
 import com.swp391.horseracing.service.RegistrationPaymentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RegistrationPaymentServiceImpl implements RegistrationPaymentService {
     HorseTournamentRegistrationRepository horseTournamentRegistrationRepository;
+    JockeyTournamentRegistrationRepository jockeyTournamentRegistrationRepository;
 
     @Override
     public void markOwnerRegistrationPaid(UUID tournamentRegId) {

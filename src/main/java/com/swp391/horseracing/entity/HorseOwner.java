@@ -31,14 +31,13 @@ public class HorseOwner {
     @JoinColumn(name = "user_id", unique = true, nullable = false)
     User user;
 
-    @Column(name = "farm_name", length = 100)
+    @Column(name = "farm_name", length = 100, nullable = false, unique = true)
     String farmName;
 
-    @Column(name = "address", columnDefinition = "TEXT")
+    @Column(name = "address", columnDefinition = "TEXT", nullable = false)
     String address;
 
-    @Column(name = "license_number", nullable = false,
-            unique = true, length = 50)
+    @Column(name = "license_number", nullable = false, unique = true, length = 50)
     String licenseNumber;
 
     @CreationTimestamp

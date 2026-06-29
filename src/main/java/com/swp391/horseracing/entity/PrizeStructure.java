@@ -29,7 +29,7 @@ public class PrizeStructure {
     @Column(name = "`prize_rank`", nullable = false)
     int rank;
 
-    @Column(name = "percentage")
+    @Column(name = "percentage", nullable = false)
     Float percentage;
 
     @Column(name = "fixed_amount", precision = 15, scale = 2, nullable = false)

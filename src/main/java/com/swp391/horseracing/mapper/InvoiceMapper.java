@@ -12,6 +12,8 @@ public interface InvoiceMapper {
             source = "horseTournamentRegistration.registrationId")
     @Mapping(target = "payerUserId",
             source = "payerUser.userId")
+    @Mapping(target = "jockeyTournamentRegId",
+            source = "jockeyTournamentRegistration.jockeyTournamentRegId")
     InvoiceResponse toInvoiceResponse(Invoice invoice);
 
 }
