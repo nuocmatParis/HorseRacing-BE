@@ -2,6 +2,7 @@ package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
+import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
@@ -122,6 +123,8 @@ public class TournamentServiceImpl implements TournamentService {
 
         tournament.setPublishedAt(LocalDateTime.now());
 
+        activatePrizeStructures(id);
+
         setPhaseAndStatus(tournament, TournamentPhase.REGISTRATION_OPEN);
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -171,6 +174,12 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setStatus(matchStatus(phase));
     }
 
+    private void activatePrizeStructures(UUID tournamentId) {
+        List<PrizeStructure> prizes = prizeStructureRepository.findByTournament_TournamentId(tournamentId);
+        prizes.forEach(prize -> prize.setActive(true));
+        prizeStructureRepository.saveAll(prizes);
+    }
+
     private TournamentStatus matchStatus(TournamentPhase phase) {
         return switch (phase) {
             case DRAFT -> TournamentStatus.DRAFT;
@@ -203,15 +212,22 @@ public class TournamentServiceImpl implements TournamentService {
         return response;
     }
 
-    private boolean calculateOverdue(Tournament tournament) {
+  private boolean calculateOverdue(Tournament tournament) {
+        if (tournament == null || tournament.getPhase() == null) {
+            return false;
+        }
+
         LocalDateTime now = LocalDateTime.now();
         return switch (tournament.getPhase()) {
-            case REGISTRATION_OPEN -> now.isAfter(tournament.getRegistrationCloseAt());
-            case REGISTRATION_REVIEW -> now.isAfter(tournament.getReviewDeadlineAt());
-            case JOCKEY_MATCHING -> now.isAfter(tournament.getJockeyMatchingDeadlineAt());
-            case SCHEDULING -> now.isAfter(tournament.getSchedulingDeadlineAt());
+            case REGISTRATION_REVIEW -> isPastDeadline(now, tournament.getReviewDeadlineAt());
+            case JOCKEY_MATCHING -> isPastDeadline(now, tournament.getJockeyMatchingDeadlineAt());
+            case SCHEDULING -> isPastDeadline(now, tournament.getSchedulingDeadlineAt());
             default -> false;
         };
+    }
+
+    private boolean isPastDeadline(LocalDateTime now, LocalDateTime deadline) {
+        return deadline != null && now.isAfter(deadline);
     }
 
     private boolean allRacesFinished(Tournament tournament) {
