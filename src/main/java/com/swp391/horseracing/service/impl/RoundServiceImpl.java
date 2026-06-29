@@ -56,6 +56,20 @@ public class RoundServiceImpl implements RoundService {
             throw new AppException(ErrorCode.ROUND_NAME_ALREADY_EXISTS);
         }
 
+        List<Round> existingRounds = roundRepository
+                .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId);
+
+        if (existingRounds.size() >= 2) {
+            throw new AppException(ErrorCode.MAX_ROUNDS_REACHED);
+        }
+
+        if (!existingRounds.isEmpty()) {
+            Round lastRound = existingRounds.get(existingRounds.size() - 1);
+            if (request.getStartDate().isBefore(lastRound.getEndDate())) {
+                throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
+            }
+        }
+
         if (request.getStartDate().toLocalDate().isBefore(tournament.getStartDate())
                 || request.getEndDate().toLocalDate().isAfter(tournament.getEndDate())) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
@@ -64,6 +78,9 @@ public class RoundServiceImpl implements RoundService {
         User currentUser = getCurrentUser();
 
         Round round = roundMapper.toRound(request);
+        if (existingRounds.size() == 1) {
+            round.setFinal(true);
+        }
         round.setTournament(tournament);
         round.setCreatedBy(currentUser);
         round.setCreatedAt(LocalDateTime.now());
