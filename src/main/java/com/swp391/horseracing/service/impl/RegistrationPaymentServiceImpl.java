@@ -38,22 +38,4 @@ public class RegistrationPaymentServiceImpl implements RegistrationPaymentServic
 
         horseTournamentRegistrationRepository.save(horseTournamentRegistration);
     }
-
-    @Override
-    public void markJockeyRegistrationPaid(UUID jockeyTournamentRegId) {
-        if (jockeyTournamentRegId == null) {
-            throw new AppException(ErrorCode.JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND);
-        }
-
-        JockeyTournamentRegistration registration = jockeyTournamentRegistrationRepository
-                .findById(jockeyTournamentRegId)
-                .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND));
-
-        if (registration.getStatus() != RegistrationStatus.PENDING_PAYMENT) {
-            throw new AppException(ErrorCode.INVALID_REGISTRATION_STATUS);
-        }
-
-        registration.setStatus(RegistrationStatus.PENDING_REVIEW);
-        jockeyTournamentRegistrationRepository.save(registration);
-    }
 }

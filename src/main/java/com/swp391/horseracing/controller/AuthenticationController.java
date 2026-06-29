@@ -1,6 +1,8 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.auth.request.AuthRequest;
+import com.swp391.horseracing.dto.auth.request.ResendOtp;
+import com.swp391.horseracing.dto.auth.request.VerifyEmail;
 import com.swp391.horseracing.dto.auth.response.AuthResponse;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
@@ -21,11 +23,29 @@ public class AuthenticationController {
     UserService userService;
     AuthService authService;
 
-    @PostMapping("/register")
-    public ApiResponse<UserResponse> createUser(
+    @PostMapping("/register-otp")
+    public ApiResponse<Void> createUser(
             @RequestBody @Valid UserCreationRequest request){
+        userService.requestRegisterOtp(request);
+        return ApiResponse.<Void>builder()
+                .message("OTP sent to email")
+                .build();
+    }
+
+    @PostMapping("/register/verify")
+    public ApiResponse<UserResponse> verifyRegisterOtp(
+            @RequestBody @Valid VerifyEmail request){
         return ApiResponse.<UserResponse>builder()
-                .result(userService.create(request))
+                .result(userService.verifyRegisterOtp(request))
+                .build();
+    }
+
+    @PostMapping("/register/resend-otp")
+    public ApiResponse<Void> resendOtp(
+            @RequestBody @Valid ResendOtp request){
+        userService.resendOtp(request);
+        return ApiResponse.<Void>builder()
+                .message("OTP sent to email")
                 .build();
     }
 
