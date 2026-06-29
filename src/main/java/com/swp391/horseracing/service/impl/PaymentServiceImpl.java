@@ -60,8 +60,11 @@ public class PaymentServiceImpl implements PaymentService {
         validateWalletActive(userWallet);
 
         Wallet systemWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM,
-                WalletPurpose.SYSTEM_REVENUE).orElseThrow(()
-                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+                WalletPurpose.SYSTEM_REVENUE).orElseGet(() -> walletRepository.save(Wallet.builder()
+                .ownerType(WalletOwnerType.SYSTEM)
+                .walletPurpose(WalletPurpose.SYSTEM_REVENUE)
+                .user(null)
+                .build()));
 
         validateWalletActive(systemWallet);
 
@@ -148,8 +151,11 @@ public class PaymentServiceImpl implements PaymentService {
                 -> new AppException(ErrorCode.WALLET_NOT_FOUND) );
 
         Wallet systemWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM,
-                WalletPurpose.SYSTEM_REVENUE).orElseThrow(()
-                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+                WalletPurpose.SYSTEM_REVENUE).orElseGet(() -> walletRepository.save(Wallet.builder()
+                .ownerType(WalletOwnerType.SYSTEM)
+                .walletPurpose(WalletPurpose.SYSTEM_REVENUE)
+                .user(null)
+                .build()));
 
         validateWalletActive(userWallet);
         validateWalletActive(systemWallet);

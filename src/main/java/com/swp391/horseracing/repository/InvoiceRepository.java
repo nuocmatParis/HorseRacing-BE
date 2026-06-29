@@ -22,6 +22,11 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     boolean existsByHorseTournamentRegistration_RegistrationIdAndInvoiceType(UUID tournamentRegId, InvoiceType invoiceType);
 
+    boolean existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndInvoiceType(
+            UUID jockeyTournamentRegId, InvoiceType invoiceType);
+
+    Optional<Invoice> findByJockeyTournamentRegistration_JockeyTournamentRegId(UUID jockeyTournamentRegId);
+
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Invoice> findForUpdateByInvoiceId(UUID invoiceId);

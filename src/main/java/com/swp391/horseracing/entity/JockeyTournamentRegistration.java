@@ -39,7 +39,7 @@ public class JockeyTournamentRegistration {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default
-    RegistrationStatus status = RegistrationStatus.PENDING_PAYMENT;
+    RegistrationStatus status = RegistrationStatus.PENDING_REVIEW;
 
     @CreationTimestamp
     @Column(name = "submitted_at", nullable = false, updatable = false)

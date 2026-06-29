@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.jockey.request.JockeyCreationRequest;
 import com.swp391.horseracing.dto.jockey.request.JockeyUpdateRequest;
 import com.swp391.horseracing.dto.jockey.response.JockeyResponse;
 import com.swp391.horseracing.entity.Jockey;
+import com.swp391.horseracing.enums.JockeyStatus;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -60,9 +61,13 @@ public class JockeyServiceImpl implements JockeyService {
         if (jockeyRepository.existsByUser_UserId(user.getUserId())){
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE);
         }
+        if (jockeyRepository.existsByLicenseNumber(request.getLicenseNumber())) {
+            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
+        }
 
         Jockey jockey = jockeyMapper.toJockey(request);
         jockey.setUser(user);
+        jockey.setStatus(JockeyStatus.AVAILABLE);
         jockey.setCreatedAt(LocalDateTime.now());
 
         return jockeyMapper.toJockeyResponse(jockeyRepository.save(jockey));
@@ -88,6 +93,9 @@ public class JockeyServiceImpl implements JockeyService {
         User user = getCurrentUser();
         Jockey jockey = jockeyRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_PROFILE_NOT_FOUND));
+        if (jockeyRepository.existsByLicenseNumberAndJockeyIdNot(request.getLicenseNumber(), jockey.getJockeyId())) {
+            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
+        }
         jockeyMapper.updateJockey(jockey, request);
         return jockeyMapper.toJockeyResponse(jockeyRepository.save(jockey));
     }
