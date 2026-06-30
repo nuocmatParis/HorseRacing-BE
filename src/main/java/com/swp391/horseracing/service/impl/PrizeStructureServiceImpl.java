@@ -17,6 +17,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.swp391.horseracing.dto.tournament.request.UpdatePrizeStructureRequest;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -70,6 +71,56 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
         prizeStructure.setTournament(tournament);
 
         return prizeStructureMapper.toPrizeStructureResponse(prizeStructureRepository.save(prizeStructure));
+    }
+
+    @Override
+    @Transactional
+    public PrizeStructureResponse update(UUID prizeStructureId, UpdatePrizeStructureRequest request) {
+        PrizeStructure prizeStructure = prizeStructureRepository.findById(prizeStructureId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRIZE_STRUCTURE_NOT_FOUND));
+
+        Tournament tournament = prizeStructure.getTournament();
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (request.getRank() != null && request.getRank() != prizeStructure.getRank()
+                && prizeStructureRepository.existsByTournament_TournamentIdAndRank(tournament.getTournamentId(), request.getRank())) {
+            throw new AppException(ErrorCode.DUPLICATE_PRIZE_RANK);
+        }
+
+        if (request.getPercentage() != null && request.getPercentage() > 100) {
+            throw new AppException(ErrorCode.PRIZE_PERCENTAGE_EXCEEDS_100);
+        }
+
+        if (request.getPercentage() != null) {
+            BigDecimal existingTotal = prizeStructureRepository
+                    .findByTournament_TournamentId(tournament.getTournamentId())
+                    .stream()
+                    .filter(ps -> !ps.getPrizeStructureId().equals(prizeStructureId) && ps.getPercentage() != null)
+                    .map(ps -> BigDecimal.valueOf(ps.getPercentage()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal newTotal = existingTotal.add(BigDecimal.valueOf(request.getPercentage()));
+            if (newTotal.compareTo(BigDecimal.valueOf(100)) > 0) {
+                throw new AppException(ErrorCode.PRIZE_PERCENTAGE_EXCEEDS_100);
+            }
+        }
+
+        prizeStructureMapper.updatePrizeStructure(request, prizeStructure);
+        return prizeStructureMapper.toPrizeStructureResponse(prizeStructureRepository.save(prizeStructure));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID prizeStructureId) {
+        PrizeStructure prizeStructure = prizeStructureRepository.findById(prizeStructureId)
+                .orElseThrow(() -> new AppException(ErrorCode.PRIZE_STRUCTURE_NOT_FOUND));
+
+        if (prizeStructure.getTournament().getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        prizeStructureRepository.delete(prizeStructure);
     }
 
     @Override
