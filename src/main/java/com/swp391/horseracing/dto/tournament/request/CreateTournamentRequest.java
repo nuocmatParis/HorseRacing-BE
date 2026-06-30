@@ -82,6 +82,10 @@ public class CreateTournamentRequest {
     @NotBlank(message = "Prediction reward rule is required")
     String predictionRewardRule;
 
+    @NotNull(message = "Max rounds is required")
+    @Min(value = 1, message = "Max rounds must be at least 1")
+    Integer maxRounds;
+
     @Builder.Default
     @Min(value = 1, message = "Prediction open minutes must be at least 1")
     Integer predictionOpenMinutesBefore = 120;
