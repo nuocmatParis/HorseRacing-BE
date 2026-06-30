@@ -44,6 +44,9 @@ public class Race {
     @Column(name = "max_entries", nullable = false)
     int maxEntries;
 
+    @Column(name = "sequence_order", nullable = false)
+    int sequenceOrder;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     RoundStatus status;
