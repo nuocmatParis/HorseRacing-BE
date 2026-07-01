@@ -1,6 +1,7 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.JockeyStatus;
+import com.swp391.horseracing.enums.JockeyTier;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -46,7 +47,7 @@ public class Jockey {
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
     String licenseNumber;
 
-    @Column(name = "specialization", length = 100, nullable = false)
+    @Column(name = "specialization", nullable = false, length = 100)
     String specialization;
 
     @Builder.Default
@@ -55,8 +56,27 @@ public class Jockey {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     JockeyStatus status = JockeyStatus.AVAILABLE;
+
+    @Builder.Default
+    @Column(name = "total_races", nullable = false)
+    int totalRaces = 0;
+
+    @Builder.Default
+    @Column(name = "total_wins", nullable = false)
+    int totalWins = 0;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "jockey_tier", nullable = false, length = 50)
+    JockeyTier jockeyTier = JockeyTier.APPRENTICE;
+
+    @Column(name = "tier_updated_at")
+    LocalDateTime tierUpdatedAt;
+
+    @Column(name = "last_race_at")
+    LocalDateTime lastRaceAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

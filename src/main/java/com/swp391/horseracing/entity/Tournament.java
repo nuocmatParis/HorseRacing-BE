@@ -1,5 +1,6 @@
 package com.swp391.horseracing.entity;
 
+import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import jakarta.persistence.*;
@@ -62,7 +63,7 @@ public class Tournament {
     String allowedBreed;
 
     @Column(name = "race_class", nullable = false, length = 50)
-    String raceClass;
+    RaceClass raceClass;
 
     @Column(name = "weight_class", nullable = false, length = 50)
     String weightClass;
@@ -72,9 +73,6 @@ public class Tournament {
 
     @Column(name = "max_horse_age", nullable = false)
     int maxHorseAge;
-
-    @Column(name = "tournament_division", nullable = false, length = 100)
-    String tournamentDivision;
 
     @Column(name = "handicap_rule", nullable = false, columnDefinition = "TEXT")
     String handicapRule;
@@ -91,7 +89,7 @@ public class Tournament {
     int predictionCloseMinutesBefore = 5;
 
     @Column(name = "max_rounds", nullable = false)
-    Integer maxRounds;
+    int maxRounds;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -122,6 +120,32 @@ public class Tournament {
 
     @Column(name = "scheduling_deadline_at", nullable = false)
     LocalDateTime schedulingDeadlineAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "race_class", length = 50)
+    RaceClass raceClass;
+
+    @Column(name = "min_rating")
+    int minRating;
+
+    @Column(name = "max_rating")
+    int maxRating;
+
+    @Column(name = "handicap_enabled", nullable = false)
+    Boolean handicapEnabled = false;
+
+    @Builder.Default
+    @Column(name = "top_weight_lbs")
+    int topWeightLbs = 135;
+
+    @Column(name = "min_weight_lbs")
+    int minWeightLbs = 115;
+
+    @Column(name = "equipment_weight_kg", precision = 5, scale = 2)
+    double equipmentWeightKg = 1.5;
+
+    @Column(name = "handicap_rule", length = 1000)
+    String handicapRule;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
