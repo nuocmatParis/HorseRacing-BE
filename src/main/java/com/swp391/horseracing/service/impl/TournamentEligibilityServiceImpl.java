@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateEligibilityRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdateEligibilityRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentEligibilityResponse;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.TournamentEligibility;
@@ -40,10 +41,49 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
+        if (tournamentEligibilityRepository.existsByTournament_TournamentIdAndConditionName(
+                tournamentId, request.getConditionName())) {
+            throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
+        }
+
         TournamentEligibility eligibility = tournamentEligibilityMapper.toEligibility(request);
         eligibility.setTournament(tournament);
 
         return tournamentEligibilityMapper.toEligibilityResponse(tournamentEligibilityRepository.save(eligibility));
+    }
+
+    @Override
+    @Transactional
+    public TournamentEligibilityResponse update(UUID eligibilityId, UpdateEligibilityRequest request) {
+        TournamentEligibility eligibility = tournamentEligibilityRepository.findById(eligibilityId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_ELIGIBILITY_NOT_FOUND));
+
+        Tournament tournament = eligibility.getTournament();
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (request.getConditionName() != null && !request.getConditionName().equals(eligibility.getConditionName())
+                && tournamentEligibilityRepository.existsByTournament_TournamentIdAndConditionName(
+                        tournament.getTournamentId(), request.getConditionName())) {
+            throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
+        }
+
+        tournamentEligibilityMapper.updateEligibility(request, eligibility);
+        return tournamentEligibilityMapper.toEligibilityResponse(tournamentEligibilityRepository.save(eligibility));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID eligibilityId) {
+        TournamentEligibility eligibility = tournamentEligibilityRepository.findById(eligibilityId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_ELIGIBILITY_NOT_FOUND));
+
+        if (eligibility.getTournament().getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        tournamentEligibilityRepository.delete(eligibility);
     }
 
     @Override

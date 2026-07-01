@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface TournamentEligibilityRepository extends JpaRepository<TournamentEligibility, UUID> {
     List<TournamentEligibility> findByTournament_TournamentId(UUID tournamentId);
+    boolean existsByTournament_TournamentIdAndConditionName(UUID tournamentId, String conditionName);
 }

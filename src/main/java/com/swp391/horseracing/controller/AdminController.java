@@ -145,4 +145,78 @@ public class AdminController {
                 .result(tournamentRegistrationService.rejectJockeyRegistration(id, reason))
                 .build();
     }
+
+    // ---- Update APIs ----
+
+    @PutMapping("/tournaments/{id}")
+    public ApiResponse<TournamentResponse> updateTournament(@PathVariable UUID id,
+                                                            @RequestBody @Valid UpdateTournamentRequest request) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.update(id, request))
+                .build();
+    }
+
+    @PutMapping("/rounds/{roundId}")
+    public ApiResponse<RoundResponse> updateRound(@PathVariable UUID roundId,
+                                                   @RequestBody @Valid UpdateRoundRequest request) {
+        return ApiResponse.<RoundResponse>builder()
+                .result(roundService.update(roundId, request))
+                .build();
+    }
+
+    @PutMapping("/races/{raceId}")
+    public ApiResponse<RaceResponse> updateRace(@PathVariable UUID raceId,
+                                                 @RequestBody @Valid UpdateRaceRequest request) {
+        return ApiResponse.<RaceResponse>builder()
+                .result(raceService.update(raceId, request))
+                .build();
+    }
+
+    @PutMapping("/prize-structures/{prizeStructureId}")
+    public ApiResponse<PrizeStructureResponse> updatePrizeStructure(@PathVariable UUID prizeStructureId,
+                                                                     @RequestBody @Valid UpdatePrizeStructureRequest request) {
+        return ApiResponse.<PrizeStructureResponse>builder()
+                .result(prizeStructureService.update(prizeStructureId, request))
+                .build();
+    }
+
+    @PutMapping("/eligibility/{eligibilityId}")
+    public ApiResponse<TournamentEligibilityResponse> updateEligibility(@PathVariable UUID eligibilityId,
+                                                                         @RequestBody @Valid UpdateEligibilityRequest request) {
+        return ApiResponse.<TournamentEligibilityResponse>builder()
+                .result(tournamentEligibilityService.update(eligibilityId, request))
+                .build();
+    }
+
+    // ---- Delete APIs ----
+
+    @DeleteMapping("/tournaments/{id}")
+    public ApiResponse<Void> deleteTournament(@PathVariable UUID id) {
+        tournamentService.delete(id);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @DeleteMapping("/rounds/{roundId}")
+    public ApiResponse<Void> deleteRound(@PathVariable UUID roundId) {
+        roundService.delete(roundId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @DeleteMapping("/races/{raceId}")
+    public ApiResponse<Void> deleteRace(@PathVariable UUID raceId) {
+        raceService.delete(raceId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @DeleteMapping("/prize-structures/{prizeStructureId}")
+    public ApiResponse<Void> deletePrizeStructure(@PathVariable UUID prizeStructureId) {
+        prizeStructureService.delete(prizeStructureId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @DeleteMapping("/eligibility/{eligibilityId}")
+    public ApiResponse<Void> deleteEligibility(@PathVariable UUID eligibilityId) {
+        tournamentEligibilityService.delete(eligibilityId);
+        return ApiResponse.<Void>builder().build();
+    }
 }
