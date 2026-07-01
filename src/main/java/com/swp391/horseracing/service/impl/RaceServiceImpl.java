@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateRaceRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdateRaceRequest;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
@@ -20,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -61,6 +63,22 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
         }
 
+        if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
+            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
+        }
+
+        if(round.getMaxRaces() <= round.getRaces().size()){
+            throw new AppException(ErrorCode.MAX_RACES_REACHED);
+        }
+
+        List<Race> existingRaces = raceRepository.findByRound_RoundIdOrderByStartTimeDesc(roundId);
+        if (!existingRaces.isEmpty()) {
+            Race lastRace = existingRaces.get(0);
+            if (request.getStartTime().isBefore(lastRace.getEndTime())) {
+                throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
+            }
+        }
+
         User currentUser = getCurrentUser();
 
         Race race = raceMapper.toRace(request);
@@ -68,6 +86,80 @@ public class RaceServiceImpl implements RaceService {
         race.setCreatedBy(currentUser);
 
         return raceMapper.toRaceResponse(raceRepository.save(race));
+    }
+
+    @Override
+    @Transactional
+    public RaceResponse update(UUID raceId, UpdateRaceRequest request) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        Round round = race.getRound();
+        if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (request.getName() != null && !request.getName().equals(race.getName())
+                && raceRepository.existsByRound_RoundIdAndName(round.getRoundId(), request.getName())) {
+            throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
+        }
+
+        if (request.getSequenceOrder() != null && request.getSequenceOrder() != race.getSequenceOrder()
+                && raceRepository.existsByRound_RoundIdAndSequenceOrder(round.getRoundId(), request.getSequenceOrder())) {
+            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
+        }
+
+        if (request.getStartTime() != null && request.getEndTime() != null
+                && request.getEndTime().isBefore(request.getStartTime())) {
+            throw new AppException(ErrorCode.INVALID_RACE_DATES);
+        }
+
+        if (request.getPredictionOpenAt() != null && request.getPredictionCloseAt() != null
+                && request.getPredictionOpenAt().isAfter(request.getPredictionCloseAt())) {
+            throw new AppException(ErrorCode.INVALID_PREDICTION_TIMES);
+        }
+
+        LocalDateTime startTime = request.getStartTime() != null ? request.getStartTime() : race.getStartTime();
+        LocalDateTime endTime = request.getEndTime() != null ? request.getEndTime() : race.getEndTime();
+        if (startTime.isBefore(round.getStartDate()) || endTime.isAfter(round.getEndDate())) {
+            throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
+        }
+
+        Integer oldSequence = race.getSequenceOrder();
+        Integer newSequence = request.getSequenceOrder();
+
+        raceMapper.updateRace(request, race);
+
+        if (newSequence != null && !newSequence.equals(oldSequence)) {
+            reorderRaces(round.getRoundId(), race.getRaceId(), newSequence);
+        }
+
+        return raceMapper.toRaceResponse(raceRepository.save(race));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        if (race.getRound().getTournament().getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        raceRepository.delete(race);
+    }
+
+    private void reorderRaces(UUID roundId, UUID raceId, int newSequence) {
+        List<Race> otherRaces = raceRepository.findByRound_RoundIdAndRaceIdNotOrderBySequenceOrderAsc(roundId, raceId);
+        int seq = 1;
+        for (Race r : otherRaces) {
+            if (seq == newSequence) {
+                seq++;
+            }
+            r.setSequenceOrder(seq);
+            seq++;
+        }
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Race;
@@ -88,6 +89,85 @@ public class TournamentServiceImpl implements TournamentService {
 
     @Override
     @Transactional
+    public TournamentResponse update(UUID id, UpdateTournamentRequest request) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        if (request.getName() != null && !request.getName().equals(tournament.getName())
+                && tournamentRepository.existsByName(request.getName())) {
+            throw new AppException(ErrorCode.TOURNAMENT_NAME_EXISTS);
+        }
+
+        if (request.getStartDate() != null && request.getEndDate() != null
+                && request.getEndDate().isBefore(request.getStartDate())) {
+            throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
+        }
+        if (request.getStartDate() != null && request.getEndDate() == null
+                && tournament.getEndDate().isBefore(request.getStartDate())) {
+            throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
+        }
+        if (request.getStartDate() == null && request.getEndDate() != null
+                && request.getEndDate().isBefore(tournament.getStartDate())) {
+            throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
+        }
+
+        if (request.getMinHorseAge() != null && request.getMaxHorseAge() != null
+                && request.getMinHorseAge() >= request.getMaxHorseAge()) {
+            throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
+        }
+        if (request.getMinHorseAge() != null && request.getMaxHorseAge() == null
+                && request.getMinHorseAge() >= tournament.getMaxHorseAge()) {
+            throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
+        }
+        if (request.getMinHorseAge() == null && request.getMaxHorseAge() != null
+                && tournament.getMinHorseAge() >= request.getMaxHorseAge()) {
+            throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
+        }
+
+        int openMin = request.getPredictionOpenMinutesBefore() != null
+                ? request.getPredictionOpenMinutesBefore() : tournament.getPredictionOpenMinutesBefore();
+        int closeMin = request.getPredictionCloseMinutesBefore() != null
+                ? request.getPredictionCloseMinutesBefore() : tournament.getPredictionCloseMinutesBefore();
+        if (openMin <= closeMin || closeMin < 0) {
+            throw new AppException(ErrorCode.INVALID_PREDICTION_TIMES);
+        }
+
+        LocalDateTime regOpen = request.getRegistrationOpenAt() != null
+                ? request.getRegistrationOpenAt() : tournament.getRegistrationOpenAt();
+        LocalDateTime regClose = request.getRegistrationCloseAt() != null
+                ? request.getRegistrationCloseAt() : tournament.getRegistrationCloseAt();
+        LocalDateTime reviewAt = request.getReviewDeadlineAt() != null
+                ? request.getReviewDeadlineAt() : tournament.getReviewDeadlineAt();
+        LocalDateTime matchAt = request.getJockeyMatchingDeadlineAt() != null
+                ? request.getJockeyMatchingDeadlineAt() : tournament.getJockeyMatchingDeadlineAt();
+        LocalDateTime schedAt = request.getSchedulingDeadlineAt() != null
+                ? request.getSchedulingDeadlineAt() : tournament.getSchedulingDeadlineAt();
+        validateTimingOrder(regOpen, regClose, reviewAt, matchAt, schedAt);
+
+        tournamentMapper.updateTournament(request, tournament);
+
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+
+        if (tournament.getStatus() != TournamentStatus.DRAFT) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+
+        tournamentRepository.delete(tournament);
+    }
+
+    @Override
+    @Transactional
     public TournamentResponse publish(UUID id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
@@ -105,7 +185,7 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         List<Round> rounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(id);
-        if (rounds.size() != 2) {
+        if (rounds.size() != tournament.getMaxRounds()) {
             throw new AppException(ErrorCode.TOURNAMENT_MISSING_ROUNDS);
         }
 

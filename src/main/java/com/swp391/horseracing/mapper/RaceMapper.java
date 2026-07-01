@@ -1,10 +1,14 @@
 package com.swp391.horseracing.mapper;
 
 import com.swp391.horseracing.dto.tournament.request.CreateRaceRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdateRaceRequest;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.entity.Race;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface RaceMapper {
@@ -20,4 +24,7 @@ public interface RaceMapper {
     @Mapping(target = "createdBy", ignore = true)
     @Mapping(target = "startedBy", ignore = true)
     Race toRace(CreateRaceRequest request);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    void updateRace(UpdateRaceRequest request, @MappingTarget Race race);
 }

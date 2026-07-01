@@ -90,6 +90,9 @@ public class Tournament {
     @Column(name = "prediction_close_minutes_before", nullable = false)
     int predictionCloseMinutesBefore = 5;
 
+    @Column(name = "max_rounds", nullable = false)
+    Integer maxRounds;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     TournamentStatus status;
