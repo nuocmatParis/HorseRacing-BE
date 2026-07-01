@@ -37,6 +37,7 @@ public class TournamentResponse {
     String predictionRewardRule;
     int predictionOpenMinutesBefore;
     int predictionCloseMinutesBefore;
+    Integer maxRounds;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;

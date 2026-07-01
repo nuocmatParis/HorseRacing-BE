@@ -233,7 +233,7 @@ public enum ErrorCode {
 
     INVALID_RACE_DATES(1515, HttpStatus.BAD_REQUEST, "End time must be after start time"),
 
-    INVALID_ROUND_COUNT(1516, HttpStatus.BAD_REQUEST, "Each tournament must have exactly 2 rounds"),
+    INVALID_ROUND_COUNT(1516, HttpStatus.BAD_REQUEST, "Invalid round count"),
 
     ROUND_WITHOUT_RACE(1517, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
 
@@ -249,7 +249,7 @@ public enum ErrorCode {
 
     TOURNAMENT_MISSING_ELIGIBILITY(1523, HttpStatus.BAD_REQUEST, "Tournament must have at least one eligibility rule"),
 
-    TOURNAMENT_MISSING_ROUNDS(1524, HttpStatus.BAD_REQUEST, "Tournament must have exactly 2 rounds"),
+    TOURNAMENT_MISSING_ROUNDS(1524, HttpStatus.BAD_REQUEST, "Tournament must have rounds"),
 
     ROUND_MISSING_RACES(1525, HttpStatus.BAD_REQUEST, "Each round must have at least one race"),
 
@@ -267,7 +267,7 @@ public enum ErrorCode {
 
     INVALID_REGISTRATION_STATUS(1532, HttpStatus.BAD_REQUEST, "Invalid registration status"),
 
-    MAX_ROUNDS_REACHED(1533, HttpStatus.BAD_REQUEST, "Maximum number of rounds (2) reached for this tournament"),
+    MAX_ROUNDS_REACHED(1533, HttpStatus.BAD_REQUEST, "Maximum number of rounds reached for this tournament"),
 
     MAX_RACES_REACHED(1534, HttpStatus.BAD_REQUEST, "Maximum number of races reached for this round"),
 
@@ -300,7 +300,11 @@ public enum ErrorCode {
 
     CONTRACT_NOT_FOUND(1546, HttpStatus.NOT_FOUND, "Contract not found"),
 
-    INVALID_CONTRACT_STATUS(1547, HttpStatus.BAD_REQUEST, "Invalid contract status")
+    INVALID_CONTRACT_STATUS(1547, HttpStatus.BAD_REQUEST, "Invalid contract status"),
+
+    DUPLICATE_RACE_SEQUENCE(1548, HttpStatus.CONFLICT, "Race sequence order already exists in this round"),
+
+    ELIGIBILITY_CONDITION_EXISTS(1549, HttpStatus.CONFLICT, "Eligibility condition name already exists in this tournament")
 
     ;
 
