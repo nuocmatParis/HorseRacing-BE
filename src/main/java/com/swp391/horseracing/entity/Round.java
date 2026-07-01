@@ -29,7 +29,7 @@ public class Round {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID roundId;
 
-    @Column(name = "round_name", nullable = false, length = 100, unique = true)
+    @Column(name = "round_name", nullable = false, length = 100)
     String roundName;
 
     @Column(name = "sequence_order", nullable = false)
@@ -39,7 +39,7 @@ public class Round {
     boolean isFinal;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "prediction_type", nullable = false)
+    @Column(name = "prediction_type", nullable = false, length = 50)
     PredictionType predictionType;
 
     @Column(name = "advancement_rule", columnDefinition = "TEXT", nullable = false)
@@ -58,8 +58,16 @@ public class Round {
     Integer maxRaces;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(name = "status", nullable = false, length = 50)
     RoundStatus status;
+
+    // Trọng tài chính duy nhất của round
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "head_referee_id")
+    Referee headReferee;
+
+    @Column(name = "head_referee_assigned_at")
+    LocalDateTime headRefereeAssignedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -73,7 +81,6 @@ public class Round {
     @JoinColumn(name = "created_by", nullable = false)
     User createdBy;
 
-    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL,
-            orphanRemoval = true)
-     List<Race> races;
+    @OneToMany(mappedBy = "round", cascade = CascadeType.ALL, orphanRemoval = true)
+    List<Race> races;
 }
