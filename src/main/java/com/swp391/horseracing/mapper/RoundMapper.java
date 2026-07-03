@@ -15,6 +15,7 @@ public interface RoundMapper {
 
     @Mapping(target = "tournamentId", source = "tournament.tournamentId")
     @Mapping(target = "createdById", source = "createdBy.userId")
+    @Mapping(target = "headRefereeId", source = "headReferee.refereeId")
     RoundResponse toRoundResponse(Round round);
 
     @Mapping(target = "roundId", ignore = true)

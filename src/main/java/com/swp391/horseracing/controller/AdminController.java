@@ -1,6 +1,11 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.contract.response.ContractResponse;
+import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
+import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
+import com.swp391.horseracing.dto.race_referee.request.CreateRaceRefereeRequest;
+import com.swp391.horseracing.dto.race_referee.response.RaceRefereeResponse;
 import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
@@ -28,6 +33,9 @@ public class AdminController {
     PrizeStructureService prizeStructureService;
     TournamentEligibilityService tournamentEligibilityService;
     TournamentRegistrationService tournamentRegistrationService;
+    ContractService contractService;
+    RaceEntryService raceEntryService;
+    RaceRefereeService raceRefereeService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -143,6 +151,50 @@ public class AdminController {
                                                                                        @RequestBody(required = false) String reason) {
         return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.rejectJockeyRegistration(id, reason))
+                .build();
+    }
+
+    @GetMapping("/contracts/approved/tournaments/{id}")
+    public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
+        return ApiResponse.<List<ContractResponse>>builder()
+                .result(contractService.getApprovedContractsByTournament(id))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/entries")
+    public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,
+                                                           @RequestBody CreateRaceEntryRequest request) {
+        request.setRaceId(raceId);
+        return ApiResponse.<RaceEntryResponse>builder()
+                .result(raceEntryService.create(request))
+                .build();
+    }
+
+    @DeleteMapping("/race-entries/{entryId}")
+    public ApiResponse<Void> deleteRaceEntry(@PathVariable UUID entryId) {
+        raceEntryService.delete(entryId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PostMapping("/races/{raceId}/referees")
+    public ApiResponse<RaceRefereeResponse> assignReferee(@PathVariable UUID raceId,
+                                                           @RequestBody CreateRaceRefereeRequest request) {
+        request.setRaceId(raceId);
+        return ApiResponse.<RaceRefereeResponse>builder()
+                .result(raceRefereeService.create(request))
+                .build();
+    }
+
+    @DeleteMapping("/races/{raceId}/referees/{refereeId}")
+    public ApiResponse<Void> removeReferee(@PathVariable UUID raceId, @PathVariable UUID refereeId) {
+        raceRefereeService.deleteByRaceAndReferee(raceId, refereeId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PostMapping("/races/{raceId}/publish-schedule")
+    public ApiResponse<RaceResponse> publishRaceSchedule(@PathVariable UUID raceId) {
+        return ApiResponse.<RaceResponse>builder()
+                .result(raceService.publishSchedule(raceId))
                 .build();
     }
 
