@@ -6,10 +6,13 @@ import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceMapper;
+import com.swp391.horseracing.repository.RaceEntryRepository;
+import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.UserRepository;
@@ -33,6 +36,8 @@ public class RaceServiceImpl implements RaceService {
     RaceRepository raceRepository;
     RoundRepository roundRepository;
     UserRepository userRepository;
+    RaceEntryRepository raceEntryRepository;
+    RaceRefereeRepository raceRefereeRepository;
     RaceMapper raceMapper;
 
     @Override
@@ -148,6 +153,35 @@ public class RaceServiceImpl implements RaceService {
         }
 
         raceRepository.delete(race);
+    }
+
+    @Override
+    @Transactional
+    public RaceResponse publishSchedule(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        if (race.getStatus() != RoundStatus.SCHEDULING) {
+            throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
+        }
+        if (race.getSchedulePublishedAt() != null) {
+            throw new AppException(ErrorCode.RACE_ALREADY_PUBLISHED);
+        }
+
+        int entryCount = raceEntryRepository.countByRace_RaceId(raceId);
+        if (entryCount < 2) {
+            throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ENTRIES);
+        }
+
+        int refereeCount = raceRefereeRepository.countByRace_RaceId(raceId);
+        if (refereeCount < 1) {
+            throw new AppException(ErrorCode.RACE_MISSING_REFEREES);
+        }
+
+        race.setStatus(RoundStatus.SCHEDULED);
+        race.setSchedulePublishedAt(LocalDateTime.now());
+
+        return raceMapper.toRaceResponse(raceRepository.save(race));
     }
 
     private void reorderRaces(UUID roundId, UUID raceId, int newSequence) {

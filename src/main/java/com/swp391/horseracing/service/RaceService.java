@@ -13,4 +13,5 @@ public interface RaceService {
     RaceResponse update(UUID raceId, UpdateRaceRequest request);
     void delete(UUID raceId);
     List<RaceResponse> getRacesByRoundId(UUID roundId);
+    RaceResponse publishSchedule(UUID raceId);
 }

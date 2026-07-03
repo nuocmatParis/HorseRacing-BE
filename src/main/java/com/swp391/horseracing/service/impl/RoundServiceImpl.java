@@ -3,6 +3,7 @@ package com.swp391.horseracing.service.impl;
 import com.swp391.horseracing.dto.tournament.request.CreateRoundRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateRoundRequest;
 import com.swp391.horseracing.dto.tournament.response.RoundResponse;
+import com.swp391.horseracing.entity.Referee;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
@@ -10,6 +11,7 @@ import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
+import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
@@ -33,6 +35,7 @@ public class RoundServiceImpl implements RoundService {
     RoundRepository roundRepository;
     TournamentRepository tournamentRepository;
     UserRepository userRepository;
+    RefereeRepository refereeRepository;
     RoundMapper roundMapper;
 
     @Override
@@ -86,7 +89,17 @@ public class RoundServiceImpl implements RoundService {
         round.setCreatedBy(currentUser);
         round.setCreatedAt(LocalDateTime.now());
 
-        return roundMapper.toRoundResponse(roundRepository.save(round));
+        Round saved = roundRepository.save(round);
+
+        if (request.getHeadRefereeId() != null) {
+            Referee referee = refereeRepository.findById(request.getHeadRefereeId())
+                    .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+            saved.setHeadReferee(referee);
+            saved.setHeadRefereeAssignedAt(LocalDateTime.now());
+            saved = roundRepository.save(saved);
+        }
+
+        return roundMapper.toRoundResponse(saved);
     }
 
     @Override
@@ -146,6 +159,33 @@ public class RoundServiceImpl implements RoundService {
                 .stream()
                 .map(roundMapper::toRoundResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public RoundResponse assignHeadReferee(UUID roundId, UUID refereeId) {
+        Round round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+
+        Referee referee = refereeRepository.findById(refereeId)
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+
+        round.setHeadReferee(referee);
+        round.setHeadRefereeAssignedAt(LocalDateTime.now());
+
+        return roundMapper.toRoundResponse(roundRepository.save(round));
+    }
+
+    @Override
+    @Transactional
+    public RoundResponse removeHeadReferee(UUID roundId) {
+        Round round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+
+        round.setHeadReferee(null);
+        round.setHeadRefereeAssignedAt(null);
+
+        return roundMapper.toRoundResponse(roundRepository.save(round));
     }
 
     private User getCurrentUser() {
