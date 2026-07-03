@@ -1,27 +1,26 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.ContractPaymentStatus;
-import com.swp391.horseracing.enums.ContractStatus;
-import com.swp391.horseracing.enums.EscrowStatus;
-import com.swp391.horseracing.enums.PayoutStatus;
+import com.swp391.horseracing.enums.*;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
 @Table(name = "jockey_horse_contracts")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class JockeyHorseContract {
 
@@ -79,25 +78,30 @@ public class JockeyHorseContract {
     @Column(name = "jockey_prize_share_percent", nullable = false)
     Float jockeyPrizeSharePercent;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_status", nullable = false)
-    ContractPaymentStatus paymentStatus;
+    ContractPaymentStatus paymentStatus = ContractPaymentStatus.UNPAID;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "escrow_status", nullable = false)
-    EscrowStatus escrowStatus;
+    EscrowStatus escrowStatus = EscrowStatus.NOT_HELD;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "advance_payout_status", nullable = false)
-    PayoutStatus payoutStatus;
+    PayoutStatus payoutStatus = PayoutStatus.NOT_PAID;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "final_payout_status", nullable = false)
-    PayoutStatus finalPayoutStatus;
+    FinalPayoutStatus finalPayoutStatus = FinalPayoutStatus.NOT_RELEASED;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    ContractStatus status;
+    ContractStatus status = ContractStatus.PENDING_JOCKEY;
 
     @Column(name = "advance_payout_at")
     LocalDateTime advancePayoutAt;
@@ -105,7 +109,8 @@ public class JockeyHorseContract {
     @Column(name = "final_payout_at")
     LocalDateTime finalPayoutAt;
 
-    @Column(name = "requested_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "requested_at", nullable = false, updatable = false)
     LocalDateTime requestedAt;
 
     @Column(name = "responded_at")
@@ -138,6 +143,10 @@ public class JockeyHorseContract {
 
     @Column(name = "contract_note", columnDefinition = "TEXT")
     String contractNote;
+
+    @OneToMany(mappedBy = "contract")
+    @Builder.Default
+    List<RaceEntry> raceEntries = new ArrayList<>();
 }
 
 

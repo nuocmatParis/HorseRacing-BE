@@ -182,7 +182,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_RegistrationId(registrationId).orElseThrow(()
+        Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_HorseRegistrationId(registrationId).orElseThrow(()
                 -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
 
         paymentService.refundInvoice(invoice.getInvoiceId());
@@ -279,7 +279,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
-        if (!tournament.getRaceClass().equalsIgnoreCase(horse.getRaceClass())) {
+        if (!tournament.getRaceClass().equals(horse.getRaceClass())) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
@@ -304,7 +304,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             case "winrate" -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
             case "totalraces" -> compareInt(horse.getTotalRaces(), operator, Integer.parseInt(value));
             case "totalwins" -> compareInt(horse.getTotalWins(), operator, Integer.parseInt(value));
-            case "raceclass" -> value.equalsIgnoreCase(horse.getRaceClass());
+            case "raceclass" -> value.equals(horse.getRaceClass());
             case "breed" -> value.equalsIgnoreCase(horse.getBreed().name());
             default -> true;
         };

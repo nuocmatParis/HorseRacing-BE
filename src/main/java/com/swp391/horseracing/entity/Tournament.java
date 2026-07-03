@@ -62,9 +62,6 @@ public class Tournament {
     @Column(name = "allowed_breed", nullable = false, length = 100)
     String allowedBreed;
 
-    @Column(name = "race_class", nullable = false, length = 50)
-    RaceClass raceClass;
-
     @Column(name = "weight_class", nullable = false, length = 50)
     String weightClass;
 
@@ -141,11 +138,8 @@ public class Tournament {
     @Column(name = "min_weight_lbs")
     int minWeightLbs = 115;
 
-    @Column(name = "equipment_weight_kg", precision = 5, scale = 2)
+    @Column(name = "equipment_weight_kg")
     double equipmentWeightKg = 1.5;
-
-    @Column(name = "handicap_rule", length = 1000)
-    String handicapRule;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
