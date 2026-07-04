@@ -146,8 +146,6 @@ public class AdminController {
                 .build();
     }
 
-    // ---- Update APIs ----
-
     @PutMapping("/tournaments/{id}")
     public ApiResponse<TournamentResponse> updateTournament(@PathVariable UUID id,
                                                             @RequestBody @Valid UpdateTournamentRequest request) {
@@ -187,8 +185,6 @@ public class AdminController {
                 .result(tournamentEligibilityService.update(eligibilityId, request))
                 .build();
     }
-
-    // ---- Delete APIs ----
 
     @DeleteMapping("/tournaments/{id}")
     public ApiResponse<Void> deleteTournament(@PathVariable UUID id) {

@@ -92,4 +92,19 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setStatus(InvoiceStatus.CANCELLED);
         invoiceRepository.save(invoice);
     }
+
+    @Override
+    public Invoice createContractCreationInvoice(UUID payerUserId, UUID contractId, BigDecimal amount) {
+        return null;
+    }
+
+    @Override
+    public Invoice createHiringFeeInvoice(UUID payerUserId, UUID contractId, BigDecimal amount) {
+        return null;
+    }
+
+    @Override
+    public Invoice getByContractIdAndType(UUID contractId) {
+        return null;
+    }
 }

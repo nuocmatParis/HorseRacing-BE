@@ -46,9 +46,6 @@ public class HorseServiceImpl implements HorseService {
         if (request.getHealthStatus() == null) {
             horse.setHealthStatus(HealthStatus.HEALTHY);
         }
-        horse.setTotalRaces(0);
-        horse.setTotalWins(0);
-        horse.setWinRate(0.0);
         horse.setCreatedAt(LocalDateTime.now());
 
         return horseMapper.toHorseResponse(horseRepository.save(horse));

@@ -1,5 +1,7 @@
 package com.swp391.horseracing.dto.tournament.request;
 
+import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.RaceClass;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -38,11 +40,9 @@ public class UpdateTournamentRequest {
     @Min(value = 0, message = "Total prize pool must be positive")
     BigDecimal totalPrizePool;
 
-    @Size(max = 100, message = "Allowed breed must not exceed 100 characters")
-    String allowedBreed;
+    HorseBreed allowedBreed;
 
-    @Size(max = 50, message = "Race class must not exceed 50 characters")
-    String raceClass;
+    RaceClass raceClass;
 
     @Size(max = 50, message = "Weight class must not exceed 50 characters")
     String weightClass;
@@ -53,12 +53,28 @@ public class UpdateTournamentRequest {
     @Min(value = 0, message = "Max horse age must be at least 0")
     Integer maxHorseAge;
 
-    @Size(max = 100, message = "Tournament division must not exceed 100 characters")
-    String tournamentDivision;
 
-    String handicapRule;
+    @Min(value = 0, message = "Top weight must be at least 0")
+    Integer topWeightLbs;
 
-    String predictionRewardRule;
+    @Min(value = 0, message = "Min weight must be at least 0")
+    Integer minWeightLbs;
+
+    Double equipmentWeightKg;
+
+    Boolean handicapEnabled;
+
+    @Min(value = 0, message = "Prediction TOP 1 correct points must be at least 0")
+    Integer predictionTop1CorrectPoints;
+
+    @Min(value = 0, message = "Prediction TOP 3 exact position points must be at least 0")
+    Integer predictionTop3ExactPositionPoints;
+
+    @Min(value = 0, message = "Prediction TOP 3 correct horse points must be at least 0")
+    Integer predictionTop3CorrectHorsePoints;
+
+    @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
+    Integer predictionTop3PerfectBonusPoints;
 
     @Min(value = 1, message = "Prediction open minutes must be at least 1")
     Integer predictionOpenMinutesBefore;
@@ -78,4 +94,10 @@ public class UpdateTournamentRequest {
 
     @Min(value = 1, message = "Max rounds must be at least 1")
     Integer maxRounds;
+
+    @Min(value = 1, message = "Max approved horses must be at least 1")
+    Integer maxApprovedHorses;
+
+    @Min(value = 1, message = "Max approved jockeys must be at least 1")
+    Integer maxApprovedJockeys;
 }

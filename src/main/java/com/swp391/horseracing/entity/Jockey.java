@@ -51,10 +51,6 @@ public class Jockey {
     String specialization;
 
     @Builder.Default
-    @Column(name = "hire_fee", nullable = false, precision = 15, scale = 2)
-    BigDecimal hireFee = BigDecimal.ZERO;
-
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     JockeyStatus status = JockeyStatus.AVAILABLE;

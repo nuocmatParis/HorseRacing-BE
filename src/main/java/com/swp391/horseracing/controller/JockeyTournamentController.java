@@ -1,8 +1,10 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.registration.request.RegisterJockeyRequest;
 import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.service.TournamentRegistrationService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -22,9 +24,10 @@ public class JockeyTournamentController {
     TournamentRegistrationService tournamentRegistrationService;
 
     @PostMapping("/tournaments/{id}/register")
-    public ApiResponse<JockeyTournamentRegistrationResponse> register(@PathVariable UUID id) {
+    public ApiResponse<JockeyTournamentRegistrationResponse> register(@PathVariable UUID id,
+                                                                      @RequestBody @Valid RegisterJockeyRequest request) {
         return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
-                .result(tournamentRegistrationService.registerJockey(id))
+                .result(tournamentRegistrationService.registerJockey(id, request))
                 .build();
     }
 

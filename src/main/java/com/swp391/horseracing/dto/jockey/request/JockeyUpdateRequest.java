@@ -31,7 +31,4 @@ public class JockeyUpdateRequest {
     @Size(max = 50, message = "Specialization must not exceed 50 character")
     String specialization;
 
-    @NotNull(message = "Hire fee is required")
-    @DecimalMin(value = "1", message = "Hire fee must be at least 1")
-    BigDecimal hireFee;
 }
