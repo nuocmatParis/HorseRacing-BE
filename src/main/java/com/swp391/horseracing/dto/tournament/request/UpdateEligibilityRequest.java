@@ -1,5 +1,7 @@
 package com.swp391.horseracing.dto.tournament.request;
 
+import com.swp391.horseracing.enums.EligibilityCondition;
+import com.swp391.horseracing.enums.EligibilityOperator;
 import com.swp391.horseracing.enums.EligibilityTargetType;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -13,9 +15,9 @@ public class UpdateEligibilityRequest {
 
     EligibilityTargetType targetType;
 
-    String conditionName;
+    EligibilityCondition conditionName;
 
-    String conditionOperator;
+    EligibilityOperator conditionOperator;
 
     String conditionValue;
 

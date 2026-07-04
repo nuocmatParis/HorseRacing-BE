@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.horse.response;
 import com.swp391.horseracing.enums.Gender;
 import com.swp391.horseracing.enums.HealthStatus;
 import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.RaceClass;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -23,10 +24,14 @@ public class HorseResponse {
     Float weight;
     String color;
     HealthStatus healthStatus;
-    String raceClass;
+    int currentRating;
+    RaceClass raceClass;
+    int highestRating;
     int totalRaces;
     int totalWins;
+    int totalTop3Finishes;
     Double winRate;
+    LocalDateTime lastRaceAt;
     LocalDateTime createdAt;
     UUID ownerId;
 }

@@ -304,8 +304,18 @@ public enum ErrorCode {
 
     DUPLICATE_RACE_SEQUENCE(1548, HttpStatus.CONFLICT, "Race sequence order already exists in this round"),
 
-    ELIGIBILITY_CONDITION_EXISTS(1549, HttpStatus.CONFLICT, "Eligibility condition name already exists in this tournament")
+    ELIGIBILITY_CONDITION_EXISTS(1549, HttpStatus.CONFLICT, "Eligibility condition name already exists in this tournament"),
 
+    HANDICAP_RULE_CANNOT_NULL(1550, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) are required when handicap is enabled"),
+
+    WEIGHT_MUST_POSTIVE(1551, HttpStatus.BAD_REQUEST, "Weight fields must be positive values when handicap is enabled"),
+
+    INVALID_WEIGHT(1552, HttpStatus.BAD_REQUEST, "Min weight must be less than top weight"),
+
+    HANDICAP_DISABLE(1553, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
+
+    HORSE_REGISTRATION_LIMIT_EXCEEDED(1554, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
+    JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1555, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
     ;
 
 

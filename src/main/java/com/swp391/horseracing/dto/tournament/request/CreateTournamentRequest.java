@@ -1,5 +1,7 @@
 package com.swp391.horseracing.dto.tournament.request;
 
+import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.RaceClass;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -16,7 +18,6 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateTournamentRequest {
 
@@ -52,17 +53,11 @@ public class CreateTournamentRequest {
     @Positive(message = "Total prize pool must be positive")
     BigDecimal totalPrizePool;
 
-    @NotBlank(message = "Allowed breed is required")
-    @Size(max = 100, message = "Allowed breed must not exceed 100 characters")
-    String allowedBreed;
+    @NotNull(message = "Allowed breed is required")
+    HorseBreed allowedBreed;
 
-    @NotBlank(message = "Race class is required")
-    @Size(max = 50, message = "Race class must not exceed 50 characters")
-    String raceClass;
-
-    @NotBlank(message = "Weight class is required")
-    @Size(max = 50, message = "Weight class must not exceed 50 characters")
-    String weightClass;
+    @NotNull(message = "Race class is required")
+    RaceClass raceClass;
 
     @NotNull(message = "Min horse age is required")
     @Min(value = 0, message = "Min horse age must be at least 0")
@@ -72,25 +67,44 @@ public class CreateTournamentRequest {
     @Min(value = 0, message = "Max horse age must be at least 0")
     Integer maxHorseAge;
 
-    @NotBlank(message = "Tournament division is required")
-    @Size(max = 100, message = "Tournament division must not exceed 100 characters")
-    String tournamentDivision;
+    @Min(value = 0, message = "Top weight must be at least 0")
+    Integer topWeightLbs;
 
-    @NotBlank(message = "Handicap rule is required")
-    String handicapRule;
+    @Min(value = 0, message = "Min weight must be at least 0")
+    Integer minWeightLbs;
 
-    @NotBlank(message = "Prediction reward rule is required")
-    String predictionRewardRule;
+    Double equipmentWeightKg;
+
+    @NotNull(message = "Handicap enabled is required")
+    Boolean handicapEnabled;
+
+    @Min(value = 0, message = "Prediction TOP 1 correct points must be at least 0")
+    Integer predictionTop1CorrectPoints = 100;
+
+    @Min(value = 0, message = "Prediction TOP 3 exact position points must be at least 0")
+    Integer predictionTop3ExactPositionPoints = 30;
+
+    @Min(value = 0, message = "Prediction TOP 3 correct horse points must be at least 0")
+    Integer predictionTop3CorrectHorsePoints = 10;
+
+    @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
+    Integer predictionTop3PerfectBonusPoints = 50;
 
     @NotNull(message = "Max rounds is required")
     @Min(value = 1, message = "Max rounds must be at least 1")
     Integer maxRounds;
 
-    @Builder.Default
+    @NotNull(message = "Max approved horses is required")
+    @Min(value = 1, message = "Max approved horses must be at least 1")
+    Integer maxApprovedHorses;
+
+    @NotNull(message = "Max approved jockeys is required")
+    @Min(value = 1, message = "Max approved jockeys must be at least 1")
+    Integer maxApprovedJockeys;
+
     @Min(value = 1, message = "Prediction open minutes must be at least 1")
     Integer predictionOpenMinutesBefore = 120;
 
-    @Builder.Default
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore = 5;
 

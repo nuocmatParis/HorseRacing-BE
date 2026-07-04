@@ -1,5 +1,6 @@
 package com.swp391.horseracing.entity;
 
+import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
@@ -59,26 +60,31 @@ public class Tournament {
     @Column(name = "total_prize_pool", nullable = false, precision = 15, scale = 2)
     BigDecimal totalPrizePool;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "allowed_breed", nullable = false, length = 100)
-    String allowedBreed;
-
-    @Column(name = "race_class", nullable = false, length = 50)
-    RaceClass raceClass;
-
-    @Column(name = "weight_class", nullable = false, length = 50)
-    String weightClass;
+    HorseBreed allowedBreed;
 
     @Column(name = "min_horse_age", nullable = false)
     int minHorseAge;
 
     @Column(name = "max_horse_age", nullable = false)
     int maxHorseAge;
+    
+    @Builder.Default
+    @Column(name = "prediction_top1_correct_points", nullable = false)
+    int predictionTop1CorrectPoints = 100;
 
-    @Column(name = "handicap_rule", nullable = false, columnDefinition = "TEXT")
-    String handicapRule;
+    @Builder.Default
+    @Column(name = "prediction_top3_exact_position_points", nullable = false)
+    int predictionTop3ExactPositionPoints = 30;
 
-    @Column(name = "prediction_reward_rule", nullable = false, columnDefinition = "TEXT")
-    String predictionRewardRule;
+    @Builder.Default
+    @Column(name = "prediction_top3_correct_horse_points", nullable = false)
+    int predictionTop3CorrectHorsePoints = 10;
+
+    @Builder.Default
+    @Column(name = "prediction_top3_perfect_bonus_points", nullable = false)
+    int predictionTop3PerfectBonusPoints = 50;
 
     @Builder.Default
     @Column(name = "prediction_open_minutes_before", nullable = false)
@@ -125,27 +131,27 @@ public class Tournament {
     @Column(name = "race_class", length = 50)
     RaceClass raceClass;
 
-    @Column(name = "min_rating")
-    int minRating;
-
-    @Column(name = "max_rating")
-    int maxRating;
-
-    @Column(name = "handicap_enabled", nullable = false)
-    Boolean handicapEnabled = false;
-
     @Builder.Default
     @Column(name = "top_weight_lbs")
     int topWeightLbs = 135;
 
+    @Builder.Default
     @Column(name = "min_weight_lbs")
     int minWeightLbs = 115;
 
-    @Column(name = "equipment_weight_kg", precision = 5, scale = 2)
+    @Builder.Default
+    @Column(name = "equipment_weight_kg")
     double equipmentWeightKg = 1.5;
 
-    @Column(name = "handicap_rule", length = 1000)
-    String handicapRule;
+    @Builder.Default
+    @Column(name = "handicap_enabled", nullable = false)
+    boolean handicapEnabled = false;
+
+    @Column(name = "max_approved_horses", nullable = false)
+    Integer maxApprovedHorses;
+
+    @Column(name = "max_approved_jockeys", nullable = false)
+    Integer maxApprovedJockeys;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
