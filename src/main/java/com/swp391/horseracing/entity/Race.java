@@ -57,7 +57,7 @@ public class Race {
     @Column(name = "finished_at")
     LocalDateTime finishedAt;
 
-    @Column(name = "schedule_published_at", nullable = false)
+    @Column(name = "schedule_published_at")
     LocalDateTime schedulePublishedAt;
 
     @Column(name = "prediction_open_at", nullable = false)

@@ -8,6 +8,7 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -38,4 +39,6 @@ public class UpdateRoundRequest {
     Integer maxRaces;
 
     RoundStatus status;
+
+    UUID headRefereeId;
 }

@@ -2,6 +2,7 @@ package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.registration.request.RegisterJockeyRequest;
+import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import jakarta.validation.Valid;
@@ -28,6 +29,13 @@ public class JockeyTournamentController {
                                                                       @RequestBody @Valid RegisterJockeyRequest request) {
         return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.registerJockey(id, request))
+                .build();
+    }
+
+    @GetMapping("/tournaments/{id}/accepted-horses")
+    public ApiResponse<List<HorseTournamentRegistrationResponse>> getAcceptedHorses(@PathVariable UUID id) {
+        return ApiResponse.<List<HorseTournamentRegistrationResponse>>builder()
+                .result(tournamentRegistrationService.getApprovedHorsesByTournament(id))
                 .build();
     }
 

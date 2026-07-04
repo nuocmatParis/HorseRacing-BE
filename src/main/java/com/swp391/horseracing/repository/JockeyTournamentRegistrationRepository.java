@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -17,13 +16,11 @@ public interface JockeyTournamentRegistrationRepository extends JpaRepository<Jo
 
     boolean existsByTournament_TournamentIdAndJockey_JockeyId(UUID tournamentId, UUID jockeyId);
 
-    List<JockeyTournamentRegistration> findByTournament_TournamentId(UUID tournamentId);
-
     List<JockeyTournamentRegistration> findByJockey_JockeyId(UUID jockeyId);
 
     List<JockeyTournamentRegistration> findByStatus(RegistrationStatus status);
 
-    Optional<JockeyTournamentRegistration> findByTournament_TournamentIdAndJockey_JockeyId(UUID tournamentId, UUID jockeyId);
+    List<JockeyTournamentRegistration> findByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
 
     @Query("SELECT COUNT(r) > 0 FROM JockeyTournamentRegistration r " +
             "WHERE r.jockey.jockeyId = :jockeyId " +
