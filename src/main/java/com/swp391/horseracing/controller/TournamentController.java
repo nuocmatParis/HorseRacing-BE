@@ -14,6 +14,7 @@ import com.swp391.horseracing.service.TournamentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -70,6 +71,24 @@ public class TournamentController {
     public ApiResponse<List<RaceResponse>> getRacesByRound(@PathVariable UUID roundId) {
         return ApiResponse.<List<RaceResponse>>builder()
                 .result(raceService.getRacesByRoundId(roundId))
+                .build();
+    }
+
+    @PutMapping("/rounds/{roundId}/head-referee")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<RoundResponse> assignHeadReferee(
+            @PathVariable UUID roundId,
+            @RequestParam UUID refereeId) {
+        return ApiResponse.<RoundResponse>builder()
+                .result(roundService.assignHeadReferee(roundId, refereeId))
+                .build();
+    }
+
+    @DeleteMapping("/rounds/{roundId}/head-referee")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<RoundResponse> removeHeadReferee(@PathVariable UUID roundId) {
+        return ApiResponse.<RoundResponse>builder()
+                .result(roundService.removeHeadReferee(roundId))
                 .build();
     }
 }
