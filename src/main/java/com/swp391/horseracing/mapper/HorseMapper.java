@@ -16,17 +16,29 @@ public interface HorseMapper {
 
     @Mapping(target = "horseId", ignore = true)
     @Mapping(target = "owner", ignore = true)
+    @Mapping(target = "currentRating", ignore = true)
+    @Mapping(target = "highestRating", ignore = true)
+    @Mapping(target = "ratingUpdatedAt", ignore = true)
     @Mapping(target = "totalRaces", ignore = true)
     @Mapping(target = "totalWins", ignore = true)
+    @Mapping(target = "totalTop3Finishes", ignore = true)
     @Mapping(target = "winRate", ignore = true)
+    @Mapping(target = "lastRaceAt", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "tournamentRegistrations", ignore = true)
     Horse toHorse(HorseCreationRequest request);
 
     @Mapping(target = "horseId", ignore = true)
     @Mapping(target = "owner", ignore = true)
+    @Mapping(target = "currentRating", ignore = true)
+    @Mapping(target = "highestRating", ignore = true)
+    @Mapping(target = "ratingUpdatedAt", ignore = true)
     @Mapping(target = "totalRaces", ignore = true)
     @Mapping(target = "totalWins", ignore = true)
+    @Mapping(target = "totalTop3Finishes", ignore = true)
     @Mapping(target = "winRate", ignore = true)
+    @Mapping(target = "lastRaceAt", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "tournamentRegistrations", ignore = true)
     void updateHorse(@MappingTarget Horse horse, HorseUpdateRequest request);
 }

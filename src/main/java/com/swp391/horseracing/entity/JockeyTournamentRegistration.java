@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -63,4 +64,8 @@ public class JockeyTournamentRegistration {
 
     @Column(name = "note", columnDefinition = "TEXT")
     String note;
+
+    @Builder.Default
+    @Column(name = "hire_fee", nullable = false, precision = 15, scale = 2)
+    BigDecimal hireFee = BigDecimal.ZERO;
 }
