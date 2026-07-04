@@ -15,12 +15,12 @@ import java.util.UUID;
 public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findAllByPayerUser_UserIdOrderByCreatedAtDesc(UUID userId);
 
-    Optional<Invoice> findByHorseTournamentRegistration_RegistrationId(UUID tournamentRegId);
+    Optional<Invoice> findByHorseTournamentRegistration_HorseRegistrationId(UUID tournamentRegId);
 
 
     Optional<Invoice> findByContractIdAndInvoiceType(UUID contractId, InvoiceType invoiceType);
 
-    boolean existsByHorseTournamentRegistration_RegistrationIdAndInvoiceType(UUID tournamentRegId, InvoiceType invoiceType);
+    boolean existsByHorseTournamentRegistration_HorseRegistrationIdAndInvoiceType(UUID tournamentRegId, InvoiceType invoiceType);
 
     boolean existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndInvoiceType(
             UUID jockeyTournamentRegId, InvoiceType invoiceType);

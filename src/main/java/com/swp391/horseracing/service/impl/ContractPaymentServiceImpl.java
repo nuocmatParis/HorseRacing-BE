@@ -7,7 +7,6 @@ import com.swp391.horseracing.enums.EscrowStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.JockeyHorseContractRepository;
-import com.swp391.horseracing.repository.JockeyTournamentRegistrationRepository;
 import com.swp391.horseracing.service.ContractPaymentService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.UserCurrentService;

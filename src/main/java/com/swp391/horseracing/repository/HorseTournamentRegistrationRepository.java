@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -17,13 +16,9 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
 
     boolean existsByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
 
-    List<HorseTournamentRegistration> findByTournament_TournamentId(UUID tournamentId);
-
     List<HorseTournamentRegistration> findByOwner_OwnerId(UUID ownerId);
 
-    List<HorseTournamentRegistration> findByStatus(RegistrationStatus status);
-
-    Optional<HorseTournamentRegistration> findByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
+    List<HorseTournamentRegistration> findByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
 
     @Query("SELECT COUNT(r) > 0 FROM HorseTournamentRegistration r " +
             "WHERE r.horse.horseId = :horseId " +

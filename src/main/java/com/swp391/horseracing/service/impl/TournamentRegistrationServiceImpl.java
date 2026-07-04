@@ -191,7 +191,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validatePendingStatus(registration.getStatus());
 
-        Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_RegistrationId(registrationId).orElseThrow(()
+        Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_HorseRegistrationId(registrationId).orElseThrow(()
                 -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
 
         paymentService.refundInvoice(invoice.getInvoiceId());
@@ -423,6 +423,24 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     public List<JockeyTournamentRegistrationResponse> getAllJockeyRegistrations(){
         return jockeyRegistrationRepository.findAll()
                 .stream().map(jockeyRegistrationMapper :: toJockeyTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<JockeyTournamentRegistrationResponse> getApprovedJockeysByTournament(UUID tournamentId) {
+        return jockeyRegistrationRepository
+                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED)
+                .stream()
+                .map(jockeyRegistrationMapper::toJockeyTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HorseTournamentRegistrationResponse> getApprovedHorsesByTournament(UUID tournamentId) {
+        return horseRegistrationRepository
+                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED)
+                .stream()
+                .map(horseRegistrationMapper::toHorseTournamentRegistrationResponse)
                 .collect(Collectors.toList());
     }
 }

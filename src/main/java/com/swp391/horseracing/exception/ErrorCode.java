@@ -306,16 +306,50 @@ public enum ErrorCode {
 
     ELIGIBILITY_CONDITION_EXISTS(1549, HttpStatus.CONFLICT, "Eligibility condition name already exists in this tournament"),
 
-    HANDICAP_RULE_CANNOT_NULL(1550, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) are required when handicap is enabled"),
+    RACE_ENTRY_NOT_FOUND(1550, HttpStatus.NOT_FOUND, "Race entry not found"),
+    RACE_ENTRY_ALREADY_EXISTS(1551, HttpStatus.CONFLICT, "Race entry already exists in this race"),
+    LANE_NUMBER_ALREADY_TAKEN(1552, HttpStatus.CONFLICT, "Lane number already taken in this race"),
+    INVALID_RACE_ENTRY_STATUS(1553, HttpStatus.BAD_REQUEST, "Invalid race entry status"),
+    INVALID_RACE_ENTRY_STATUS_TRANSITION(1554, HttpStatus.BAD_REQUEST, "Invalid race entry status transition"),
 
-    WEIGHT_MUST_POSTIVE(1551, HttpStatus.BAD_REQUEST, "Weight fields must be positive values when handicap is enabled"),
+    // RACE ENTRY VALIDATION
+    RACE_NOT_IN_SCHEDULING(1555, HttpStatus.BAD_REQUEST, "Race is not in scheduling status"),
+    RACE_ALREADY_PUBLISHED(1556, HttpStatus.CONFLICT, "Schedule has already been published for this race"),
+    CONTRACT_NOT_APPROVED(1557, HttpStatus.BAD_REQUEST, "Contract is not approved"),
+    REGISTRATION_NOT_APPROVED(1558, HttpStatus.BAD_REQUEST, "Registration is not approved"),
+    TOURNAMENT_MISMATCH(1559, HttpStatus.BAD_REQUEST, "Race and Contract belong to different tournaments"),
+    HORSE_ALREADY_IN_ROUND(1563, HttpStatus.CONFLICT, "Horse has already been assigned in this round"),
+    JOCKEY_ALREADY_IN_ROUND(1564, HttpStatus.CONFLICT, "Jockey has already been assigned in this round"),
+    RACE_EXCEEDS_MAX_ENTRIES(1565, HttpStatus.BAD_REQUEST, "Race has reached maximum entries"),
+    LANE_EXCEEDS_MAX(1566, HttpStatus.BAD_REQUEST, "Lane number exceeds maximum entries"),
+    RACE_ALREADY_STARTED(1567, HttpStatus.BAD_REQUEST, "Race has already started"),
+    RACE_NOT_ENOUGH_ENTRIES(1568, HttpStatus.BAD_REQUEST, "Race must have at least 2 entries to publish schedule"),
+    RACE_MISSING_REFEREES(1569, HttpStatus.BAD_REQUEST, "Race must have at least one referee assigned to publish schedule"),
 
-    INVALID_WEIGHT(1552, HttpStatus.BAD_REQUEST, "Min weight must be less than top weight"),
+    // RACE REFEREE
+    RACE_REFEREE_NOT_FOUND(1560, HttpStatus.NOT_FOUND, "Race referee assignment not found"),
+    RACE_REFEREE_ALREADY_ASSIGNED(1561, HttpStatus.CONFLICT, "Referee already assigned to this race"),
 
-    HANDICAP_DISABLE(1553, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
+    // HEAD REFEREE
+    HEAD_REFEREE_ALREADY_ASSIGNED(1562, HttpStatus.CONFLICT, "Head referee already assigned to this round"),
 
-    HORSE_REGISTRATION_LIMIT_EXCEEDED(1554, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
-    JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1555, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
+    // CONTRACT
+    INVALID_CONTRACT_PERCENTAGES(1570, HttpStatus.BAD_REQUEST, "Advance percent and final percent must sum to 100"),
+    INVALID_PRIZE_SHARE_PERCENTAGES(1571, HttpStatus.BAD_REQUEST, "Owner prize share and jockey prize share must sum to 100"),
+    CONTRACT_ALREADY_EXISTS_FOR_HORSE(1572, HttpStatus.CONFLICT, "A contract already exists for this horse in this tournament"),
+    INVALID_CONTRACT_STATUS_TRANSITION(1573, HttpStatus.BAD_REQUEST, "Invalid contract status transition"),
+    CONTRACT_ALREADY_EXISTS_FOR_REGISTRATION(1574, HttpStatus.CONFLICT, "A contract already exists for this tournament registration"),
+
+    HANDICAP_RULE_CANNOT_NULL(1575, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) are required when handicap is enabled"),
+
+    WEIGHT_MUST_POSTIVE(1576, HttpStatus.BAD_REQUEST, "Weight fields must be positive values when handicap is enabled"),
+
+    INVALID_WEIGHT(1577, HttpStatus.BAD_REQUEST, "Min weight must be less than top weight"),
+
+    HANDICAP_DISABLE(1578, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
+
+    HORSE_REGISTRATION_LIMIT_EXCEEDED(1579, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
+    JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
     ;
 
 

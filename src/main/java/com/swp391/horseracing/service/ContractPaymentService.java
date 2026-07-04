@@ -4,6 +4,5 @@ import java.util.UUID;
 
 public interface ContractPaymentService {
     void markContractFeePaid(UUID contractId);
-
     void markHiringFeePaid(UUID contractId);
 }
