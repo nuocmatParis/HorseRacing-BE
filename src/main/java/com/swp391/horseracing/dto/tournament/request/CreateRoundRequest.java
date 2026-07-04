@@ -13,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -53,6 +54,8 @@ public class CreateRoundRequest {
 
     @NotNull(message = "Status is required")
     RoundStatus status;
+
+    UUID headRefereeId;
 
     @Valid
     List<CreateRaceRequest> races;

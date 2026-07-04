@@ -8,7 +8,6 @@ import com.swp391.horseracing.dto.user.response.UserResponse;
 import java.util.List;
 
 public interface UserService {
-    UserResponse create(UserCreationRequest request);
     List<UserResponse> findAll();
     void requestRegisterOtp(UserCreationRequest request);
 

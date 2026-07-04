@@ -69,7 +69,7 @@ public class Tournament {
 
     @Column(name = "max_horse_age", nullable = false)
     int maxHorseAge;
-    
+
     @Builder.Default
     @Column(name = "prediction_top1_correct_points", nullable = false)
     int predictionTop1CorrectPoints = 100;

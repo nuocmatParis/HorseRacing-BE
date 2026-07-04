@@ -53,8 +53,8 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public Invoice createOwnerRegistrationInvoice(UUID payerUserId, HorseTournamentRegistration registration, BigDecimal amount) {
-        if(invoiceRepository.existsByHorseTournamentRegistration_RegistrationIdAndInvoiceType(
-                registration.getRegistrationId(), InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
+        if(invoiceRepository.existsByHorseTournamentRegistration_HorseRegistrationIdAndInvoiceType(
+                registration.getHorseRegistrationId(), InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
             throw new AppException(ErrorCode.INVOICE_ALREADY_EXISTS);
 
         User payer = userRepository.findByUserId(payerUserId).orElseThrow(()

@@ -6,6 +6,7 @@ import com.swp391.horseracing.dto.horseowner.response.OwnerResponse;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.registration.request.RegisterHorseRequest;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.service.OwnerService;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import jakarta.validation.Valid;
@@ -33,6 +34,14 @@ public class OwnerController {
                                                                            @RequestBody @Valid RegisterHorseRequest request) {
         return ApiResponse.<HorseTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.registerHorse(id, request.getHorseId()))
+                .build();
+    }
+
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @GetMapping("/tournaments/{id}/accepted-jockeys")
+    public ApiResponse<List<JockeyTournamentRegistrationResponse>> getAcceptedJockeys(@PathVariable UUID id) {
+        return ApiResponse.<List<JockeyTournamentRegistrationResponse>>builder()
+                .result(tournamentRegistrationService.getApprovedJockeysByTournament(id))
                 .build();
     }
 

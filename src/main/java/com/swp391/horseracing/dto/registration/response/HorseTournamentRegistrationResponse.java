@@ -14,7 +14,7 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class HorseTournamentRegistrationResponse {
 
-    UUID registrationId;
+    UUID horseRegistrationId;
     UUID tournamentId;
     String tournamentName;
     UUID horseId;
