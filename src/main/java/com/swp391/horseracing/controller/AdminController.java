@@ -6,9 +6,11 @@ import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
 import com.swp391.horseracing.dto.race_referee.request.CreateRaceRefereeRequest;
 import com.swp391.horseracing.dto.race_referee.response.RaceRefereeResponse;
+import com.swp391.horseracing.dto.referee.response.RefereeResponse;
 import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
+import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.service.*;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -36,6 +38,7 @@ public class AdminController {
     ContractService contractService;
     RaceEntryService raceEntryService;
     RaceRefereeService raceRefereeService;
+    RefereeService refereeService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -174,6 +177,14 @@ public class AdminController {
     public ApiResponse<Void> deleteRaceEntry(@PathVariable UUID entryId) {
         raceEntryService.delete(entryId);
         return ApiResponse.<Void>builder().build();
+    }
+
+    @GetMapping("/referees")
+    public ApiResponse<List<RefereeResponse>> getAllReferees(
+            @RequestParam(required = false) RefereeStatus status) {
+        return ApiResponse.<List<RefereeResponse>>builder()
+                .result(refereeService.getAllReferees(status))
+                .build();
     }
 
     @PostMapping("/races/{raceId}/referees")
