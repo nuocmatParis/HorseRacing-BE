@@ -12,4 +12,12 @@ public interface InvoiceService {
     List<InvoiceResponse> getMyInvoices();
 
     Invoice createOwnerRegistrationInvoice(UUID payerUserId, HorseTournamentRegistration registration, BigDecimal amount);
+
+    void cancelInvoice(UUID invoiceId);
+
+    Invoice createContractCreationInvoice(UUID payerUserId, UUID contractId, BigDecimal amount);
+
+    Invoice createHiringFeeInvoice(UUID payerUserId, UUID contractId, BigDecimal amount);
+
+    Invoice getByContractIdAndType(UUID contractId);
 }

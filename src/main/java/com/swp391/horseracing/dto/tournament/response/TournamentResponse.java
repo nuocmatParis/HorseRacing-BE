@@ -1,5 +1,7 @@
 package com.swp391.horseracing.dto.tournament.response;
 
+import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import lombok.*;
@@ -27,17 +29,23 @@ public class TournamentResponse {
     BigDecimal registrationFee;
     BigDecimal systemContractFee;
     BigDecimal totalPrizePool;
-    String allowedBreed;
-    String raceClass;
-    String weightClass;
+    HorseBreed allowedBreed;
+    RaceClass raceClass;
     int minHorseAge;
     int maxHorseAge;
-    String tournamentDivision;
-    String handicapRule;
-    String predictionRewardRule;
+    int topWeightLbs;
+    int minWeightLbs;
+    double equipmentWeightKg;
+    boolean handicapEnabled;
+    int predictionTop1CorrectPoints;
+    int predictionTop3ExactPositionPoints;
+    int predictionTop3CorrectHorsePoints;
+    int predictionTop3PerfectBonusPoints;
     int predictionOpenMinutesBefore;
     int predictionCloseMinutesBefore;
     Integer maxRounds;
+    Integer maxApprovedHorses;
+    Integer maxApprovedJockeys;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;
@@ -47,7 +55,7 @@ public class TournamentResponse {
     LocalDateTime reviewDeadlineAt;
     LocalDateTime jockeyMatchingDeadlineAt;
     LocalDateTime schedulingDeadlineAt;
-    boolean overdue;
     UUID createdById;
     String createdByName;
+    boolean overdue;
 }

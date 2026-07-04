@@ -306,8 +306,6 @@ public enum ErrorCode {
 
     ELIGIBILITY_CONDITION_EXISTS(1549, HttpStatus.CONFLICT, "Eligibility condition name already exists in this tournament"),
 
-
-    // RACE ENTRY
     RACE_ENTRY_NOT_FOUND(1550, HttpStatus.NOT_FOUND, "Race entry not found"),
     RACE_ENTRY_ALREADY_EXISTS(1551, HttpStatus.CONFLICT, "Race entry already exists in this race"),
     LANE_NUMBER_ALREADY_TAKEN(1552, HttpStatus.CONFLICT, "Lane number already taken in this race"),
@@ -340,8 +338,18 @@ public enum ErrorCode {
     INVALID_PRIZE_SHARE_PERCENTAGES(1571, HttpStatus.BAD_REQUEST, "Owner prize share and jockey prize share must sum to 100"),
     CONTRACT_ALREADY_EXISTS_FOR_HORSE(1572, HttpStatus.CONFLICT, "A contract already exists for this horse in this tournament"),
     INVALID_CONTRACT_STATUS_TRANSITION(1573, HttpStatus.BAD_REQUEST, "Invalid contract status transition"),
-    CONTRACT_ALREADY_EXISTS_FOR_REGISTRATION(1574, HttpStatus.CONFLICT, "A contract already exists for this tournament registration")
+    CONTRACT_ALREADY_EXISTS_FOR_REGISTRATION(1574, HttpStatus.CONFLICT, "A contract already exists for this tournament registration"),
 
+    HANDICAP_RULE_CANNOT_NULL(1575, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) are required when handicap is enabled"),
+
+    WEIGHT_MUST_POSTIVE(1576, HttpStatus.BAD_REQUEST, "Weight fields must be positive values when handicap is enabled"),
+
+    INVALID_WEIGHT(1577, HttpStatus.BAD_REQUEST, "Min weight must be less than top weight"),
+
+    HANDICAP_DISABLE(1578, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
+
+    HORSE_REGISTRATION_LIMIT_EXCEEDED(1579, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
+    JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
     ;
 
 

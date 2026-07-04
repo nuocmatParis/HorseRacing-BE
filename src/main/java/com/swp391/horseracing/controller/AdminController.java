@@ -49,7 +49,7 @@ public class AdminController {
 
     @PostMapping("/tournaments/{id}/rounds")
     public ApiResponse<RoundResponse> createRound(@PathVariable UUID id,
-                                                   @RequestBody @Valid CreateRoundRequest request) {
+                                                  @RequestBody @Valid CreateRoundRequest request) {
         return ApiResponse.<RoundResponse>builder()
                 .result(roundService.create(id, request))
                 .build();
@@ -57,7 +57,7 @@ public class AdminController {
 
     @PostMapping("/rounds/{roundId}/races")
     public ApiResponse<RaceResponse> createRace(@PathVariable UUID roundId,
-                                                 @RequestBody @Valid CreateRaceRequest request) {
+                                                @RequestBody @Valid CreateRaceRequest request) {
         return ApiResponse.<RaceResponse>builder()
                 .result(raceService.create(roundId, request))
                 .build();
@@ -65,7 +65,7 @@ public class AdminController {
 
     @PostMapping("/tournaments/{id}/prize-structures")
     public ApiResponse<PrizeStructureResponse> createPrizeStructure(@PathVariable UUID id,
-                                                                     @RequestBody @Valid CreatePrizeStructureRequest request) {
+                                                                    @RequestBody @Valid CreatePrizeStructureRequest request) {
         return ApiResponse.<PrizeStructureResponse>builder()
                 .result(prizeStructureService.create(id, request))
                 .build();
@@ -73,7 +73,7 @@ public class AdminController {
 
     @PostMapping("/tournaments/{id}/eligibility")
     public ApiResponse<TournamentEligibilityResponse> createEligibility(@PathVariable UUID id,
-                                                                         @RequestBody @Valid CreateEligibilityRequest request) {
+                                                                        @RequestBody @Valid CreateEligibilityRequest request) {
         return ApiResponse.<TournamentEligibilityResponse>builder()
                 .result(tournamentEligibilityService.create(id, request))
                 .build();
@@ -87,9 +87,9 @@ public class AdminController {
 
     @GetMapping("/horse-registrations")
     public ApiResponse<List<HorseTournamentRegistrationResponse>> getAllHorseRegistrations(){
-    return ApiResponse.<List<HorseTournamentRegistrationResponse>>builder()
-            .result(tournamentRegistrationService.getAllHorseRegistrations())
-            .build();
+        return ApiResponse.<List<HorseTournamentRegistrationResponse>>builder()
+                .result(tournamentRegistrationService.getAllHorseRegistrations())
+                .build();
     }
 
     @GetMapping("/jockey-registrations")
@@ -136,7 +136,7 @@ public class AdminController {
 
     @PostMapping("/horse-registrations/{id}/reject")
     public ApiResponse<HorseTournamentRegistrationResponse> rejectHorseRegistration(@PathVariable UUID id,
-                                                                                     @RequestBody(required = false) String reason) {
+                                                                                    @RequestBody(required = false) String reason) {
         return ApiResponse.<HorseTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.rejectHorseRegistration(id, reason))
                 .build();
@@ -151,11 +151,12 @@ public class AdminController {
 
     @PostMapping("/jockey-registrations/{id}/reject")
     public ApiResponse<JockeyTournamentRegistrationResponse> rejectJockeyRegistration(@PathVariable UUID id,
-                                                                                       @RequestBody(required = false) String reason) {
+                                                                                      @RequestBody(required = false) String reason) {
         return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
                 .result(tournamentRegistrationService.rejectJockeyRegistration(id, reason))
                 .build();
     }
+
 
     @GetMapping("/contracts/approved/tournaments/{id}")
     public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
@@ -166,7 +167,7 @@ public class AdminController {
 
     @PostMapping("/races/{raceId}/entries")
     public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,
-                                                           @RequestBody CreateRaceEntryRequest request) {
+                                                          @RequestBody CreateRaceEntryRequest request) {
         request.setRaceId(raceId);
         return ApiResponse.<RaceEntryResponse>builder()
                 .result(raceEntryService.create(request))
@@ -189,7 +190,7 @@ public class AdminController {
 
     @PostMapping("/races/{raceId}/referees")
     public ApiResponse<RaceRefereeResponse> assignReferee(@PathVariable UUID raceId,
-                                                           @RequestBody CreateRaceRefereeRequest request) {
+                                                          @RequestBody CreateRaceRefereeRequest request) {
         request.setRaceId(raceId);
         return ApiResponse.<RaceRefereeResponse>builder()
                 .result(raceRefereeService.create(request))
@@ -209,7 +210,6 @@ public class AdminController {
                 .build();
     }
 
-    // ---- Update APIs ----
 
     @PutMapping("/tournaments/{id}")
     public ApiResponse<TournamentResponse> updateTournament(@PathVariable UUID id,
@@ -221,7 +221,7 @@ public class AdminController {
 
     @PutMapping("/rounds/{roundId}")
     public ApiResponse<RoundResponse> updateRound(@PathVariable UUID roundId,
-                                                   @RequestBody @Valid UpdateRoundRequest request) {
+                                                  @RequestBody @Valid UpdateRoundRequest request) {
         return ApiResponse.<RoundResponse>builder()
                 .result(roundService.update(roundId, request))
                 .build();
@@ -229,7 +229,7 @@ public class AdminController {
 
     @PutMapping("/races/{raceId}")
     public ApiResponse<RaceResponse> updateRace(@PathVariable UUID raceId,
-                                                 @RequestBody @Valid UpdateRaceRequest request) {
+                                                @RequestBody @Valid UpdateRaceRequest request) {
         return ApiResponse.<RaceResponse>builder()
                 .result(raceService.update(raceId, request))
                 .build();
@@ -237,7 +237,7 @@ public class AdminController {
 
     @PutMapping("/prize-structures/{prizeStructureId}")
     public ApiResponse<PrizeStructureResponse> updatePrizeStructure(@PathVariable UUID prizeStructureId,
-                                                                     @RequestBody @Valid UpdatePrizeStructureRequest request) {
+                                                                    @RequestBody @Valid UpdatePrizeStructureRequest request) {
         return ApiResponse.<PrizeStructureResponse>builder()
                 .result(prizeStructureService.update(prizeStructureId, request))
                 .build();
@@ -245,13 +245,11 @@ public class AdminController {
 
     @PutMapping("/eligibility/{eligibilityId}")
     public ApiResponse<TournamentEligibilityResponse> updateEligibility(@PathVariable UUID eligibilityId,
-                                                                         @RequestBody @Valid UpdateEligibilityRequest request) {
+                                                                        @RequestBody @Valid UpdateEligibilityRequest request) {
         return ApiResponse.<TournamentEligibilityResponse>builder()
                 .result(tournamentEligibilityService.update(eligibilityId, request))
                 .build();
     }
-
-    // ---- Delete APIs ----
 
     @DeleteMapping("/tournaments/{id}")
     public ApiResponse<Void> deleteTournament(@PathVariable UUID id) {
