@@ -277,7 +277,7 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private WalletPurpose getWalletPurpose(InvoiceType invoiceType){
-        if (invoiceType == InvoiceType.CONTRACT_CREATION_FEE || invoiceType == InvoiceType.CONTRACT_CREATION_FEE)
+        if (invoiceType == InvoiceType.CONTRACT_CREATION_FEE || invoiceType == InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE)
             return  WalletPurpose.SYSTEM_REVENUE;
         if (invoiceType == InvoiceType.JOCKEY_HIRING_FEE)
             return WalletPurpose.SYSTEM_ESCROW;

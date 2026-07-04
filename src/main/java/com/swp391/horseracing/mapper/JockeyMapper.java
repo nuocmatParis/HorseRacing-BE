@@ -19,11 +19,24 @@ public interface JockeyMapper {
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "totalRaces", ignore = true)
+    @Mapping(target = "totalWins", ignore = true)
+    @Mapping(target = "jockeyTier", ignore = true)
+    @Mapping(target = "tierUpdatedAt", ignore = true)
+    @Mapping(target = "lastRaceAt", ignore = true)
+    @Mapping(target = "tournamentRegistrations", ignore = true)
     Jockey toJockey(JockeyCreationRequest request);
 
     @Mapping(target = "jockeyId", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "totalRaces", ignore = true)
+    @Mapping(target = "totalWins", ignore = true)
+    @Mapping(target = "jockeyTier", ignore = true)
+    @Mapping(target = "tierUpdatedAt", ignore = true)
+    @Mapping(target = "lastRaceAt", ignore = true)
+    @Mapping(target = "tournamentRegistrations", ignore = true)
+    @Mapping(target = "experienceYears", ignore = true)
     void updateJockey(@MappingTarget Jockey jockey, JockeyUpdateRequest request);
 }

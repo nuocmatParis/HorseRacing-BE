@@ -1,5 +1,7 @@
 package com.swp391.horseracing.entity;
 
+import com.swp391.horseracing.enums.EligibilityCondition;
+import com.swp391.horseracing.enums.EligibilityOperator;
 import com.swp391.horseracing.enums.EligibilityTargetType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,11 +31,13 @@ public class TournamentEligibility {
     @Column(name = "target_type", nullable = false)
     EligibilityTargetType targetType;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "condition_name", nullable = false, length = 100)
-    String conditionName;
+    EligibilityCondition conditionName;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "condition_operator", nullable = false, length = 10)
-    String conditionOperator;
+    EligibilityOperator conditionOperator;
 
     @Column(name = "condition_value", nullable = false, length = 100)
     String conditionValue;
@@ -41,8 +45,6 @@ public class TournamentEligibility {
     @Builder.Default
     @Column(name = "is_active", nullable = false)
     boolean isActive = true;
-
-    // ---- Relationships ----
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)

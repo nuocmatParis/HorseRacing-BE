@@ -30,4 +30,6 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("statuses") List<RegistrationStatus> statuses);
+
+    long countByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
 }

@@ -1,5 +1,6 @@
 package com.swp391.horseracing.service;
 
+import com.swp391.horseracing.dto.registration.request.RegisterJockeyRequest;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 
@@ -10,7 +11,7 @@ public interface TournamentRegistrationService {
 
     HorseTournamentRegistrationResponse registerHorse(UUID tournamentId, UUID horseId);
 
-    JockeyTournamentRegistrationResponse registerJockey(UUID tournamentId);
+    JockeyTournamentRegistrationResponse registerJockey(UUID tournamentId, RegisterJockeyRequest request);
 
     List<JockeyTournamentRegistrationResponse> getMyJockeyRegistrations();
 

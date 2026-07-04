@@ -76,9 +76,18 @@ public class TournamentServiceImpl implements TournamentService {
                 request.getSchedulingDeadlineAt()
         );
 
+        validateHandicapSettings(request.getHandicapEnabled(), request.getTopWeightLbs(), request.getMinWeightLbs(), request.getEquipmentWeightKg());
+
         User currentUser = getCurrentUser();
 
         Tournament tournament = tournamentMapper.toTournament(request);
+        
+        if (!tournament.isHandicapEnabled()) {
+            tournament.setTopWeightLbs(0);
+            tournament.setMinWeightLbs(0);
+            tournament.setEquipmentWeightKg(0.0);
+        }
+
         tournament.setStatus(TournamentStatus.DRAFT);
         tournament.setPhase(TournamentPhase.DRAFT);
         tournament.setCreatedBy(currentUser);
@@ -148,7 +157,33 @@ public class TournamentServiceImpl implements TournamentService {
                 ? request.getSchedulingDeadlineAt() : tournament.getSchedulingDeadlineAt();
         validateTimingOrder(regOpen, regClose, reviewAt, matchAt, schedAt);
 
+        Boolean newHandicapEnabled = request.getHandicapEnabled() != null
+                ? request.getHandicapEnabled() : tournament.isHandicapEnabled();
+
+        Integer topWeightLbs = request.getTopWeightLbs();
+        if (topWeightLbs == null && newHandicapEnabled) {
+            topWeightLbs = tournament.getTopWeightLbs();
+        }
+
+        Integer minWeightLbs = request.getMinWeightLbs();
+        if (minWeightLbs == null && newHandicapEnabled) {
+            minWeightLbs = tournament.getMinWeightLbs();
+        }
+
+        Double equipmentWeightKg = request.getEquipmentWeightKg();
+        if (equipmentWeightKg == null && newHandicapEnabled) {
+            equipmentWeightKg = tournament.getEquipmentWeightKg();
+        }
+
+        validateHandicapSettings(newHandicapEnabled, topWeightLbs, minWeightLbs, equipmentWeightKg);
+
         tournamentMapper.updateTournament(request, tournament);
+
+        if (!tournament.isHandicapEnabled()) {
+            tournament.setTopWeightLbs(0);
+            tournament.setMinWeightLbs(0);
+            tournament.setEquipmentWeightKg(0.0);
+        }
 
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -320,6 +355,26 @@ public class TournamentServiceImpl implements TournamentService {
             }
         }
         return true;
+    }
+
+    private void validateHandicapSettings(Boolean handicapEnabled, Integer topWeightLbs, Integer minWeightLbs, Double equipmentWeightKg) {
+        if (handicapEnabled != null && handicapEnabled) {
+            if (topWeightLbs == null || minWeightLbs == null || equipmentWeightKg == null) {
+                throw new AppException(ErrorCode.HANDICAP_RULE_CANNOT_NULL);
+            }
+            if (topWeightLbs <= 0 || minWeightLbs <= 0 || equipmentWeightKg <= 0.0) {
+                throw new AppException(ErrorCode.WEIGHT_MUST_POSTIVE);
+            }
+            if (minWeightLbs >= topWeightLbs) {
+                throw new AppException(ErrorCode.INVALID_WEIGHT);
+            }
+        } else {
+            if ((topWeightLbs != null && topWeightLbs != 0) ||
+                    (minWeightLbs != null && minWeightLbs != 0) ||
+                    (equipmentWeightKg != null && equipmentWeightKg != 0.0)) {
+                throw new AppException(ErrorCode.HANDICAP_DISABLE);
+            }
+        }
     }
 
     private User getCurrentUser() {
