@@ -28,7 +28,7 @@ public class HorseTournamentRegistration {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "horse_tournament_reg_id", columnDefinition = "CHAR(36)")
     @JdbcTypeCode(SqlTypes.CHAR)
-    UUID registrationId;
+    UUID horseRegistrationId;
 
     @ManyToOne(fetch = LAZY)
     @JoinColumn(name = "tournament_id", nullable = false)

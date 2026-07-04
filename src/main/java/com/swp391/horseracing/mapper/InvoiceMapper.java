@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 public interface InvoiceMapper {
 
     @Mapping(target = "tournamentRegId",
-            source = "horseTournamentRegistration.registrationId")
+            source = "horseTournamentRegistration.horseRegistrationId")
     @Mapping(target = "payerUserId",
             source = "payerUser.userId")
     @Mapping(target = "jockeyTournamentRegId",

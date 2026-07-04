@@ -12,4 +12,6 @@ public interface RoundService {
     RoundResponse update(UUID roundId, UpdateRoundRequest request);
     void delete(UUID roundId);
     List<RoundResponse> getRoundsByTournamentId(UUID tournamentId);
+    RoundResponse assignHeadReferee(UUID roundId, UUID refereeId);
+    RoundResponse removeHeadReferee(UUID roundId);
 }

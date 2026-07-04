@@ -53,8 +53,8 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     @Transactional
     public Invoice createOwnerRegistrationInvoice(UUID payerUserId, HorseTournamentRegistration registration, BigDecimal amount) {
-        if(invoiceRepository.existsByHorseTournamentRegistration_RegistrationIdAndInvoiceType(
-                registration.getRegistrationId(), InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
+        if(invoiceRepository.existsByHorseTournamentRegistration_HorseRegistrationIdAndInvoiceType(
+                registration.getHorseRegistrationId(), InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE))
             throw new AppException(ErrorCode.INVOICE_ALREADY_EXISTS);
 
         User payer = userRepository.findByUserId(payerUserId).orElseThrow(()
@@ -74,22 +74,4 @@ public class InvoiceServiceImpl implements InvoiceService {
         return invoiceRepository.save(invoice);
     }
 
-    @Override
-    @Transactional
-    public void cancelInvoice(UUID invoiceId) {
-        Invoice invoice = invoiceRepository.findForUpdateByInvoiceId(invoiceId).orElseThrow(()
-                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
-
-        if(invoice.getStatus() == InvoiceStatus.PAID)
-            throw new AppException(ErrorCode.PAID_INVOICE_CANNOT_BE_CANCELLED);
-
-        if(invoice.getStatus() == InvoiceStatus.REFUNDED)
-            throw new AppException(ErrorCode.INVOICE_ALREADY_REFUNDED);
-
-        if(invoice.getStatus() == InvoiceStatus.CANCELLED)
-            return;
-
-        invoice.setStatus(InvoiceStatus.CANCELLED);
-        invoiceRepository.save(invoice);
-    }
 }

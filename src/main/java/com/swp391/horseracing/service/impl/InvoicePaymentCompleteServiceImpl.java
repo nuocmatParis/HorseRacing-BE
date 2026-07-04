@@ -20,7 +20,7 @@ public class InvoicePaymentCompleteServiceImpl implements InvoicePaymentComplete
         if (invoice.getInvoiceType() == InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE) {
             if (invoice.getHorseTournamentRegistration() != null) {
                 registrationPaymentService.markOwnerRegistrationPaid(
-                        invoice.getHorseTournamentRegistration().getRegistrationId());
+                        invoice.getHorseTournamentRegistration().getHorseRegistrationId());
             }
 
         }
