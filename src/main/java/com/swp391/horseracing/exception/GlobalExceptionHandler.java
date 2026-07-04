@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                 .code(errorCode.getCode())
-                .message(errorCode.getMessage())
+                .message(exception.getMessage())
                 .build();
 
         return ResponseEntity

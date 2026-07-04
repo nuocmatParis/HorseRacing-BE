@@ -38,8 +38,4 @@ public class HorseCreationRequest {
 
     @NotNull(message = "Health status is required")
     HealthStatus healthStatus;
-
-    @NotBlank(message = "Race class is required")
-    @Size(max = 50, message = "Race class must not exceed 50 characters")
-    String raceClass;
 }

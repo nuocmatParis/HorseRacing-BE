@@ -1,5 +1,6 @@
 package com.swp391.horseracing.service.impl;
 
+import com.swp391.horseracing.dto.registration.request.RegisterJockeyRequest;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.entity.*;
@@ -101,7 +102,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
     @Override
     @Transactional
-    public JockeyTournamentRegistrationResponse registerJockey(UUID tournamentId) {
+    public JockeyTournamentRegistrationResponse registerJockey(UUID tournamentId, RegisterJockeyRequest request) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
 
@@ -135,6 +136,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         JockeyTournamentRegistration registration = JockeyTournamentRegistration.builder()
                 .tournament(tournament)
                 .jockey(jockey)
+                .hireFee(request.getHireFee())
                 .status(RegistrationStatus.PENDING_REVIEW)
                 .build();
         registration = jockeyRegistrationRepository.save(registration);
@@ -165,6 +167,13 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
 
         validatePendingStatus(registration.getStatus());
+
+        Tournament tournament = registration.getTournament();
+        long approvedCount = horseRegistrationRepository.countByTournament_TournamentIdAndStatus(
+                tournament.getTournamentId(), RegistrationStatus.APPROVED);
+        if (tournament.getMaxApprovedHorses() != null && approvedCount >= tournament.getMaxApprovedHorses()) {
+            throw new AppException(ErrorCode.HORSE_REGISTRATION_LIMIT_EXCEEDED);
+        }
 
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.APPROVED);
@@ -204,6 +213,13 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND));
 
         validatePendingStatus(registration.getStatus());
+
+        Tournament tournament = registration.getTournament();
+        long approvedCount = jockeyRegistrationRepository.countByTournament_TournamentIdAndStatus(
+                tournament.getTournamentId(), RegistrationStatus.APPROVED);
+        if (tournament.getMaxApprovedJockeys() != null && approvedCount >= tournament.getMaxApprovedJockeys()) {
+            throw new AppException(ErrorCode.JOCKEY_REGISTRATION_LIMIT_EXCEEDED);
+        }
 
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.APPROVED);
@@ -246,19 +262,41 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     }
 
     private void applyJockeyEligibilityRule(Jockey jockey, TournamentEligibility rule) {
-        String condition = rule.getConditionName().toLowerCase();
-        String operator = rule.getConditionOperator();
+        EligibilityCondition condition = rule.getConditionName();
+        EligibilityOperator operator = rule.getConditionOperator();
         String value = rule.getConditionValue();
 
         boolean passed = switch (condition) {
-            case "height" -> compareFloat(jockey.getHeight(), operator, Float.parseFloat(value));
-            case "weight" -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
-            case "experienceyears" -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
+            case AGE -> {
+                int age = java.time.Period.between(jockey.getUser().getDob(), java.time.LocalDate.now()).getYears();
+                yield compareInt(age, operator, Integer.parseInt(value));
+            }
+            case WEIGHT -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
+            case EXPERIENCE_YEARS -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
+            case JOCKEY_TIER -> compareJockeyTier(jockey.getJockeyTier(), operator, value);
             default -> true;
         };
 
         if (!passed) {
             throw new AppException(ErrorCode.JOCKEY_NOT_ELIGIBLE);
+        }
+    }
+
+    private boolean compareJockeyTier(JockeyTier actual, EligibilityOperator operator, String expectedValue) {
+        try {
+            JockeyTier expected = JockeyTier.valueOf(expectedValue.toUpperCase());
+            int actualOrdinal = actual.ordinal();
+            int expectedOrdinal = expected.ordinal();
+            return switch (operator) {
+                case EQUAL -> actualOrdinal == expectedOrdinal;
+                case NOT_EQUAL -> actualOrdinal != expectedOrdinal;
+                case GREATER_THAN -> actualOrdinal > expectedOrdinal;
+                case GREATER_THAN_OR_EQUAL -> actualOrdinal >= expectedOrdinal;
+                case LESS_THAN -> actualOrdinal < expectedOrdinal;
+                case LESS_THAN_OR_EQUAL -> actualOrdinal <= expectedOrdinal;
+            };
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 
@@ -272,14 +310,11 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
-        List<String> allowedBreeds = Arrays.stream(tournament.getAllowedBreed().split("\\s*,\\s*"))
-                .map(String::toUpperCase)
-                .toList();
-        if (allowedBreeds.stream().noneMatch(b -> b.equals(horse.getBreed().name()))) {
+        if (tournament.getAllowedBreed() != horse.getBreed()) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
-        if (!tournament.getRaceClass().equalsIgnoreCase(horse.getRaceClass())) {
+        if (tournament.getRaceClass() != null && tournament.getRaceClass() != horse.getRaceClass()) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
@@ -294,18 +329,15 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     }
 
     private void applyEligibilityRule(Horse horse, TournamentEligibility rule) {
-        String condition = rule.getConditionName().toLowerCase();
-        String operator = rule.getConditionOperator();
+        EligibilityCondition condition = rule.getConditionName();
+        EligibilityOperator operator = rule.getConditionOperator();
         String value = rule.getConditionValue();
 
         boolean passed = switch (condition) {
-            case "age" -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
-            case "weight" -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
-            case "winrate" -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
-            case "totalraces" -> compareInt(horse.getTotalRaces(), operator, Integer.parseInt(value));
-            case "totalwins" -> compareInt(horse.getTotalWins(), operator, Integer.parseInt(value));
-            case "raceclass" -> value.equalsIgnoreCase(horse.getRaceClass());
-            case "breed" -> value.equalsIgnoreCase(horse.getBreed().name());
+            case AGE -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
+            case WEIGHT -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
+            case WIN_RATE -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
+            case BREED -> compareBreed(horse.getBreed(), operator, value);
             default -> true;
         };
 
@@ -314,35 +346,49 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         }
     }
 
-    private boolean compareInt(int actual, String operator, int expected) {
+    private boolean compareBreed(HorseBreed actual, EligibilityOperator operator, String expectedValue) {
+        try {
+            HorseBreed expected = HorseBreed.valueOf(expectedValue.toUpperCase());
+            return switch (operator) {
+                case EQUAL -> actual == expected;
+                case NOT_EQUAL -> actual != expected;
+                default -> false;
+            };
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private boolean compareInt(int actual, EligibilityOperator operator, int expected) {
         return switch (operator) {
-            case ">=" -> actual >= expected;
-            case "<=" -> actual <= expected;
-            case ">" -> actual > expected;
-            case "<" -> actual < expected;
-            case "==" -> actual == expected;
-            case "!=" -> actual != expected;
-            default -> true;
+            case GREATER_THAN_OR_EQUAL -> actual >= expected;
+            case LESS_THAN_OR_EQUAL -> actual <= expected;
+            case GREATER_THAN -> actual > expected;
+            case LESS_THAN -> actual < expected;
+            case EQUAL -> actual == expected;
+            case NOT_EQUAL -> actual != expected;
         };
     }
 
-    private boolean compareFloat(float actual, String operator, float expected) {
+    private boolean compareFloat(float actual, EligibilityOperator operator, float expected) {
         return switch (operator) {
-            case ">=" -> actual >= expected;
-            case "<=" -> actual <= expected;
-            case ">" -> actual > expected;
-            case "<" -> actual < expected;
-            default -> true;
+            case GREATER_THAN_OR_EQUAL -> actual >= expected;
+            case LESS_THAN_OR_EQUAL -> actual <= expected;
+            case GREATER_THAN -> actual > expected;
+            case LESS_THAN -> actual < expected;
+            case EQUAL -> actual == expected;
+            case NOT_EQUAL -> actual != expected;
         };
     }
 
-    private boolean compareDouble(double actual, String operator, double expected) {
+    private boolean compareDouble(double actual, EligibilityOperator operator, double expected) {
         return switch (operator) {
-            case ">=" -> actual >= expected;
-            case "<=" -> actual <= expected;
-            case ">" -> actual > expected;
-            case "<" -> actual < expected;
-            default -> true;
+            case GREATER_THAN_OR_EQUAL -> actual >= expected;
+            case LESS_THAN_OR_EQUAL -> actual <= expected;
+            case GREATER_THAN -> actual > expected;
+            case LESS_THAN -> actual < expected;
+            case EQUAL -> actual == expected;
+            case NOT_EQUAL -> actual != expected;
         };
     }
 
