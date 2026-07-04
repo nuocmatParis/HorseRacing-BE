@@ -379,4 +379,22 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .stream().map(jockeyRegistrationMapper :: toJockeyTournamentRegistrationResponse)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<JockeyTournamentRegistrationResponse> getApprovedJockeysByTournament(UUID tournamentId) {
+        return jockeyRegistrationRepository
+                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED)
+                .stream()
+                .map(jockeyRegistrationMapper::toJockeyTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HorseTournamentRegistrationResponse> getApprovedHorsesByTournament(UUID tournamentId) {
+        return horseRegistrationRepository
+                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED)
+                .stream()
+                .map(horseRegistrationMapper::toHorseTournamentRegistrationResponse)
+                .collect(Collectors.toList());
+    }
 }

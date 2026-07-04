@@ -74,22 +74,4 @@ public class InvoiceServiceImpl implements InvoiceService {
         return invoiceRepository.save(invoice);
     }
 
-    @Override
-    @Transactional
-    public void cancelInvoice(UUID invoiceId) {
-        Invoice invoice = invoiceRepository.findForUpdateByInvoiceId(invoiceId).orElseThrow(()
-                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
-
-        if(invoice.getStatus() == InvoiceStatus.PAID)
-            throw new AppException(ErrorCode.PAID_INVOICE_CANNOT_BE_CANCELLED);
-
-        if(invoice.getStatus() == InvoiceStatus.REFUNDED)
-            throw new AppException(ErrorCode.INVOICE_ALREADY_REFUNDED);
-
-        if(invoice.getStatus() == InvoiceStatus.CANCELLED)
-            return;
-
-        invoice.setStatus(InvoiceStatus.CANCELLED);
-        invoiceRepository.save(invoice);
-    }
 }
