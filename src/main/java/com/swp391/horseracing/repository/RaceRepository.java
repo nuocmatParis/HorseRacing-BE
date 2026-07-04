@@ -12,8 +12,6 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
 
     List<Race> findByRound_RoundId(UUID roundId);
     List<Race> findByRound_RoundIdOrderByStartTimeDesc(UUID roundId);
-    List<Race> findByRound_RoundIdOrderBySequenceOrderAsc(UUID roundId);
-    boolean existsByName(String name);
     boolean existsByRound_RoundIdAndName(UUID roundId, String name);
     boolean existsByRound_RoundIdAndSequenceOrder(UUID roundId, int sequenceOrder);
     List<Race> findByRound_RoundIdAndRaceIdNotOrderBySequenceOrderAsc(UUID roundId, UUID raceId);

@@ -19,7 +19,6 @@ import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.EmailService;
 import com.swp391.horseracing.service.UserService;
 import com.swp391.horseracing.service.WalletService;
-import jakarta.validation.constraints.Email;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -53,43 +52,6 @@ public class UserServiceImpl implements UserService {
             RoleName.JOCKEY);
 
     static  int OTP_EXPIRE_MINITUES = 5;
-
-    @Override
-    @Transactional
-    public UserResponse create(UserCreationRequest request) {
-
-        if(!SELF_REGISTER_ALLOWED_ROLES.contains(request.getRoleName())){
-            throw new AppException(ErrorCode.ROLE_NOT_ALLOWED);
-        }
-
-        Role role = roleRepository.findByRoleName(request.getRoleName()).orElseThrow(()
-                -> new AppException(ErrorCode.ROLE_NOT_FOUND));
-
-        if(userRepository.existsByUsername(request.getUsername()))
-            throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
-
-        if(userRepository.existsByEmail(request.getEmail())){
-            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTS);
-        }
-
-        if(userRepository.existsByPhoneNumber(request.getPhoneNumber()))
-            throw new AppException(ErrorCode.PHONE_NUMBER_ALREADY_EXISTS);
-
-        User user = userMapper.toUser(request);
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(role);
-        user.setStatus(AccountStatus.ACTIVE);
-        user.setCreatedAt(LocalDateTime.now());
-
-        User savedUser = userRepository.save(user);
-
-        RoleName roleName = savedUser.getRole().getRoleName();
-
-        if (roleName == RoleName.HORSE_OWNER || roleName == RoleName.JOCKEY) {
-            walletService.createUserWallet(savedUser);
-        }
-        return userMapper.toUserResponse(savedUser);
-    }
 
     @Override
     @Transactional
