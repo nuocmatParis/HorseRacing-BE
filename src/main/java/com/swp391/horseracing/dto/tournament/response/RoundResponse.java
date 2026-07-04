@@ -29,4 +29,6 @@ public class RoundResponse {
     LocalDateTime createdAt;
     UUID tournamentId;
     UUID createdById;
+    UUID headRefereeId;
+    LocalDateTime headRefereeAssignedAt;
 }
