@@ -350,6 +350,48 @@ public enum ErrorCode {
 
     HORSE_REGISTRATION_LIMIT_EXCEEDED(1579, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
     JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
+
+    // RACE RESULT
+    RACE_RESULT_NOT_FOUND(1601, HttpStatus.NOT_FOUND, "Race result not found"),
+    RACE_RESULT_ALREADY_EXISTS(1602, HttpStatus.CONFLICT, "Race result already exists for this entry"),
+    RACE_ALREADY_HAS_RESULTS(1603, HttpStatus.CONFLICT, "Race already has results recorded"),
+    INVALID_RACE_RESULT_STATUS(1604, HttpStatus.BAD_REQUEST, "Invalid race result status"),
+    DUPLICATE_RACE_RESULT_RANK(1605, HttpStatus.CONFLICT, "Duplicate rank in the same race"),
+    FINISH_TIME_MUST_BE_POSITIVE(1606, HttpStatus.BAD_REQUEST, "Finish time must be zero or positive"),
+    RANK_MUST_BE_POSITIVE(1607, HttpStatus.BAD_REQUEST, "Rank must be at least 1"),
+    PRIZE_ALREADY_PAID(1608, HttpStatus.CONFLICT, "Prize has already been paid for this result"),
+    PRIZE_NOT_ELIGIBLE(1609, HttpStatus.BAD_REQUEST, "Result is not eligible for prize payout"),
+
+    // RACE REPORT
+    RACE_REPORT_NOT_FOUND(1610, HttpStatus.NOT_FOUND, "Race report not found"),
+    RACE_REPORT_ALREADY_EXISTS(1611, HttpStatus.CONFLICT, "Race report already exists for this race"),
+    RACE_REPORT_ALREADY_SIGNED(1612, HttpStatus.CONFLICT, "Race report has already been signed"),
+    RACE_REPORT_ALREADY_PUBLISHED(1613, HttpStatus.CONFLICT, "Race report has already been published"),
+    RACE_REPORT_NOT_SIGNED(1614, HttpStatus.BAD_REQUEST, "Race report must be signed before publishing"),
+    RACE_REPORT_NOT_IN_DRAFT(1615, HttpStatus.BAD_REQUEST, "Race report is not in draft status"),
+    RACE_REPORT_NOT_IN_SIGNED(1616, HttpStatus.BAD_REQUEST, "Race report is not in signed status"),
+
+    // APPEAL CATEGORY
+    APPEAL_CATEGORY_NOT_FOUND(1620, HttpStatus.NOT_FOUND, "Appeal category not found"),
+    APPEAL_CATEGORY_CODE_EXISTS(1621, HttpStatus.CONFLICT, "Appeal category code already exists"),
+    APPEAL_CATEGORY_INACTIVE(1622, HttpStatus.BAD_REQUEST, "Appeal category is inactive"),
+
+    // APPEAL
+    APPEAL_NOT_FOUND(1630, HttpStatus.NOT_FOUND, "Appeal not found"),
+    APPEAL_ALREADY_REVIEWED(1631, HttpStatus.CONFLICT, "Appeal has already been reviewed"),
+    APPEAL_NOT_PENDING(1632, HttpStatus.BAD_REQUEST, "Appeal is not in pending status"),
+    INVALID_APPEAL_STATUS_TRANSITION(1633, HttpStatus.BAD_REQUEST, "Invalid appeal status transition"),
+    APPEAL_ALREADY_CANCELLED(1634, HttpStatus.CONFLICT, "Appeal has already been cancelled"),
+
+    // APPEAL EVIDENCE
+    APPEAL_EVIDENCE_NOT_FOUND(1640, HttpStatus.NOT_FOUND, "Appeal evidence not found"),
+    APPEAL_EVIDENCE_REQUIRED(1641, HttpStatus.BAD_REQUEST, "Either file URL or text content must be provided for evidence"),
+
+    // VIOLATION
+    VIOLATION_NOT_FOUND(1650, HttpStatus.NOT_FOUND, "Violation not found"),
+    VIOLATION_ALREADY_RESOLVED(1651, HttpStatus.CONFLICT, "Violation has already been resolved"),
+    VIOLATION_ALREADY_CANCELLED(1652, HttpStatus.CONFLICT, "Violation has already been cancelled"),
+    INVALID_VIOLATION_STATUS_TRANSITION(1653, HttpStatus.BAD_REQUEST, "Invalid violation status transition"),
     ;
 
 
