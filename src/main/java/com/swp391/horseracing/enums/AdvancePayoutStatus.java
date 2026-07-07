@@ -1,6 +1,6 @@
 package com.swp391.horseracing.enums;
 
-public enum PayoutStatus {
+public enum AdvancePayoutStatus {
     PAID,
     NOT_PAID,
     CANCELLED

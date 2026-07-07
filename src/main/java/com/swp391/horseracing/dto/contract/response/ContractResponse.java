@@ -16,36 +16,60 @@ import java.util.UUID;
 public class ContractResponse {
 
     UUID contractId;
+
     UUID tournamentId;
-    UUID tournamentRegId;
+    String tournamentName;
+
+    UUID horseTournamentRegId;
     UUID jockeyTournamentRegId;
+
     UUID ownerId;
+    String ownerName;
+
     UUID horseId;
+    String horseName;
+
     UUID jockeyId;
+    String jockeyName;
+
     BigDecimal hireFee;
+
     Float advancePercent;
     Float finalPercent;
+
     BigDecimal advancePaidAmount;
     BigDecimal escrowAmount;
+
     BigDecimal systemContractFee;
+
     Float ownerPrizeSharePercent;
     Float jockeyPrizeSharePercent;
+
     ContractPaymentStatus paymentStatus;
     EscrowStatus escrowStatus;
-    PayoutStatus advancePayoutStatus;
+    AdvancePayoutStatus advancePayoutStatus;
     FinalPayoutStatus finalPayoutStatus;
+
     LocalDateTime advancePayoutAt;
     LocalDateTime finalPayoutAt;
+
     ContractStatus status;
+
     LocalDateTime requestedAt;
     LocalDateTime respondedAt;
     LocalDateTime acceptedAt;
     LocalDateTime submittedAt;
+
     UUID reviewedById;
+    String reviewedByName;
     LocalDateTime reviewedAt;
+
     String rejectedReason;
+
     LocalDateTime cancelledAt;
     String cancelReason;
+
     LocalDateTime terminatedAt;
+
     String contractNote;
 }
