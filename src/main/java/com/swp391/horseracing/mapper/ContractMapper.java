@@ -1,6 +1,5 @@
 package com.swp391.horseracing.mapper;
 
-import com.swp391.horseracing.dto.contract.request.CreateContractRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.entity.JockeyHorseContract;
 import org.mapstruct.Mapper;
@@ -15,7 +14,7 @@ public interface ContractMapper {
     @Mapping(source = "owner.ownerId", target = "ownerId")
     @Mapping(source = "owner.user.fullName", target = "ownerName")
     @Mapping(source = "horse.horseId", target = "horseId")
-    @Mapping(source = "horse.horseName", target = "name")
+    @Mapping(source = "horse.name", target = "horseName")
     @Mapping(source = "jockey.jockeyId", target = "jockeyId")
     @Mapping(source = "jockey.user.fullName", target = "jockeyName")
     @Mapping(source = "reviewedBy.userId", target = "reviewedById")
