@@ -65,7 +65,7 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.CONTRACT_NOT_APPROVED);
         }
 
-        if (contract.getTournamentRegistration().getStatus() != RegistrationStatus.APPROVED) {
+        if (contract.getHorseTournamentRegistration().getStatus() != RegistrationStatus.APPROVED) {
             throw new AppException(ErrorCode.REGISTRATION_NOT_APPROVED);
         }
 

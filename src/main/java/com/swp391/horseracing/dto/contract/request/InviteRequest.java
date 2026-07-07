@@ -21,8 +21,12 @@ public class InviteRequest {
     @NotNull(message = "Jockey tournament registration id is required")
     UUID jockeyTournamentRegistrationId;
 
+    @NotNull(message = "Owner prize share is required")
+    @DecimalMin(value = "0.0", message = "Owner prize share must be at least 0")
     Float ownerPrizeSharePercent;
 
+    @NotNull(message = "Hire fee is required")
+    @DecimalMin(value = "0.0", message = "Jockey prize share must be at least 0")
     Float jockeyPrizeSharePercent;
 
     String contractNote;

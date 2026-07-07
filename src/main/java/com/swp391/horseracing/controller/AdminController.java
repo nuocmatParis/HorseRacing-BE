@@ -158,12 +158,12 @@ public class AdminController {
     }
 
 
-    @GetMapping("/contracts/approved/tournaments/{id}")
-    public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
-        return ApiResponse.<List<ContractResponse>>builder()
-                .result(contractService.getApprovedContractsByTournament(id))
-                .build();
-    }
+//    @GetMapping("/contracts/approved/tournaments/{id}")
+//    public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
+//        return ApiResponse.<List<ContractResponse>>builder()
+//                .result(contractService.getApprovedContractsByTournament(id))
+//                .build();
+//    }
 
     @PostMapping("/races/{raceId}/entries")
     public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,

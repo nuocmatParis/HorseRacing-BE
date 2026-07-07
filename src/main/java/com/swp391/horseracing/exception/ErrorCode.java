@@ -349,7 +349,18 @@ public enum ErrorCode {
     HANDICAP_DISABLE(1578, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
 
     HORSE_REGISTRATION_LIMIT_EXCEEDED(1579, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
+
     JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
+
+    //Contract
+    TOURNAMENT_NOT_MATCH(1601, HttpStatus.BAD_REQUEST, "Tournament not match"),
+
+    INVALID_HIRE_FEE(1602, HttpStatus.BAD_REQUEST, "Invalid hire fee"),
+
+    INVALID_PRIZE_SHARE(1603, HttpStatus.BAD_REQUEST, "Invalid prize share"),
+
+    CONTRACT_ALREADY_EXISTS(1604, HttpStatus.BAD_REQUEST, "Contract already exists")
+
     ;
 
 
