@@ -169,7 +169,7 @@ public class RaceServiceImpl implements RaceService {
         }
 
         int entryCount = raceEntryRepository.countByRace_RaceId(raceId);
-        if (entryCount < 2) {
+        if (entryCount < race.getRound().getMinEntries()) {
             throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ENTRIES);
         }
 

@@ -52,6 +52,14 @@ public class CreateRoundRequest {
     @Min(value = 1, message = "Max races must be at least 1")
     Integer maxRaces;
 
+    @NotNull(message = "Max entries is required")
+    @Min(value = 1, message = "Max entries must be at least 1")
+    Integer maxEntries;
+
+    @NotNull(message = "Min entries is required")
+    @Min(value = 1, message = "Min entries must be at least 1")
+    Integer minEntries;
+
     @NotNull(message = "Status is required")
     RoundStatus status;
 

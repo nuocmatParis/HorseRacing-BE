@@ -79,7 +79,7 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.RACE_ENTRY_ALREADY_EXISTS);
         }
 
-        if (request.getLaneNumber() > race.getMaxEntries()) {
+        if (request.getLaneNumber() > race.getRound().getMaxEntries()) {
             throw new AppException(ErrorCode.LANE_EXCEEDS_MAX);
         }
 
@@ -88,7 +88,7 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.LANE_NUMBER_ALREADY_TAKEN);
         }
 
-        if (raceEntryRepository.countByRace_RaceId(request.getRaceId()) >= race.getMaxEntries()) {
+        if (raceEntryRepository.countByRace_RaceId(request.getRaceId()) >= race.getRound().getMaxEntries()) {
             throw new AppException(ErrorCode.RACE_EXCEEDS_MAX_ENTRIES);
         }
 

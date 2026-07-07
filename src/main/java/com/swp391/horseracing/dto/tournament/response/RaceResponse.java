@@ -20,7 +20,6 @@ public class RaceResponse {
     LocalDateTime endTime;
     String trackCondition;
     Float distance;
-    int maxEntries;
     int sequenceOrder;
     RoundStatus status;
     LocalDateTime startedAt;

@@ -41,9 +41,6 @@ public class Race {
     @Column(name = "distance", nullable = false)
     Float distance;
 
-    @Column(name = "max_entries", nullable = false)
-    int maxEntries;
-
     @Column(name = "sequence_order", nullable = false)
     int sequenceOrder;
 

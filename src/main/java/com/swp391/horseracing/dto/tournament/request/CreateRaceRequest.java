@@ -39,10 +39,6 @@ public class CreateRaceRequest {
     @Positive(message = "Distance must be positive")
     Float distance;
 
-    @NotNull(message = "Max entries is required")
-    @Min(value = 1, message = "Max entries must be at least 1")
-    Integer maxEntries;
-
     @NotNull(message = "Sequence order is required")
     @Min(value = 1, message = "Sequence order must be at least 1")
     Integer sequenceOrder;

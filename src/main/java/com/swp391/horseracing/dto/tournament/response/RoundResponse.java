@@ -25,6 +25,8 @@ public class RoundResponse {
     LocalDateTime endDate;
     String description;
     Integer maxRaces;
+    int maxEntries;
+    int minEntries;
     RoundStatus status;
     LocalDateTime createdAt;
     UUID tournamentId;
