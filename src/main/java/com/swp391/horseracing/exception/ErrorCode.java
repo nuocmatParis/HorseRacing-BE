@@ -359,7 +359,11 @@ public enum ErrorCode {
 
     INVALID_PRIZE_SHARE(1603, HttpStatus.BAD_REQUEST, "Invalid prize share"),
 
-    CONTRACT_ALREADY_EXISTS(1604, HttpStatus.BAD_REQUEST, "Contract already exists")
+    CONTRACT_ALREADY_EXISTS(1604, HttpStatus.BAD_REQUEST, "Contract already exists"),
+
+    CONTRACT_HIRING_FEE_NOT_PAID(1605, HttpStatus.BAD_REQUEST, "Hiring fee not paid"),
+
+    INVALID_ESCROW_STATUS(1606, HttpStatus.BAD_REQUEST, "Invalid escrow status")
 
     ;
 

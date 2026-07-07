@@ -12,9 +12,9 @@ public interface ContractService {
 
     List<ContractResponse> getMyInvitations();
 
-    ContractResponse acceptContract(InviteRequest request);
+    ContractResponse acceptContract(UUID contractId);
 
-    ContractResponse rejectContractByJockey(InviteRequest request, String reason);
+    ContractResponse rejectContractByJockey(UUID contractId, String reason);
 
     PaymentResponse payHiringFee(UUID contractId);
 

@@ -32,4 +32,7 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     Optional<Invoice> findForUpdateByInvoiceId(UUID invoiceId);
 
     List<Invoice> findAllByStatusOrderByCreatedAtDesc(InvoiceStatus invoiceStatus);
+
+    boolean existsByContractIdAndInvoiceType(UUID contractId, InvoiceType invoiceType);
+
 }

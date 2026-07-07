@@ -8,10 +8,7 @@ import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.InvoiceMapper;
 import com.swp391.horseracing.mapper.TransactionMapper;
-import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
-import com.swp391.horseracing.repository.InvoiceRepository;
-import com.swp391.horseracing.repository.WalletRepository;
-import com.swp391.horseracing.repository.WalletTransactionRepository;
+import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.InvoicePaymentCompleteService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.PaymentService;
@@ -41,6 +38,7 @@ public class PaymentServiceImpl implements PaymentService {
     TransactionMapper transactionMapper;
     HorseTournamentRegistrationRepository horseRegistrationRepository;
     InvoicePaymentCompleteService invoicePaymentCompleteService;
+    JockeyHorseContractRepository contractRepository;
 
     @Override
     @Transactional
@@ -58,13 +56,11 @@ public class PaymentServiceImpl implements PaymentService {
                 -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
         validateWalletActive(userWallet);
+        WalletPurpose systemWalletPurpose = getDestinationWalletPurpose(invoice.getInvoiceType());
 
-        Wallet systemWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM,
-                WalletPurpose.SYSTEM_REVENUE).orElseGet(() -> walletRepository.save(Wallet.builder()
-                .ownerType(WalletOwnerType.SYSTEM)
-                .walletPurpose(WalletPurpose.SYSTEM_REVENUE)
-                .user(null)
-                .build()));
+        Wallet systemWallet =
+                walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM, systemWalletPurpose).orElseThrow(()
+                        -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
 
         validateWalletActive(systemWallet);
 
@@ -150,12 +146,11 @@ public class PaymentServiceImpl implements PaymentService {
                 invoice.getPayerUser().getUserId(), WalletPurpose.USER_MAIN).orElseThrow(()
                 -> new AppException(ErrorCode.WALLET_NOT_FOUND) );
 
-        Wallet systemWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM,
-                WalletPurpose.SYSTEM_REVENUE).orElseGet(() -> walletRepository.save(Wallet.builder()
-                .ownerType(WalletOwnerType.SYSTEM)
-                .walletPurpose(WalletPurpose.SYSTEM_REVENUE)
-                .user(null)
-                .build()));
+        WalletPurpose systemWalletPurpose = getDestinationWalletPurpose(invoice.getInvoiceType());
+
+        Wallet systemWallet =
+                walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(WalletOwnerType.SYSTEM, systemWalletPurpose).orElseThrow(()
+                        -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
 
         validateWalletActive(userWallet);
         validateWalletActive(systemWallet);
@@ -223,6 +218,36 @@ public class PaymentServiceImpl implements PaymentService {
                 .userTransaction(transactionMapper.toTransactionResponse(savedUserTransaction))
                 .systemTransaction(transactionMapper.toTransactionResponse(systemTransaction))
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse payHiringFee(UUID contractId) {
+        JockeyHorseContract contract = contractRepository.findById(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        User currentUser = userCurrentService.getCurrentUser();
+
+        if(!contract.getOwner().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if(contract.getStatus() != ContractStatus.ACCEPTED)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
+        Invoice invoice = invoiceRepository.findByContractIdAndInvoiceType(contractId, InvoiceType.JOCKEY_HIRING_FEE).orElseThrow(
+                () -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        return payInvoice(invoice.getInvoiceId());
+    }
+
+    private WalletPurpose getDestinationWalletPurpose(InvoiceType invoiceType){
+        if (invoiceType == InvoiceType.JOCKEY_HIRING_FEE) {
+            return WalletPurpose.SYSTEM_ESCROW;
+        } else if (invoiceType == InvoiceType.OWNER_TOURNAMENT_REGISTRATION_FEE || invoiceType == InvoiceType.CONTRACT_CREATION_FEE) {
+            return WalletPurpose.SYSTEM_REVENUE;
+        }
+
+        throw new AppException(ErrorCode.INVALID_SYSTEM_WALLET_PURPOSE);
     }
 
     private void validateInvoiceCanBeRefund(Invoice invoice){

@@ -94,17 +94,49 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     @Override
+    @Transactional
     public Invoice createContractCreationInvoice(UUID payerUserId, UUID contractId, BigDecimal amount) {
-        return null;
+        if(invoiceRepository.existsByContractIdAndInvoiceType(contractId, InvoiceType.CONTRACT_CREATION_FEE))
+            throw new AppException(ErrorCode.INVOICE_ALREADY_EXISTS);
+
+        User payer = userRepository.findByUserId(payerUserId).orElseThrow(()
+                -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Invoice invoice = Invoice.builder()
+                .payerUser(payer)
+                .contractId(contractId)
+                .amount(amount)
+                .invoiceType(InvoiceType.CONTRACT_CREATION_FEE)
+                .status(InvoiceStatus.UNPAID)
+                .dueDate(LocalDateTime.now().plusDays(3))
+                .note("Contract creation fee")
+                .build();
+
+        return invoiceRepository.save(invoice);
     }
 
     @Override
+    @Transactional
     public Invoice createHiringFeeInvoice(UUID payerUserId, UUID contractId, BigDecimal amount) {
-        return null;
+        User currentUser = userCurrentService.getCurrentUser();
+
+        if(invoiceRepository.existsByContractIdAndInvoiceType(contractId, InvoiceType.JOCKEY_HIRING_FEE))
+            throw new AppException(ErrorCode.INVOICE_ALREADY_EXISTS);
+
+        User payer = userRepository.findByUserId(payerUserId).orElseThrow(()
+                -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        Invoice invoice = Invoice.builder()
+                .payerUser(payer)
+                .contractId(contractId)
+                .amount(amount)
+                .invoiceType(InvoiceType.JOCKEY_HIRING_FEE)
+                .status(InvoiceStatus.UNPAID)
+                .dueDate(LocalDateTime.now().plusDays(3))
+                .note("Jockey hiring fee")
+                .build();
+
+        return invoiceRepository.save(invoice);
     }
 
-    @Override
-    public Invoice getByContractIdAndType(UUID contractId) {
-        return null;
-    }
 }
