@@ -29,9 +29,6 @@ public class UpdateRaceRequest {
     @Positive(message = "Distance must be positive")
     Float distance;
 
-    @Min(value = 1, message = "Max entries must be at least 1")
-    Integer maxEntries;
-
     @Min(value = 1, message = "Sequence order must be at least 1")
     Integer sequenceOrder;
 

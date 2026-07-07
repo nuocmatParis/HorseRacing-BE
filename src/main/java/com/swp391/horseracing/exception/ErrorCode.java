@@ -323,7 +323,7 @@ public enum ErrorCode {
     RACE_EXCEEDS_MAX_ENTRIES(1565, HttpStatus.BAD_REQUEST, "Race has reached maximum entries"),
     LANE_EXCEEDS_MAX(1566, HttpStatus.BAD_REQUEST, "Lane number exceeds maximum entries"),
     RACE_ALREADY_STARTED(1567, HttpStatus.BAD_REQUEST, "Race has already started"),
-    RACE_NOT_ENOUGH_ENTRIES(1568, HttpStatus.BAD_REQUEST, "Race must have at least 2 entries to publish schedule"),
+    RACE_NOT_ENOUGH_ENTRIES(1568, HttpStatus.BAD_REQUEST, "Race does not meet the minimum entries required by the round"),
     RACE_MISSING_REFEREES(1569, HttpStatus.BAD_REQUEST, "Race must have at least one referee assigned to publish schedule"),
 
     // RACE REFEREE
