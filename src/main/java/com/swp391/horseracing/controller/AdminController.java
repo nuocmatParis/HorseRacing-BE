@@ -1,6 +1,7 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
@@ -158,13 +159,6 @@ public class AdminController {
     }
 
 
-//    @GetMapping("/contracts/approved/tournaments/{id}")
-//    public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
-//        return ApiResponse.<List<ContractResponse>>builder()
-//                .result(contractService.getApprovedContractsByTournament(id))
-//                .build();
-//    }
-
     @PostMapping("/races/{raceId}/entries")
     public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,
                                                           @RequestBody CreateRaceEntryRequest request) {
@@ -280,4 +274,27 @@ public class AdminController {
         tournamentEligibilityService.delete(eligibilityId);
         return ApiResponse.<Void>builder().build();
     }
+
+    @GetMapping("contracts/pending")
+    public ApiResponse<List<ContractResponse>> getPendingContracts(){
+        return ApiResponse.<List<ContractResponse>>builder()
+                .result(contractService.getPendingContracts())
+                .build();
+    }
+
+    @PostMapping("/{id}/approve")
+    public ApiResponse<ContractResponse> approveContract(@PathVariable UUID id){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.approveContract(id))
+                .build();
+    }
+
+    @PostMapping("/{id}/reject")
+    public ApiResponse<ContractResponse>rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.rejectContractByAdmin(id, request.getReason()))
+                .build();
+    }
+
+
 }

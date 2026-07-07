@@ -8,4 +8,6 @@ public interface PaymentService {
     PaymentResponse payInvoice(UUID invoiceId);
 
     PaymentResponse refundInvoice(UUID invoiceId);
+
+    PaymentResponse payHiringFee(UUID contractId);
 }

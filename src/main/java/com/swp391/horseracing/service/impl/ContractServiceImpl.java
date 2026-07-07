@@ -10,6 +10,8 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.ContractMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.ContractService;
+import com.swp391.horseracing.service.InvoiceService;
+import com.swp391.horseracing.service.PaymentService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -18,10 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -29,15 +30,15 @@ import java.util.UUID;
 public class ContractServiceImpl implements ContractService {
 
     JockeyHorseContractRepository contractRepository;
-    TournamentRepository tournamentRepository;
     HorseTournamentRegistrationRepository horseTournamentRegistrationRepository;
     JockeyTournamentRegistrationRepository jockeyTournamentRegistrationRepository;
-    HorseOwnerRepository ownerRepository;
-    HorseRepository horseRepository;
-    JockeyRepository jockeyRepository;
-    UserRepository userRepository;
     ContractMapper contractMapper;
     UserCurrentService userCurrentService;
+    InvoiceService invoiceService;
+    InvoiceRepository invoiceRepository;
+    PaymentService paymentService;
+    WalletRepository walletRepository;
+    WalletTransactionRepository walletTransactionRepository;
 
     @Override
     @Transactional
@@ -102,13 +103,92 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public ContractResponse acceptContract(InviteRequest request) {
-        return null;
+    @Transactional
+    public ContractResponse acceptContract(UUID contractId) {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if(!contract.getJockey().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if(contract.getStatus() != ContractStatus.PENDING_JOCKEY)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
+        HorseTournamentRegistration horseTournamentRegistration = horseTournamentRegistrationRepository.findForUpdateById(
+                contract.getHorseTournamentRegistration().getHorseRegistrationId()).orElseThrow(()
+                -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
+
+        JockeyTournamentRegistration jockeyTournamentRegistration = jockeyTournamentRegistrationRepository.findForUpdateById(
+                contract.getJockeyTournamentRegistration().getJockeyTournamentRegId()).orElseThrow(()
+                -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
+
+        if(horseTournamentRegistration.getStatus() != RegistrationStatus.APPROVED)
+            throw new AppException(ErrorCode.INVALID_REGISTRATION_STATUS);
+
+        if(jockeyTournamentRegistration.getStatus() != RegistrationStatus.APPROVED)
+            throw new AppException(ErrorCode.INVALID_REGISTRATION_STATUS);
+
+        LocalDateTime now = LocalDateTime.now();
+        contract.setStatus(ContractStatus.ACCEPTED);
+        contract.setRespondedAt(now);
+        contract.setAcceptedAt(now);
+
+        cancelOtherInvite(contract);
+
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+
+        invoiceService.createHiringFeeInvoice(horseTournamentRegistration.getOwner().getUser().getUserId(),
+                savedContract.getContractId(), jockeyTournamentRegistration.getHireFee());
+
+        return contractMapper.toContractResponse(savedContract);
     }
 
+    private void cancelOtherInvite(JockeyHorseContract contract){
+        List<JockeyHorseContract> sameHorseContracts = contractRepository.findByHorseTournamentRegistration_HorseRegistrationIdAndStatus(
+                contract.getHorseTournamentRegistration().getHorseRegistrationId(), ContractStatus.PENDING_JOCKEY);
+
+        List<JockeyHorseContract> sameJockeyContracts = contractRepository.findByJockeyTournamentRegistration_JockeyTournamentRegIdAndStatus(
+                contract.getJockeyTournamentRegistration().getJockeyTournamentRegId(), ContractStatus.PENDING_JOCKEY);
+
+        Map<UUID, JockeyHorseContract> cancelContracts = new LinkedHashMap<>();
+
+        for(JockeyHorseContract horseContract : sameHorseContracts){
+            cancelContracts.put(horseContract.getContractId(), horseContract);
+        }
+
+        for(JockeyHorseContract jockeyContract : sameJockeyContracts){
+            cancelContracts.put(jockeyContract.getContractId(), jockeyContract);
+        }
+
+        cancelContracts.remove(contract.getContractId());
+
+        for(JockeyHorseContract contract1 : cancelContracts.values()){
+            contract1.setStatus(ContractStatus.CANCELLED);
+            contract1.setCancelledAt(LocalDateTime.now());
+            contract1.setCancelReason("Jockey was accept with another contract");
+        }
+
+        contractRepository.saveAll(cancelContracts.values());
+    }
     @Override
-    public ContractResponse rejectContractByJockey(InviteRequest request, String reason) {
-        return null;
+    @Transactional
+    public ContractResponse rejectContractByJockey(UUID contractId, String reason) {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if(!contract.getJockey().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        contract.setStatus(ContractStatus.REJECTED);
+        contract.setRespondedAt(LocalDateTime.now());
+
+        contract.setRejectedReason(reason);
+
+        return contractMapper.toContractResponse(contractRepository.save(contract));
     }
 
     @Override
@@ -117,25 +197,207 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
+    @Transactional
     public PaymentResponse payContractCreationFee(UUID contractId) {
-        return null;
+        JockeyHorseContract contract = contractRepository.findById(contractId).orElseThrow(
+                () -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        HorseOwner owner = userCurrentService.getCurrentOwner();
+
+        if(!contract.getOwner().getUser().getUserId().equals(owner.getOwnerId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        if (contract.getStatus() != ContractStatus.HIRING_PAID)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
+        Invoice invoice = invoiceRepository.findByContractIdAndInvoiceType(contractId, InvoiceType.CONTRACT_CREATION_FEE).orElseThrow(
+                () -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        return paymentService.payInvoice(invoice.getInvoiceId());
+
     }
 
     @Override
     public List<ContractResponse> getPendingContracts() {
-        return List.of();
+        List<ContractResponse> responseList = new ArrayList<>();
+
+        List<JockeyHorseContract> contracts = contractRepository.findByStatusOrderByRequestedAtDesc(ContractStatus.PENDING_ADMIN_REVIEW);
+
+        for(JockeyHorseContract contract : contracts){
+            responseList.add(contractMapper.toContractResponse(contract));
+        }
+
+        return responseList;
     }
 
+    /*
+    *
+    SYSTEM_ESCROW debit 30%
+    Jockey USER_MAIN credit 30%
+
+    Contract:
+    status = APPROVED
+    advancePaidAmount = 30%
+    escrowAmount = 70%
+    escrowStatus = PARTIALLY_RELEASED
+    advancePayoutStatus = PAID
+    *
+    **/
     @Override
     public ContractResponse approveContract(UUID contractId) {
-        return null;
+        User admin = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (contract.getStatus() != ContractStatus.PENDING_ADMIN_REVIEW)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
+        if (contract.getPaymentStatus() != ContractPaymentStatus.PAID)
+            throw new AppException(ErrorCode.CONTRACT_HIRING_FEE_NOT_PAID);
+
+        if (contract.getEscrowStatus() != EscrowStatus.HELD)
+            throw new AppException(ErrorCode.INVALID_ESCROW_STATUS);
+
+        BigDecimal advanceAmount = calculateAdvanceAmount(contract);
+
+        releaseAdvancePayoutToJockey(contract, advanceAmount);
+
+        BigDecimal remainingEscrow = contract.getHireFee().subtract(advanceAmount);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        contract.setStatus(ContractStatus.APPROVED);
+
+        contract.setAdvancePaidAmount(advanceAmount);
+
+        contract.setEscrowAmount(remainingEscrow);
+
+        contract.setEscrowStatus(EscrowStatus.PARTIALLY_RELEASED);
+
+        contract.setAdvancePayoutStatus(AdvancePayoutStatus.PAID);
+
+        contract.setAdvancePayoutAt(now);
+
+        contract.setReviewedBy(admin);
+        contract.setReviewedAt(now);
+
+        return contractMapper.toContractResponse(contractRepository.save(contract));
+    }
+
+    private BigDecimal calculateAdvanceAmount(JockeyHorseContract contract){
+        BigDecimal percent = BigDecimal.valueOf(contract.getAdvancePercent());
+
+        return contract.getHireFee().multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+    }
+
+    private void releaseAdvancePayoutToJockey(JockeyHorseContract contract, BigDecimal amount){
+        Wallet systemEscrowWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
+                WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_ESCROW).orElseThrow(()
+                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+
+        Wallet jockeyWallet =
+                walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
+                        contract.getJockey().getUser().getUserId(), WalletPurpose.USER_MAIN).orElseThrow(()
+                        -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        if (systemEscrowWallet.getBalance().compareTo(amount) < 0)
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+
+        UUID transactionGroupId = UUID.randomUUID();
+
+        BigDecimal systemBalanceBefore = systemEscrowWallet.getBalance();
+        BigDecimal systemBalanceAfter = systemBalanceBefore.subtract(amount);
+
+        BigDecimal jockeyBalanceBefore = jockeyWallet.getBalance();
+        BigDecimal jockeyBalanceAfter = jockeyBalanceBefore.add(amount);
+
+        systemEscrowWallet.setBalance(systemBalanceAfter);
+
+        jockeyWallet.setBalance(jockeyBalanceAfter);
+
+        walletRepository.save(systemEscrowWallet);
+        walletRepository.save(jockeyWallet);
+
+        Transaction systemTransaction = Transaction.builder()
+                .wallet(systemEscrowWallet)
+                .contractId(contract.getContractId())
+                .type(TransactionType.JOCKEY_HIRING_ADVANCE_PAYOUT)
+                .direction(TransactionDirection.DEBIT)
+                .amount(amount)
+                .balanceBefore(systemBalanceBefore)
+                .balanceAfter(systemBalanceAfter)
+                .counterpartyWalletId(jockeyWallet.getWalletId())
+                .counterpartyType(CounterpartyType.USER)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Jockey advance payout")
+                .build();
+
+        Transaction jockeyTransaction = Transaction.builder()
+                .wallet(jockeyWallet)
+                .contractId(contract.getContractId())
+                .type(TransactionType.JOCKEY_HIRING_ADVANCE_INCOME)
+                .direction(TransactionDirection.CREDIT)
+                .amount(amount)
+                .balanceBefore(jockeyBalanceBefore)
+                .balanceAfter(jockeyBalanceAfter)
+                .counterpartyWalletId(systemEscrowWallet.getWalletId())
+                .counterpartyType(CounterpartyType.SYSTEM)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Advance income from contract")
+                .build();
+
+        walletTransactionRepository.save(systemTransaction);
+
+        walletTransactionRepository.save(jockeyTransaction);
     }
 
     @Override
     public ContractResponse rejectContractByAdmin(UUID contractId, String reason) {
-        return null;
+        User admin = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (contract.getStatus() != ContractStatus.PENDING_ADMIN_REVIEW)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
+        refundContractInvoices(contract);
+
+        contract.setStatus(ContractStatus.REJECTED);
+
+        contract.setPaymentStatus(ContractPaymentStatus.REFUNDED);
+
+        contract.setEscrowStatus(EscrowStatus.REFUNDED);
+
+        contract.setRejectedReason(reason);
+
+        contract.setReviewedBy(admin);
+
+        contract.setReviewedAt(LocalDateTime.now());
+
+        return contractMapper.toContractResponse(contractRepository.save(contract));
     }
 
+    private void refundContractInvoices(JockeyHorseContract contract){
+        Invoice hiringInvoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contract.getContractId(), InvoiceType.JOCKEY_HIRING_FEE).orElseThrow(()
+                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        if (hiringInvoice.getStatus() == InvoiceStatus.PAID)
+            paymentService.refundInvoice(hiringInvoice.getInvoiceId());
+
+
+        Invoice contractFeeInvoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contract.getContractId(), InvoiceType.CONTRACT_CREATION_FEE).orElseThrow(()
+                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        if (contractFeeInvoice.getStatus() == InvoiceStatus.PAID)
+            paymentService.refundInvoice(contractFeeInvoice.getInvoiceId());
+
+    }
 
     private void validateInvite(HorseOwner currentOwner, HorseTournamentRegistration horseTournamentRegistration,
                                 JockeyTournamentRegistration jockeyTournamentRegistration, InviteRequest request){

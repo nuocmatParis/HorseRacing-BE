@@ -3,12 +3,15 @@ package com.swp391.horseracing.repository;
 import com.swp391.horseracing.entity.JockeyTournamentRegistration;
 import com.swp391.horseracing.enums.RegistrationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -34,4 +37,8 @@ public interface JockeyTournamentRegistrationRepository extends JpaRepository<Jo
             @Param("statuses") List<RegistrationStatus> statuses);
 
     long countByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM JockeyTournamentRegistration r WHERE r.jockeyTournamentRegId = :registrationId")
+    Optional<JockeyTournamentRegistration> findForUpdateById(@Param("registrationId") UUID registrationId);
 }
