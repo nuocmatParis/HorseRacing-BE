@@ -1,8 +1,10 @@
 package com.swp391.horseracing.service.impl;
 
+import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
+import com.swp391.horseracing.repository.HorseOwnerRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserCurrentServiceImpl implements UserCurrentService {
     UserRepository userRepository;
+    HorseOwnerRepository horseOwnerRepository;
 
     @Override
     public User getCurrentUser() {
@@ -30,5 +33,15 @@ public class UserCurrentServiceImpl implements UserCurrentService {
 
         return userRepository.findByUsername(name).orElseThrow(()
                 -> new AppException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Override
+    public HorseOwner getCurrentOwner() {
+        User currentUser = getCurrentUser();
+
+        HorseOwner horseOwner = horseOwnerRepository.findByUser_UserId(currentUser.getUserId()).orElseThrow(
+                () -> new AppException(ErrorCode.OWNER_PROFILE_NOT_FOUND));
+
+        return horseOwner;
     }
 }

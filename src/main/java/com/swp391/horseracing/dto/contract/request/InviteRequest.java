@@ -15,16 +15,11 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class InviteRequest {
 
-    @NotNull(message = "Horse tournament registration id can not null")
-    UUID horseTournamentRegistrationId;
+    @NotNull(message = "Tournament registration id is required")
+    UUID tournamentRegistrationId;
 
-    @NotNull(message = "Jockey tournament registration id can not null")
+    @NotNull(message = "Jockey tournament registration id is required")
     UUID jockeyTournamentRegistrationId;
-
-
-    Float advancePercent;
-
-    Float finalPercent;
 
     Float ownerPrizeSharePercent;
 

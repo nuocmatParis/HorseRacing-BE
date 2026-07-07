@@ -35,8 +35,8 @@ public class JockeyHorseContract {
     Tournament tournament;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tournament_reg_id", nullable = false)
-    HorseTournamentRegistration tournamentRegistration;
+    @JoinColumn(name = "horse_tournament_reg_id", nullable = false)
+    HorseTournamentRegistration horseTournamentRegistration;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "jockey_tournament_reg_id", nullable = false)
@@ -91,7 +91,7 @@ public class JockeyHorseContract {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "advance_payout_status", nullable = false)
-    PayoutStatus payoutStatus = PayoutStatus.NOT_PAID;
+    AdvancePayoutStatus advancePayoutStatus = AdvancePayoutStatus.NOT_PAID;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
