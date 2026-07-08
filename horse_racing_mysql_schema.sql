@@ -1,4 +1,4 @@
--- ============================================================
+﻿-- ============================================================
 -- Horse Racing Tournament Management System - MySQL 8 Schema
 -- Author: generated for SWP391 project
 -- Notes:
@@ -68,7 +68,7 @@ DROP TABLE IF EXISTS horse_tournament_registrations;
 SET FOREIGN_KEY_CHECKS = 1;
 
 
-CREATE TABLE email_verifications (
+CREATE TABLE IF NOT EXISTS email_verifications (
                                      verification_id CHAR(36) PRIMARY KEY,
 
                                      role_name VARCHAR(50) NOT NULL,
@@ -140,20 +140,25 @@ CREATE TABLE horse_owners (
 -- 4. JOCKEY
 -- =========================
 CREATE TABLE jockeys (
-                        jockey_id CHAR(36) PRIMARY KEY,
-                        user_id CHAR(36) NOT NULL UNIQUE,
+                         jockey_id CHAR(36) PRIMARY KEY,
+                         user_id CHAR(36) NOT NULL UNIQUE,
 
-                        height FLOAT,
-                        weight FLOAT,
-                        experience_years INT DEFAULT 0,
-                        license_number VARCHAR(50) UNIQUE,
-                        specialization VARCHAR(100),
-                        hire_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
-                        status ENUM('AVAILABLE', 'BUSY', 'SUSPENDED', 'INACTIVE') NOT NULL DEFAULT 'AVAILABLE',
-                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                         height FLOAT,
+                         weight FLOAT,
+                         experience_years INT DEFAULT 0,
+                         license_number VARCHAR(50) UNIQUE,
+                         specialization VARCHAR(100),
+                         hire_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
+                         status ENUM('AVAILABLE', 'BUSY', 'SUSPENDED', 'INACTIVE') NOT NULL DEFAULT 'AVAILABLE',
+                         total_races INT NOT NULL DEFAULT 0,
+                         total_wins INT NOT NULL DEFAULT 0,
+                         jockey_tier VARCHAR(50) NOT NULL DEFAULT 'APPRENTICE',
+                         tier_updated_at DATETIME NULL,
+                         last_race_at DATETIME NULL,
+                         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                        CONSTRAINT fk_jockey_user
-                            FOREIGN KEY (user_id) REFERENCES users(user_id)
+                         CONSTRAINT fk_jockey_user
+                             FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 -- =========================
@@ -223,24 +228,29 @@ CREATE TABLE medical_staffs (
 -- 9. HORSE
 -- =========================
 CREATE TABLE horses (
-                       horse_id CHAR(36) PRIMARY KEY,
-                       owner_id CHAR(36) NOT NULL,
+                        horse_id CHAR(36) PRIMARY KEY,
+                        owner_id CHAR(36) NOT NULL,
 
-                       name VARCHAR(100) NOT NULL,
-                       breed VARCHAR(100) NOT NULL,
-                       gender ENUM('MALE', 'FEMALE') NOT NULL,
-                       age INT NOT NULL,
-                       weight DECIMAL(6,2),
-                       color VARCHAR(50),
-                       health_status ENUM('HEALTHY', 'INJURED', 'RETIRED') NOT NULL DEFAULT 'HEALTHY',
-                       race_class VARCHAR(50),
-                       total_races INT NOT NULL DEFAULT 0,
-                       total_wins INT NOT NULL DEFAULT 0,
-                       win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
-                       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        name VARCHAR(100) NOT NULL,
+                        breed VARCHAR(100) NOT NULL,
+                        gender ENUM('MALE', 'FEMALE') NOT NULL,
+                        age INT NOT NULL,
+                        weight DECIMAL(6,2),
+                        color VARCHAR(50),
+                        health_status ENUM('HEALTHY', 'INJURED', 'RETIRED') NOT NULL DEFAULT 'HEALTHY',
+                        race_class VARCHAR(50),
+                        current_rating INT NOT NULL DEFAULT 0,
+                        highest_rating INT NOT NULL DEFAULT 0,
+                        rating_updated_at DATETIME NULL,
+                        total_races INT NOT NULL DEFAULT 0,
+                        total_wins INT NOT NULL DEFAULT 0,
+                        total_places INT NOT NULL DEFAULT 0,
+                        win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+                        last_race_at DATETIME NULL,
+                        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                       CONSTRAINT fk_horse_owner
-                           FOREIGN KEY (owner_id) REFERENCES horse_owners(owner_id)
+                        CONSTRAINT fk_horse_owner
+                            FOREIGN KEY (owner_id) REFERENCES horse_owners(owner_id)
 );
 
 -- =========================
@@ -312,29 +322,42 @@ CREATE TABLE tournaments (
                             created_by CHAR(36) NOT NULL,
 
                             name VARCHAR(150) NOT NULL,
-                            description TEXT,
+                            description TEXT NOT NULL,
                             start_date DATE NOT NULL,
                             end_date DATE NOT NULL,
                             finished_at TIMESTAMP NULL,
-                            location VARCHAR(200),
+                            location VARCHAR(200) NOT NULL,
 
                             registration_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             system_contract_fee DECIMAL(15,2) NOT NULL DEFAULT 0,
                             total_prize_pool DECIMAL(15,2) NOT NULL DEFAULT 0,
 
-                            allowed_breed VARCHAR(100),
+                            allowed_breed VARCHAR(100) NOT NULL,
                             race_class VARCHAR(50),
-                            weight_class VARCHAR(50),
-                            min_horse_age INT,
-                            max_horse_age INT,
-                            tournament_division VARCHAR(100),
-                            handicap_rule TEXT,
+                            min_horse_age INT NOT NULL DEFAULT 0,
+                            max_horse_age INT NOT NULL DEFAULT 0,
+                            max_rounds INT NOT NULL DEFAULT 0,
+
+                            prediction_top1_correct_points INT NOT NULL DEFAULT 100,
+                            prediction_top3_exact_position_points INT NOT NULL DEFAULT 30,
+                            prediction_top3_correct_horse_points INT NOT NULL DEFAULT 10,
+                            prediction_top3_perfect_bonus_points INT NOT NULL DEFAULT 50,
+
                             prediction_open_minutes_before INT NOT NULL DEFAULT 120,
                             prediction_close_minutes_before INT NOT NULL DEFAULT 5,
 
-                            prediction_open_at DATETIME NULL,
-                            prediction_close_at DATETIME NULL,
-                            prediction_reward_rule TEXT,
+                            registration_open_at DATETIME NOT NULL,
+                            registration_close_at DATETIME NOT NULL,
+                            review_deadline_at DATETIME NOT NULL,
+                            jockey_matching_deadline_at DATETIME NOT NULL,
+                            scheduling_deadline_at DATETIME NOT NULL,
+
+                            top_weight_lbs INT NOT NULL DEFAULT 135,
+                            min_weight_lbs INT NOT NULL DEFAULT 115,
+                            equipment_weight_kg DOUBLE NOT NULL DEFAULT 1.5,
+                            handicap_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                            max_approved_horses INT NOT NULL DEFAULT 0,
+                            max_approved_jockeys INT NOT NULL DEFAULT 0,
 
                             status ENUM('DRAFT', 'OPEN', 'ONGOING', 'FINISHED', 'CANCELLED') NOT NULL DEFAULT 'DRAFT',
                             phase ENUM(
@@ -634,6 +657,7 @@ CREATE TABLE races (
                       track_condition VARCHAR(100) NOT NULL,
                       distance DECIMAL(8,2) NOT NULL,
                       max_entries INT NOT NULL,
+                      sequence_order INT NOT NULL,
                       prediction_open_at DATETIME NOT NULL,
                       prediction_close_at DATETIME NOT NULL,
                       status ENUM(
@@ -1073,25 +1097,43 @@ CREATE TABLE prediction_details (
 -- 33. AI PREDICTION
 -- =========================
 CREATE TABLE ai_predictions (
-                               ai_prediction_id CHAR(36) PRIMARY KEY,
+    prediction_id CHAR(36) PRIMARY KEY,
+    entry_id CHAR(36) NOT NULL,
 
-                               entry_id CHAR(36) NOT NULL,
+    horse_current_rating DECIMAL(5,2),
+    horse_recent_form DECIMAL(5,2),
+    horse_win_rate DECIMAL(5,2),
+    horse_top3_rate DECIMAL(5,2),
 
-                               win_rate_horse DECIMAL(5,2) NOT NULL DEFAULT 0,
-                               win_rate_jockey DECIMAL(5,2) NOT NULL DEFAULT 0,
-                               experience_score DECIMAL(8,2) NOT NULL DEFAULT 0,
-                               score DECIMAL(8,2) NOT NULL DEFAULT 0,
-                               win_probability DECIMAL(5,2) NOT NULL DEFAULT 0,
+    jockey_win_rate DECIMAL(5,2),
+    jockey_top3_rate DECIMAL(5,2),
+    jockey_recent_form DECIMAL(5,2),
 
-                               algorithm_type ENUM('WEIGHTED_SCORE', 'ML_MODEL', 'LLM_EXPLANATION') NOT NULL DEFAULT 'WEIGHTED_SCORE',
-                               model_version VARCHAR(50),
-                               explanation TEXT,
-                               generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    pair_win_rate DECIMAL(5,2),
+    pair_top3_rate DECIMAL(5,2),
 
-                               CONSTRAINT fk_ai_prediction_entry
-                                   FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
+    race_distance INT NOT NULL DEFAULT 0,
+    track_condition VARCHAR(20) NOT NULL DEFAULT 'TURF',
+    number_of_competitors INT NOT NULL DEFAULT 0,
+    lane_number INT NOT NULL DEFAULT 0,
 
-                               UNIQUE KEY uk_ai_prediction_entry (entry_id)
+    assigned_weight_kg DECIMAL(5,2),
+    actual_carried_weight_kg DECIMAL(5,2),
+    carried_weight_ratio DECIMAL(5,2),
+    relative_rating DECIMAL(5,2),
+
+    win_probability DECIMAL(5,2) NOT NULL DEFAULT 0,
+    predicted_rank INT NOT NULL DEFAULT 0,
+    confidence_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+
+    model_version VARCHAR(20),
+    generated_at DATETIME,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_ai_prediction_entry
+        FOREIGN KEY (entry_id) REFERENCES race_entries(entry_id),
+
+    UNIQUE KEY uk_ai_prediction_entry (entry_id)
 );
 
 -- =========================
@@ -1134,3 +1176,80 @@ CREATE TABLE notifications (
                               CONSTRAINT fk_notification_user
                                   FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
+
+
+
+
+-- ============================================================
+-- TEST DATA FOR AI PREDICTION
+-- Chạy sau khi tables đã được tạo
+-- ============================================================
+
+-- 1. ROLES
+INSERT IGNORE INTO roles (role_id, role_name, description) VALUES
+('10000000-0000-0000-0000-000000000001', 'ADMIN', 'Administrator'),
+('10000000-0000-0000-0000-000000000002', 'HORSE_OWNER', 'Horse Owner'),
+('10000000-0000-0000-0000-000000000003', 'JOCKEY', 'Jockey'),
+('10000000-0000-0000-0000-000000000004', 'SPECTATOR', 'Spectator');
+
+-- 2. USERS (passwords are BCrypt of "123456" or "12345678")
+INSERT IGNORE INTO users (user_id, role_id, username, password, email, dob, gender, full_name, phone_number, status) VALUES
+('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin@test.com', '1990-01-01', 'MALE', 'Admin User', '0900000001', 'ACTIVE'),
+('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'owner1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'owner1@test.com', '1985-05-15', 'MALE', 'Owner One', '0900000002', 'ACTIVE'),
+('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000003', 'jockey1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'jockey1@test.com', '1995-03-20', 'MALE', 'Jockey One', '0900000003', 'ACTIVE'),
+('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000004', 'spectator1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'spectator1@test.com', '2000-07-10', 'FEMALE', 'Spectator One', '0900000004', 'ACTIVE'),
+('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'admin2', '$2a$10$9Ph4xdaVc4rBYVkVGVZ0S./McbtmneAw5EeJj40XnB7A9xqDTKz3.', 'admin2@test.com', '1990-01-01', 'MALE', 'Admin Two', '0900000005', 'ACTIVE');
+-- 3. HORSE OWNER
+INSERT IGNORE INTO horse_owners (owner_id, user_id, farm_name, address, license_number) VALUES
+('30000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'Thunder Farm', '123 Horse Street', 'LIC-OWNER-001');
+
+-- 4. HORSES (with stats for AI analysis)
+INSERT IGNORE INTO horses (horse_id, owner_id, name, breed, gender, age, weight, color, health_status, race_class, current_rating, highest_rating, total_races, total_wins, total_places, win_rate, last_race_at) VALUES
+('40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Lightning Bolt', 'THOROUGHBRED', 'MALE', 5, 520.00, 'Bay', 'HEALTHY', 'CLASS_1', 95, 98, 20, 8, 14, 40.00, NOW() - INTERVAL 30 DAY),
+('40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000001', 'Midnight Star', 'ARABIAN', 'MALE', 4, 510.00, 'Black', 'HEALTHY', 'CLASS_2', 82, 85, 15, 5, 9, 33.33, NOW() - INTERVAL 20 DAY),
+('40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000001', 'Golden Wind', 'THOROUGHBRED', 'FEMALE', 6, 500.00, 'Chestnut', 'HEALTHY', 'CLASS_1', 90, 92, 25, 10, 18, 40.00, NOW() - INTERVAL 15 DAY);
+
+-- 5. JOCKEY
+INSERT IGNORE INTO jockeys (jockey_id, user_id, height, weight, experience_years, license_number, specialization, hire_fee, status, total_races, total_wins, jockey_tier) VALUES
+('50000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 165.0, 52.0, 8, 'LIC-JOCKEY-001', 'Flat Racing', 5000000.00, 'AVAILABLE', 200, 45, 'PROFESSIONAL');
+
+-- 6. SPECTATOR
+INSERT IGNORE INTO spectators (spectator_id, user_id, total_points) VALUES
+('60000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000004', 0);
+
+-- 7. TOURNAMENT
+INSERT IGNORE INTO tournaments (tournament_id, created_by, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, max_rounds, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, status, phase) VALUES
+('70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Spring Championship 2026', 'Annual spring championship', CURDATE() - INTERVAL 10 DAY, CURDATE() + INTERVAL 30 DAY, 'Horse Racing Stadium', 500000.00, 100000.00, 50000000.00, 'THOROUGHBRED', 3, 10, 5, CURDATE() - INTERVAL 15 DAY, CURDATE() - INTERVAL 11 DAY, CURDATE() - INTERVAL 11 DAY, CURDATE() - INTERVAL 8 DAY, CURDATE() - INTERVAL 5 DAY, 'ONGOING', 'SCHEDULING');
+
+-- 8. ROUND
+INSERT IGNORE INTO rounds (round_id, tournament_id, created_by, round_name, sequence_order, is_final, prediction_type, advancement_rule, start_date, end_date, description, max_races, status) VALUES
+('10000000-0000-0000-0000-000000000011', '70000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Qualifier Round 1', 1, FALSE, 'TOP3', 'Top 3 advance to next round', NOW() - INTERVAL 2 DAY, NOW() + INTERVAL 5 DAY, 'First qualifying round', 10, 'SCHEDULED');
+
+-- 9. RACE (prediction_open_at = past, prediction_close_at = future, so window is OPEN)
+INSERT IGNORE INTO races (race_id, round_id, created_by, name, start_time, end_time, track_condition, distance, max_entries, sequence_order, prediction_open_at, prediction_close_at, status) VALUES
+('80000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000011', '20000000-0000-0000-0000-000000000001', 'Opening Heat', NOW() + INTERVAL 2 HOUR, NOW() + INTERVAL 3 HOUR, 'TURF', 1600.00, 10, 1, NOW() - INTERVAL 1 HOUR, NOW() + INTERVAL 1 HOUR, 'SCHEDULED');
+
+-- 10. HORSE TOURNAMENT REGISTRATIONS
+INSERT IGNORE INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, reviewed_by) VALUES
+('90000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'APPROVED', '20000000-0000-0000-0000-000000000001'),
+('90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000001', 'APPROVED', '20000000-0000-0000-0000-000000000001'),
+('90000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000001', 'APPROVED', '20000000-0000-0000-0000-000000000001');
+
+-- 11. JOCKEY TOURNAMENT REGISTRATION
+INSERT IGNORE INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, reviewed_by) VALUES
+('a0000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'APPROVED', '20000000-0000-0000-0000-000000000001');
+
+-- 12. JOCKEY HORSE CONTRACTS (3 contracts, all with same jockey)
+INSERT IGNORE INTO jockey_horse_contracts (contract_id, tournament_id, tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, status) VALUES
+('b0000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 5000000.00, 30.00, 70.00, 100000.00, 80.00, 20.00, 'APPROVED'),
+('b0000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000001', 4000000.00, 30.00, 70.00, 100000.00, 80.00, 20.00, 'APPROVED'),
+('b0000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000001', 4500000.00, 30.00, 70.00, 100000.00, 80.00, 20.00, 'APPROVED');
+
+-- 13. RACE ENTRIES
+INSERT IGNORE INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at) VALUES
+('c0000000-0000-0000-0000-000000000001', '80000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 1, 'CONFIRMED', '20000000-0000-0000-0000-000000000001', NOW()),
+('c0000000-0000-0000-0000-000000000002', '80000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000002', 2, 'CONFIRMED', '20000000-0000-0000-0000-000000000001', NOW()),
+('c0000000-0000-0000-0000-000000000003', '80000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000003', 3, 'CONFIRMED', '20000000-0000-0000-0000-000000000001', NOW());
+
+
+
