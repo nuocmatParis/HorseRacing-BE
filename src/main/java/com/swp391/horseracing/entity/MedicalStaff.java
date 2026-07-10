@@ -12,12 +12,12 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "medical_staff")
+@Table(name = "medical_staffs")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class MedicalStaff {
 
@@ -28,22 +28,20 @@ public class MedicalStaff {
     UUID medStaffId;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true, nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     User user;
 
-    @Column(name = "certification", length = 100)
+    @Column(name = "certification", nullable = false, length = 100)
     String certification;
 
-    @Builder.Default
     @Column(name = "years_of_service", nullable = false)
-    int yearsOfService = 0;
+    Integer yearsOfService;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    MedicalStaffStatus status = MedicalStaffStatus.AVAILABLE;
+    MedicalStaffStatus status;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    LocalDateTime createdAt;
 }

@@ -1,27 +1,25 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.VetStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "veterinarians")
+@Table(name = "race_inspection_staff_assignments", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_inspection_staff_race", columnNames = "race_id")})
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class Veterinarian {
-
+public class RaceInspectionAssignment {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "assignment_id", columnDefinition = "CHAR(36)")
@@ -33,11 +31,11 @@ public class Veterinarian {
     Race race;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "veterinarian_id", nullable = false)
+    @JoinColumn(name = "vet_id", nullable = false)
     Veterinarian veterinarian;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medical_staff_id", nullable = false)
+    @JoinColumn(name = "med_staff_id", nullable = false)
     MedicalStaff medicalStaff;
 
     @ManyToOne(fetch = FetchType.LAZY)

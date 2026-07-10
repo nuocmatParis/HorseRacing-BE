@@ -363,7 +363,11 @@ public enum ErrorCode {
 
     CONTRACT_HIRING_FEE_NOT_PAID(1605, HttpStatus.BAD_REQUEST, "Hiring fee not paid"),
 
-    INVALID_ESCROW_STATUS(1606, HttpStatus.BAD_REQUEST, "Invalid escrow status")
+    INVALID_ESCROW_STATUS(1606, HttpStatus.BAD_REQUEST, "Invalid escrow status"),
+
+    FINAL_PAYOUT_ALREADY_RELEASED(1608, HttpStatus.BAD_REQUEST, "Final payout has already been released"),
+
+    ESCROW_NOT_PARTIALLY_RELEASED(1609, HttpStatus.BAD_REQUEST, "Escrow is not in PARTIALLY_RELEASED status")
 
     ;
 

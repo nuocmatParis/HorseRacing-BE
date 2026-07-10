@@ -275,24 +275,31 @@ public class AdminController {
         return ApiResponse.<Void>builder().build();
     }
 
-    @GetMapping("contracts/pending")
+    @GetMapping("/contracts/pending")
     public ApiResponse<List<ContractResponse>> getPendingContracts(){
         return ApiResponse.<List<ContractResponse>>builder()
                 .result(contractService.getPendingContracts())
                 .build();
     }
 
-    @PostMapping("/{id}/approve")
+    @PostMapping("/contracts/{id}/approve")
     public ApiResponse<ContractResponse> approveContract(@PathVariable UUID id){
         return ApiResponse.<ContractResponse>builder()
                 .result(contractService.approveContract(id))
                 .build();
     }
 
-    @PostMapping("/{id}/reject")
-    public ApiResponse<ContractResponse>rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
+    @PostMapping("/contracts/{id}/reject")
+    public ApiResponse<ContractResponse> rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
         return ApiResponse.<ContractResponse>builder()
                 .result(contractService.rejectContractByAdmin(id, request.getReason()))
+                .build();
+    }
+
+    @PostMapping("/contracts/{id}/release-final-payout")
+    public ApiResponse<ContractResponse> releaseFinalPayout(@PathVariable UUID id){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.releaseFinalPayout(id))
                 .build();
     }
 
