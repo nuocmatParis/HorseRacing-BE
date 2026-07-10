@@ -1,6 +1,5 @@
 package com.swp391.horseracing.dto.prediction.response;
 
-import com.swp391.horseracing.enums.TrackCondition;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -17,27 +16,15 @@ public class AIPredictionResponse {
 
     UUID predictionId;
     UUID entryId;
-    BigDecimal horseCurrentRating;
-    BigDecimal horseRecentForm;
-    BigDecimal horseWinRate;
-    BigDecimal horseTop3Rate;
-    BigDecimal jockeyWinRate;
-    BigDecimal jockeyTop3Rate;
-    BigDecimal jockeyRecentForm;
-    BigDecimal pairWinRate;
-    BigDecimal pairTop3Rate;
-    int raceDistance;
-    TrackCondition trackCondition;
-    int numberOfCompetitors;
     int laneNumber;
-    BigDecimal assignedWeightKg;
-    BigDecimal actualCarriedWeightKg;
-    BigDecimal carriedWeightRatio;
-    BigDecimal relativeRating;
+    String horseName;
+    String jockeyName;
+    int horseRating;
+    int predictedTopN;
+    BigDecimal topNProbability;
     BigDecimal winProbability;
-    int predictedRank;
     BigDecimal confidenceScore;
+    String predictionReason;
     String modelVersion;
     LocalDateTime generatedAt;
-    LocalDateTime createdAt;
 }
