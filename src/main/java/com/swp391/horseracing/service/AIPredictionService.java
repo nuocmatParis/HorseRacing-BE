@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface AIPredictionService {
 
-    List<AIPredictionResponse> generatePredictions(UUID raceId);
+    List<AIPredictionResponse> generatePredictions(UUID raceId, int topN);
 
     List<AIPredictionResponse> getPredictionsByRace(UUID raceId);
 }

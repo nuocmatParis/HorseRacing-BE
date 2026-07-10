@@ -21,9 +21,11 @@ public class AIPredictionController {
 
     @PostMapping("/api/admin/races/{raceId}/ai-predictions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<AIPredictionResponse>> generatePredictions(@PathVariable UUID raceId) {
+    public ApiResponse<List<AIPredictionResponse>> generatePredictions(
+            @PathVariable UUID raceId,
+            @RequestParam(defaultValue = "3") int topN) {
         return ApiResponse.<List<AIPredictionResponse>>builder()
-                .result(aiPredictionService.generatePredictions(raceId))
+                .result(aiPredictionService.generatePredictions(raceId, topN))
                 .build();
     }
 

@@ -87,11 +87,17 @@ public class AIPrediction {
     @Column(name = "win_probability", precision = 5, scale = 2)
     BigDecimal winProbability;
 
-    @Column(name = "predicted_rank")
-    int predictedRank;
+    @Column(name = "predicted_top_n")
+    int predictedTopN;
+
+    @Column(name = "top_n_probability", precision = 5, scale = 2)
+    BigDecimal topNProbability;
 
     @Column(name = "confidence_score", precision = 5, scale = 2)
     BigDecimal confidenceScore;
+
+    @Column(name = "prediction_reason", columnDefinition = "TEXT")
+    String predictionReason;
 
     @Column(name = "model_version", length = 20)
     String modelVersion;

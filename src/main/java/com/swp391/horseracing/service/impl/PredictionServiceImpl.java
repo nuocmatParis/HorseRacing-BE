@@ -199,7 +199,7 @@ public class PredictionServiceImpl implements PredictionService {
     private PredictionResponse attachAiPredictions(PredictionResponse response, UUID raceId) {
         List<AIPrediction> aiPredictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
         if (!aiPredictions.isEmpty()) {
-            aiPredictions.sort(Comparator.comparingInt(AIPrediction::getPredictedRank));
+            aiPredictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
             response.setAiPredictions(aiPredictionMapper.toAIPredictionResponseList(aiPredictions));
         }
         return response;

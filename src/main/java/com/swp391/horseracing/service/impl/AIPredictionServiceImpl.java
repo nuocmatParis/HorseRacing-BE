@@ -43,7 +43,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
 
     @Override
     @Transactional
-    public List<AIPredictionResponse> generatePredictions(UUID raceId) {
+    public List<AIPredictionResponse> generatePredictions(UUID raceId, int topN) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
@@ -53,7 +53,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         }
 
         List<Map<String, Object>> entryDataList = buildEntryData(entries);
-        String prompt = buildPrompt(race, entryDataList);
+        String prompt = buildPrompt(race, entryDataList, topN);
 
         String aiResponse;
         try {
@@ -66,10 +66,8 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         List<Map<String, Object>> aiResults = parseAiResponse(aiResponse, entries.size());
 
         // Remove old predictions for this race
-        List<AIPrediction> oldPredictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
-        if (!oldPredictions.isEmpty()) {
-            aiPredictionRepository.deleteAll(oldPredictions);
-        }
+        aiPredictionRepository.deleteByEntry_Race_RaceId(raceId);
+        aiPredictionRepository.flush();
 
         int numberOfCompetitors = entries.size();
         TrackCondition trackCondition = mapTrackCondition(race.getTrackCondition());
@@ -86,21 +84,25 @@ public class AIPredictionServiceImpl implements AIPredictionService {
 
         List<AIPrediction> predictions = new ArrayList<>();
         for (RaceEntry entry : entries) {
-            String entryIdStr = entry.getEntryId().toString();
-            Map<String, Object> result = resultMap.get(entryIdStr);
+            String horseName = entry.getContract().getHorse().getName();
+            Map<String, Object> result = resultMap.get(horseName);
 
-            int predictedRank = 0;
             BigDecimal winProbability = BigDecimal.ZERO;
+            BigDecimal topNProbability = BigDecimal.ZERO;
             BigDecimal confidenceScore = BigDecimal.ZERO;
+            String predictionReason = "";
 
             if (result != null) {
-                predictedRank = ((Number) result.getOrDefault("predictedRank", 0)).intValue();
                 winProbability = BigDecimal.valueOf(
                         ((Number) result.getOrDefault("winProbability", 0)).doubleValue())
+                        .setScale(2, RoundingMode.HALF_UP);
+                topNProbability = BigDecimal.valueOf(
+                        ((Number) result.getOrDefault("topNProbability", 0)).doubleValue())
                         .setScale(2, RoundingMode.HALF_UP);
                 confidenceScore = BigDecimal.valueOf(
                         ((Number) result.getOrDefault("confidenceScore", 0)).doubleValue())
                         .setScale(2, RoundingMode.HALF_UP);
+                predictionReason = (String) result.getOrDefault("predictionReason", "");
             }
 
             Horse horse = entry.getContract().getHorse();
@@ -155,8 +157,10 @@ public class AIPredictionServiceImpl implements AIPredictionService {
                     .carriedWeightRatio(BigDecimal.ZERO)
                     .relativeRating(relativeRating)
                     .winProbability(winProbability)
-                    .predictedRank(predictedRank)
+                    .predictedTopN(topN)
+                    .topNProbability(topNProbability)
                     .confidenceScore(confidenceScore)
+                    .predictionReason(predictionReason)
                     .modelVersion(MODEL_VERSION)
                     .generatedAt(LocalDateTime.now())
                     .build();
@@ -166,7 +170,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
 
         List<AIPrediction> saved = aiPredictionRepository.saveAll(predictions);
         return aiPredictionMapper.toAIPredictionResponseList(saved.stream()
-                .sorted(Comparator.comparingInt(AIPrediction::getPredictedRank))
+                .sorted(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()))
                 .toList());
     }
 
@@ -174,7 +178,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
     @Transactional(readOnly = true)
     public List<AIPredictionResponse> getPredictionsByRace(UUID raceId) {
         List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
-        predictions.sort(Comparator.comparingInt(AIPrediction::getPredictedRank));
+        predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
         return aiPredictionMapper.toAIPredictionResponseList(predictions);
     }
 
@@ -207,7 +211,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         return dataList;
     }
 
-    private String buildPrompt(Race race, List<Map<String, Object>> entryDataList) {
+    private String buildPrompt(Race race, List<Map<String, Object>> entryDataList, int topN) {
         StringBuilder sb = new StringBuilder();
         sb.append("You are a professional horse racing analyst. Predict the outcome of the following race.\n\n");
         sb.append("Race: ").append(race.getName()).append("\n");
@@ -232,14 +236,15 @@ public class AIPredictionServiceImpl implements AIPredictionService {
                     jn, d.get("jockeyWinRate"), d.get("jockeyExperience")));
         }
 
-        sb.append("\nBased on this data, predict the final ranking for ALL entries. ");
-        sb.append("For each entry, provide:\n");
-        sb.append("- predictedRank (1, 2, 3, ...)\n");
-        sb.append("- winProbability (0.00 to 100.00, likelihood of winning)\n");
-        sb.append("- confidenceScore (0.00 to 100.00, confidence in this prediction)\n\n");
-        sb.append("Return ONLY a valid JSON array. No explanation, no markdown:\n");
+        sb.append("\nIMPORTANT: predictionReason MUST be written in Vietnamese language only.\n");
+        sb.append("For each entry (use the horse name as entryId), predict:\n");
+        sb.append("- topNProbability (0.00 to 100.00): percentage chance this entry will place in the top ").append(topN).append(" (ranks 1 to ").append(topN).append(")\n");
+        sb.append("- winProbability (0.00 to 100.00): percentage chance of winning (rank 1)\n");
+        sb.append("- confidenceScore (0.00 to 100.00): confidence in this prediction\n");
+        sb.append("- predictionReason: explain in Vietnamese why this prediction was made (max 500 characters)\n\n");
+        sb.append("Return ONLY a valid JSON array. The entryId is the EXACT horse name.\n");
         sb.append("[\n");
-        sb.append("  {\"entryId\": \"...\", \"predictedRank\": 1, \"winProbability\": 35.50, \"confidenceScore\": 80.00},\n");
+        sb.append("  {\"entryId\": \"Lightning Bolt\", \"topNProbability\": 85.00, \"winProbability\": 35.50, \"confidenceScore\": 80.00, \"predictionReason\": \"Ngựa có chỉ số cao nhất và jockey giàu kinh nghiệm.\"},\n");
         sb.append("  ...\n");
         sb.append("]");
 
@@ -248,6 +253,9 @@ public class AIPredictionServiceImpl implements AIPredictionService {
 
     private List<Map<String, Object>> parseAiResponse(String aiResponse, int expectedCount) {
         String json = aiResponse.trim();
+        log.info("=== RAW AI RESPONSE START ===");
+        log.info(json);
+        log.info("=== RAW AI RESPONSE END ===");
 
         if (json.startsWith("```")) {
             int start = json.indexOf('\n');
@@ -274,9 +282,10 @@ public class AIPredictionServiceImpl implements AIPredictionService {
             for (JsonNode node : root) {
                 Map<String, Object> map = new HashMap<>();
                 map.put("entryId", node.get("entryId").asText());
-                map.put("predictedRank", node.get("predictedRank").asInt());
-                map.put("winProbability", node.get("winProbability").asDouble());
-                map.put("confidenceScore", node.get("confidenceScore").asDouble());
+                map.put("topNProbability", node.get("topNProbability") != null ? node.get("topNProbability").asDouble() : 0.0);
+                map.put("winProbability", node.get("winProbability") != null ? node.get("winProbability").asDouble() : 0.0);
+                map.put("confidenceScore", node.get("confidenceScore") != null ? node.get("confidenceScore").asDouble() : 0.0);
+                map.put("predictionReason", node.get("predictionReason") != null ? node.get("predictionReason").asText() : "");
                 results.add(map);
             }
 
