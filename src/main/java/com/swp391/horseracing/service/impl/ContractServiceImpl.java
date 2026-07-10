@@ -448,4 +448,150 @@ public class ContractServiceImpl implements ContractService {
         if(Math.abs(total - 100F) > 0.0001F)
             throw new AppException(ErrorCode.INVALID_PRIZE_SHARE);
     }
+
+    @Override
+    public List<ContractResponse> getOwnerContracts() {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        List<JockeyHorseContract> contracts = contractRepository
+                .findByOwner_User_UserIdOrderByRequestedAtDesc(currentUser.getUserId());
+
+        List<ContractResponse> responseList = new ArrayList<>();
+        for (JockeyHorseContract contract : contracts) {
+            responseList.add(contractMapper.toContractResponse(contract));
+        }
+        return responseList;
+    }
+
+    @Override
+    public ContractResponse getOwnerContractById(UUID contractId) {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findById(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (!contract.getOwner().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        return contractMapper.toContractResponse(contract);
+    }
+
+    @Override
+    public List<ContractResponse> getJockeyContracts() {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        List<JockeyHorseContract> contracts = contractRepository
+                .findByJockey_User_UserIdOrderByRequestedAtDesc(currentUser.getUserId());
+
+        List<ContractResponse> responseList = new ArrayList<>();
+        for (JockeyHorseContract contract : contracts) {
+            responseList.add(contractMapper.toContractResponse(contract));
+        }
+        return responseList;
+    }
+
+    @Override
+    public ContractResponse getJockeyContractById(UUID contractId) {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findById(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (!contract.getJockey().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+
+        return contractMapper.toContractResponse(contract);
+    }
+
+    @Override
+    @Transactional
+    public ContractResponse releaseFinalPayout(UUID contractId) {
+        User admin = userCurrentService.getCurrentUser();
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
+                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (contract.getStatus() != ContractStatus.APPROVED)
+            throw new AppException(ErrorCode.CONTRACT_NOT_APPROVED);
+
+        if (contract.getEscrowStatus() != EscrowStatus.PARTIALLY_RELEASED)
+            throw new AppException(ErrorCode.ESCROW_NOT_PARTIALLY_RELEASED);
+
+        if (contract.getFinalPayoutStatus() == FinalPayoutStatus.RELEASED)
+            throw new AppException(ErrorCode.FINAL_PAYOUT_ALREADY_RELEASED);
+
+        BigDecimal finalAmount = contract.getEscrowAmount();
+
+        releaseFinalPayoutToJockey(contract, finalAmount);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        contract.setEscrowAmount(BigDecimal.ZERO);
+        contract.setEscrowStatus(EscrowStatus.RELEASED);
+        contract.setFinalPayoutStatus(FinalPayoutStatus.RELEASED);
+        contract.setFinalPayoutAt(now);
+
+        return contractMapper.toContractResponse(contractRepository.save(contract));
+    }
+
+    private void releaseFinalPayoutToJockey(JockeyHorseContract contract, BigDecimal amount) {
+        Wallet systemEscrowWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
+                WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_ESCROW).orElseThrow(()
+                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+
+        Wallet jockeyWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
+                contract.getJockey().getUser().getUserId(), WalletPurpose.USER_MAIN).orElseThrow(()
+                -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+        if (systemEscrowWallet.getBalance().compareTo(amount) < 0)
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+
+        UUID transactionGroupId = UUID.randomUUID();
+
+        BigDecimal systemBalanceBefore = systemEscrowWallet.getBalance();
+        BigDecimal systemBalanceAfter = systemBalanceBefore.subtract(amount);
+
+        BigDecimal jockeyBalanceBefore = jockeyWallet.getBalance();
+        BigDecimal jockeyBalanceAfter = jockeyBalanceBefore.add(amount);
+
+        systemEscrowWallet.setBalance(systemBalanceAfter);
+        jockeyWallet.setBalance(jockeyBalanceAfter);
+
+        walletRepository.save(systemEscrowWallet);
+        walletRepository.save(jockeyWallet);
+
+        Transaction systemTransaction = Transaction.builder()
+                .wallet(systemEscrowWallet)
+                .contractId(contract.getContractId())
+                .type(TransactionType.JOCKEY_HIRING_FINAL_PAYOUT)
+                .direction(TransactionDirection.DEBIT)
+                .amount(amount)
+                .balanceBefore(systemBalanceBefore)
+                .balanceAfter(systemBalanceAfter)
+                .counterpartyWalletId(jockeyWallet.getWalletId())
+                .counterpartyType(CounterpartyType.USER)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Jockey final payout")
+                .build();
+
+        Transaction jockeyTransaction = Transaction.builder()
+                .wallet(jockeyWallet)
+                .contractId(contract.getContractId())
+                .type(TransactionType.JOCKEY_HIRING_FINAL_INCOME)
+                .direction(TransactionDirection.CREDIT)
+                .amount(amount)
+                .balanceBefore(jockeyBalanceBefore)
+                .balanceAfter(jockeyBalanceAfter)
+                .counterpartyWalletId(systemEscrowWallet.getWalletId())
+                .counterpartyType(CounterpartyType.SYSTEM)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Final income from contract")
+                .build();
+
+        walletTransactionRepository.save(systemTransaction);
+        walletTransactionRepository.save(jockeyTransaction);
+    }
 }
+

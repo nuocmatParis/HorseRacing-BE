@@ -10,7 +10,15 @@ import java.util.UUID;
 public interface ContractService {
     ContractResponse inviteJockey(InviteRequest request);
 
+    List<ContractResponse> getOwnerContracts();
+
+    ContractResponse getOwnerContractById(UUID contractId);
+
     List<ContractResponse> getMyInvitations();
+
+    List<ContractResponse> getJockeyContracts();
+
+    ContractResponse getJockeyContractById(UUID contractId);
 
     ContractResponse acceptContract(UUID contractId);
 
@@ -25,4 +33,6 @@ public interface ContractService {
     ContractResponse approveContract(UUID contractId);
 
     ContractResponse rejectContractByAdmin(UUID contractId, String reason);
+
+    ContractResponse releaseFinalPayout(UUID contractId);
 }
