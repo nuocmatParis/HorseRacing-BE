@@ -16,4 +16,6 @@ public interface AIPredictionRepository extends JpaRepository<AIPrediction, UUID
     Optional<AIPrediction> findByEntry_EntryId(UUID entryId);
 
     boolean existsByEntry_EntryId(UUID entryId);
+
+    void deleteByEntry_Race_RaceId(UUID raceId);
 }
