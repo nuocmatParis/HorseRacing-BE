@@ -392,6 +392,25 @@ public enum ErrorCode {
     VIOLATION_ALREADY_RESOLVED(1651, HttpStatus.CONFLICT, "Violation has already been resolved"),
     VIOLATION_ALREADY_CANCELLED(1652, HttpStatus.CONFLICT, "Violation has already been cancelled"),
     INVALID_VIOLATION_STATUS_TRANSITION(1653, HttpStatus.BAD_REQUEST, "Invalid violation status transition"),
+
+    // PREDICTION
+    PREDICTION_NOT_FOUND(1660, HttpStatus.NOT_FOUND, "Prediction not found"),
+    PREDICTION_ALREADY_EXISTS(1661, HttpStatus.CONFLICT, "You have already submitted a prediction for this race"),
+    PREDICTION_WINDOW_NOT_OPEN(1662, HttpStatus.BAD_REQUEST, "Prediction window has not opened yet"),
+    PREDICTION_WINDOW_CLOSED(1663, HttpStatus.BAD_REQUEST, "Prediction window has already closed"),
+    PREDICTION_NOT_BELONG_TO_USER(1664, HttpStatus.FORBIDDEN, "This prediction does not belong to you"),
+    PREDICTION_ALREADY_SCORED(1665, HttpStatus.CONFLICT, "Prediction has already been scored"),
+    PREDICTION_CANCELLED(1666, HttpStatus.BAD_REQUEST, "Prediction has been cancelled"),
+    INVALID_TOP1_COUNT(1667, HttpStatus.BAD_REQUEST, "Exactly one horse must be selected for Top1 prediction"),
+    INVALID_TOP3_COUNT(1668, HttpStatus.BAD_REQUEST, "Exactly three horses must be selected for Top3 prediction"),
+    DUPLICATE_HORSE_IN_PREDICTION(1669, HttpStatus.BAD_REQUEST, "A horse cannot be selected more than once in a prediction"),
+    HORSE_NOT_IN_THIS_RACE(1670, HttpStatus.BAD_REQUEST, "Selected horse is not participating in this race"),
+    INVALID_PREDICTED_RANK(1671, HttpStatus.BAD_REQUEST, "Predicted rank must be 1 for Top1, and 1,2,3 for Top3"),
+    RACE_HAS_NOT_STARTED(1672, HttpStatus.BAD_REQUEST, "Race has not started yet"),
+
+    // AI PREDICTION
+    AI_PREDICTION_GENERATION_FAILED(1673, HttpStatus.INTERNAL_SERVER_ERROR, "AI prediction generation failed"),
+    AI_PREDICTION_INVALID_RESPONSE(1674, HttpStatus.INTERNAL_SERVER_ERROR, "AI returned an invalid response format"),
     ;
 
 
