@@ -5,7 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -24,26 +23,28 @@ public class Veterinarian {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "assignment_id", columnDefinition = "CHAR(36)")
+    @Column(name = "vet_id", columnDefinition = "CHAR(36)")
     @JdbcTypeCode(SqlTypes.CHAR)
-    UUID assignmentId;
+    UUID vetId;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "race_id", nullable = false, unique = true)
-    Race race;
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "veterinarian_id", nullable = false)
-    Veterinarian veterinarian;
+    @Column(name = "license_number", length = 50)
+    String licenseNumber;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "medical_staff_id", nullable = false)
-    MedicalStaff medicalStaff;
+    @Column(name = "specialization", length = 100)
+    String specialization;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assigned_by", nullable = false)
-    User assignedBy;
+    @Column(name = "years_of_service")
+    Integer yearsOfService;
 
-    @Column(name = "assigned_at", nullable = false)
-    LocalDateTime assignedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    VetStatus status;
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    LocalDateTime createdAt;
 }
