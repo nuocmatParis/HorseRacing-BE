@@ -3,6 +3,8 @@ package com.swp391.horseracing.controller;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
+import com.swp391.horseracing.dto.medicalstaff.request.AssignInspectionStaffRequest;
+import com.swp391.horseracing.dto.medicalstaff.response.InspectionStaffAssignmentResponse;
 import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
 import com.swp391.horseracing.dto.race_referee.request.CreateRaceRefereeRequest;
@@ -40,6 +42,7 @@ public class AdminController {
     RaceEntryService raceEntryService;
     RaceRefereeService raceRefereeService;
     RefereeService refereeService;
+    RaceInspectionStaffService raceInspectionStaffService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -302,6 +305,23 @@ public class AdminController {
                 .result(contractService.releaseFinalPayout(id))
                 .build();
     }
+
+    @PostMapping("/races/{raceId}/inspection-staff/assign")
+    public ApiResponse<InspectionStaffAssignmentResponse> assign(@PathVariable UUID raceId,
+                                                                 @Valid @RequestBody AssignInspectionStaffRequest request){
+        return ApiResponse.<InspectionStaffAssignmentResponse>builder()
+                .result(raceInspectionStaffService.assign(raceId, request))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/inspection-staff/auto-assign")
+    public ApiResponse<InspectionStaffAssignmentResponse> assign(@PathVariable UUID raceId){
+        return ApiResponse.<InspectionStaffAssignmentResponse>builder()
+                .result(raceInspectionStaffService.autoAssign(raceId))
+                .build();
+    }
+
+
 
 
 }

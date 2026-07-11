@@ -367,7 +367,24 @@ public enum ErrorCode {
 
     FINAL_PAYOUT_ALREADY_RELEASED(1608, HttpStatus.BAD_REQUEST, "Final payout has already been released"),
 
-    ESCROW_NOT_PARTIALLY_RELEASED(1609, HttpStatus.BAD_REQUEST, "Escrow is not in PARTIALLY_RELEASED status")
+    ESCROW_NOT_PARTIALLY_RELEASED(1609, HttpStatus.BAD_REQUEST, "Escrow is not in PARTIALLY_RELEASED status"),
+
+    //Inspection
+    MEDICAL_STAFF_NOT_FOUND(1701, HttpStatus.NOT_FOUND, "Medical staff not found"),
+
+    MEDICAL_STAFF_ALREADY_ASSIGNED(1702, HttpStatus.CONFLICT, "Medical staff already assigned"),
+
+    MEDICAL_STAFF_SUSPENDED(1703, HttpStatus.BAD_REQUEST, "Medical staff suspended"),
+
+    VETERINARIAN_NOT_FOUND(1704, HttpStatus.NOT_FOUND, "Veterinarian not found"),
+
+    VETERINARIAN_ALREADY_ASSIGNED(1705, HttpStatus.CONFLICT, "Veterinarian already assigned"),
+
+    VETERINARIAN_SUSPENDED(1704, HttpStatus.BAD_REQUEST, "Veterinarian suspended"),
+
+    NO_AVAILABLE_MEDICAL_STAFF(1706, HttpStatus.NOT_FOUND, "No available medical staff found"),
+
+    NO_AVAILABLE_VETERINARIAN(1707, HttpStatus.NOT_FOUND, "No available veterinarian found"),
 
     ;
 
