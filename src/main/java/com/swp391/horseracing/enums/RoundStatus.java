@@ -5,5 +5,6 @@ public enum RoundStatus {
     SCHEDULED,
     ONGOING,
     FINISHED,
+    COMPLETED,
     CANCELLED
 }
