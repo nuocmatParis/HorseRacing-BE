@@ -15,6 +15,7 @@ import com.swp391.horseracing.repository.VeterinarianRepository;
 import com.swp391.horseracing.service.HandicapService;
 import com.swp391.horseracing.service.HorseInspectionService;
 import com.swp391.horseracing.service.UserCurrentService;
+import com.swp391.horseracing.service.PredictionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,6 +38,7 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
     UserCurrentService userCurrentService;
     HandicapService handicapService;
     HorseInspectionMapper horseInspectionMapper;
+    PredictionService predictionService;
 
     @Override
     @Transactional
@@ -47,6 +49,28 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
         Race race = raceEntry.getRace();
         if (race.getStatus() != RoundStatus.SCHEDULED) {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULED_STATUS);
+        }
+
+        if (raceEntry.getStatus() != RaceEntryStatus.CONFIRMED) {
+            throw new AppException(ErrorCode.RACE_ENTRY_NOT_ACTIVE);
+        }
+
+        if (race.getStartedAt() != null) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_CLOSED);
+        }
+
+        Tournament tournament = race.getRound().getTournament();
+        int openMin = tournament.getInspectionOpenMinutesBefore();
+        int closeMin = tournament.getInspectionCloseMinutesBefore();
+        LocalDateTime inspectionOpenAt = race.getStartTime().minusMinutes(openMin);
+        LocalDateTime inspectionCloseAt = race.getStartTime().minusMinutes(closeMin);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isBefore(inspectionOpenAt)) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_NOT_OPEN);
+        }
+        if (now.isAfter(inspectionCloseAt)) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_CLOSED);
         }
 
         if (horseInspectionRepository.existsByRaceEntry_EntryId(entryId)) {
@@ -65,7 +89,6 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
             throw new AppException(ErrorCode.VET_NOT_ASSIGNED_TO_RACE);
         }
 
-        Tournament tournament = race.getRound().getTournament();
         Float handicapWeight = null;
         boolean handicapConfirmed = Boolean.TRUE.equals(request.getHandicapConfirmed());
         LocalDateTime confirmedAt = null;
@@ -111,6 +134,8 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
             raceEntry.setStatus(RaceEntryStatus.SCRATCHED);
             raceEntry.setScratchedReason("Failed horse inspection. Note: " + request.getNote());
             raceEntryRepository.save(raceEntry);
+            predictionService.notifySpectatorsForScratchedEntry(
+                    race.getRaceId(), entryId, raceEntry.getContract().getHorse().getName());
         }
 
         HorseInspection savedInspection = horseInspectionRepository.save(inspection);

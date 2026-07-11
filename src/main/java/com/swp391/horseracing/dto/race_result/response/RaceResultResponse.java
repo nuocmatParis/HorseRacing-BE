@@ -20,7 +20,7 @@ public class RaceResultResponse {
     UUID raceId;
     UUID entryId;
     Float finishTime;
-    int rank;
+    Integer rank;
     BigDecimal prizeMoney;
     BigDecimal ownerPrizeAmount;
     BigDecimal jockeyPrizeAmount;

@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.request;
 
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.*;
@@ -10,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
@@ -81,6 +83,42 @@ public class UpdateTournamentRequest {
 
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore;
+
+    @Min(value = 1, message = "Prediction card open hours must be at least 1")
+    Integer predictionCardOpenHoursBeforeFirstRace;
+
+    @Min(value = 0, message = "Inspection open minutes must be at least 0")
+    Integer inspectionOpenMinutesBefore;
+
+    @Min(value = 0, message = "Inspection close minutes must be at least 0")
+    Integer inspectionCloseMinutesBefore;
+
+    @Min(value = 1, message = "Max races per day must be at least 1")
+    @Max(value = 9, message = "Max races per day must be at most 9")
+    Integer maxRacesPerDay;
+
+    @Min(value = 30, message = "Min race interval minutes must be at least 30")
+    @Max(value = 60, message = "Min race interval minutes must be at most 60")
+    Integer minRaceIntervalMinutes;
+
+    @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
+    Integer startEarlyToleranceMinutes;
+
+    @Min(value = 0, message = "Start late tolerance minutes must be at least 0")
+    Integer startLateToleranceMinutes;
+
+    @Min(value = 1, message = "Default race operational minutes must be at least 1")
+    Integer defaultRaceOperationalMinutes;
+
+    LocalTime raceDayStartTime;
+
+    LocalTime raceDayEndTime;
+
+    Boolean applyBreakTime;
+
+    LocalTime breakStartTime;
+
+    LocalTime breakEndTime;
 
     LocalDateTime registrationOpenAt;
 

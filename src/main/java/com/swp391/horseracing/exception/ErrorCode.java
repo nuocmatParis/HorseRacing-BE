@@ -446,11 +446,43 @@ public enum ErrorCode {
     APPEAL_EVIDENCE_NOT_FOUND(2640, HttpStatus.NOT_FOUND, "Appeal evidence not found"),
     APPEAL_EVIDENCE_REQUIRED(2641, HttpStatus.BAD_REQUEST, "Either file URL or text content must be provided for evidence"),
 
-    // VIOLATION
     VIOLATION_NOT_FOUND(2650, HttpStatus.NOT_FOUND, "Violation not found"),
     VIOLATION_ALREADY_RESOLVED(2651, HttpStatus.CONFLICT, "Violation has already been resolved"),
     VIOLATION_ALREADY_CANCELLED(2652, HttpStatus.CONFLICT, "Violation has already been cancelled"),
     INVALID_VIOLATION_STATUS_TRANSITION(2653, HttpStatus.BAD_REQUEST, "Invalid violation status transition"),
+
+    INVALID_INSPECTION_TIMELINE(1801, HttpStatus.BAD_REQUEST, "Invalid inspection timeline: inspectionOpenMinutesBefore > inspectionCloseMinutesBefore > predictionCloseMinutesBefore >= 0"),
+    INVALID_SCHEDULING_CONFIG(1802, HttpStatus.BAD_REQUEST, "Invalid scheduling configuration"),
+    MAX_RACES_PER_DAY_EXCEEDED(1803, HttpStatus.BAD_REQUEST, "Daily race limit exceeded for this tournament"),
+    RACE_OUTSIDE_OPERATING_HOURS(1804, HttpStatus.BAD_REQUEST, "Race time is outside tournament operating hours"),
+    RACE_OVERLAPS_BREAK(1805, HttpStatus.BAD_REQUEST, "Race time overlaps with tournament break time"),
+    RACE_SCHEDULE_CONFLICT(1806, HttpStatus.BAD_REQUEST, "Race schedule conflict with an existing race (minimum interval required)"),
+    INSPECTION_WINDOW_NOT_OPEN(1807, HttpStatus.BAD_REQUEST, "Inspection window is not open yet"),
+    INSPECTION_WINDOW_CLOSED(1808, HttpStatus.BAD_REQUEST, "Inspection window has closed"),
+    RACE_ENTRY_NOT_ACTIVE(1809, HttpStatus.BAD_REQUEST, "Race entry is not active"),
+    RACE_START_TOO_EARLY(1810, HttpStatus.BAD_REQUEST, "Race cannot start earlier than startEarlyToleranceMinutes before startTime"),
+    RACE_START_WINDOW_EXPIRED(1811, HttpStatus.BAD_REQUEST, "Race start window has expired (startLateToleranceMinutes elapsed)"),
+    APPEAL_SUBMISSION_CLOSED(1812, HttpStatus.BAD_REQUEST, "Appeal submission is closed for this race"),
+
+    // PREDICTION
+    PREDICTION_NOT_FOUND(1660, HttpStatus.NOT_FOUND, "Prediction not found"),
+    INVALID_PREDICTION_TYPE(1673, HttpStatus.BAD_REQUEST, "Only TOP3 predictions are supported"),
+    PREDICTION_ALREADY_EXISTS(1661, HttpStatus.CONFLICT, "You have already submitted a prediction for this race"),
+    PREDICTION_WINDOW_NOT_OPEN(1662, HttpStatus.BAD_REQUEST, "Prediction window has not opened yet"),
+    PREDICTION_WINDOW_CLOSED(1663, HttpStatus.BAD_REQUEST, "Prediction window has already closed"),
+    PREDICTION_NOT_BELONG_TO_USER(1664, HttpStatus.FORBIDDEN, "This prediction does not belong to you"),
+    PREDICTION_ALREADY_SCORED(1665, HttpStatus.CONFLICT, "Prediction has already been scored"),
+    PREDICTION_CANCELLED(1666, HttpStatus.BAD_REQUEST, "Prediction has been cancelled"),
+    INVALID_TOP1_COUNT(1667, HttpStatus.BAD_REQUEST, "Exactly one horse must be selected for Top1 prediction"),
+    INVALID_TOP3_COUNT(1668, HttpStatus.BAD_REQUEST, "Exactly three horses must be selected for Top3 prediction"),
+    DUPLICATE_HORSE_IN_PREDICTION(1669, HttpStatus.BAD_REQUEST, "A horse cannot be selected more than once in a prediction"),
+    HORSE_NOT_IN_THIS_RACE(1670, HttpStatus.BAD_REQUEST, "Selected horse is not participating in this race"),
+    INVALID_PREDICTED_RANK(1671, HttpStatus.BAD_REQUEST, "Predicted rank must be 1 for Top1, and 1,2,3 for Top3"),
+    RACE_HAS_NOT_STARTED(1672, HttpStatus.BAD_REQUEST, "Race has not started yet"),
+
+    // AI PREDICTION
+    AI_PREDICTION_GENERATION_FAILED(1673, HttpStatus.INTERNAL_SERVER_ERROR, "AI prediction generation failed"),
+    AI_PREDICTION_INVALID_RESPONSE(1674, HttpStatus.INTERNAL_SERVER_ERROR, "AI returned an invalid response format"),
     ;
 
 

@@ -27,10 +27,6 @@ public class CreateRaceRequest {
     @FutureOrPresent(message = "Start time must be now or in the future")
     LocalDateTime startTime;
 
-    @NotNull(message = "End time is required")
-    @FutureOrPresent(message = "End time must be now or in the future")
-    LocalDateTime endTime;
-
     @NotNull(message = "Track condition is required")
     @Size(max = 100, message = "Track condition must not exceed 100 characters")
     String trackCondition;
@@ -42,16 +38,4 @@ public class CreateRaceRequest {
     @NotNull(message = "Sequence order is required")
     @Min(value = 1, message = "Sequence order must be at least 1")
     Integer sequenceOrder;
-
-    @NotNull(message = "Status is required")
-    RoundStatus status;
-
-    @NotNull(message = "Schedule published time is required")
-    LocalDateTime schedulePublishedAt;
-
-    @NotNull(message = "Prediction open time is required")
-    LocalDateTime predictionOpenAt;
-
-    @NotNull(message = "Prediction close time is required")
-    LocalDateTime predictionCloseAt;
 }

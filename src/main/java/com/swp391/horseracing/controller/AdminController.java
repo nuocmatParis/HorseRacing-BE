@@ -321,7 +321,27 @@ public class AdminController {
                 .build();
     }
 
+    @PostMapping("/races/{raceId}/postpone")
+    public ApiResponse<RaceResponse> postponeRace(@PathVariable UUID raceId,
+                                                  @Valid @RequestBody com.swp391.horseracing.dto.tournament.request.RescheduleRaceRequest request) {
+        return ApiResponse.<RaceResponse>builder()
+                .result(raceService.rescheduleRace(raceId, request))
+                .build();
+    }
 
+    @PostMapping("/races/{raceId}/cancel")
+    public ApiResponse<Void> cancelRace(@PathVariable UUID raceId,
+                                        @Valid @RequestBody com.swp391.horseracing.dto.tournament.request.CancelRaceRequest request) {
+        raceService.cancelRace(raceId, request);
+        return ApiResponse.<Void>builder()
+                .message("Race cancelled successfully")
+                .build();
+    }
 
-
+    @GetMapping("/races/{raceId}/reschedule-proposals")
+    public ApiResponse<List<java.time.LocalDateTime>> getRescheduleProposals(@PathVariable UUID raceId) {
+        return ApiResponse.<List<java.time.LocalDateTime>>builder()
+                .result(raceService.getRescheduleProposals(raceId))
+                .build();
+    }
 }
