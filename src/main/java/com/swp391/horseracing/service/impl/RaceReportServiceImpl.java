@@ -14,6 +14,7 @@ import com.swp391.horseracing.mapper.RaceResultMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.NotificationService;
 import com.swp391.horseracing.service.RaceReportService;
+import com.swp391.horseracing.service.ScoringService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     RaceResultMapper raceResultMapper;
     UserCurrentService userCurrentService;
     NotificationService notificationService;
+    ScoringService scoringService;
 
     @Override
     @Transactional
@@ -155,6 +157,8 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         race.setStatus(RoundStatus.COMPLETED);
         raceRepository.save(race);
+
+        scoringService.scoreRace(raceId);
 
         sendNotificationsForPublishedReport(race);
 
