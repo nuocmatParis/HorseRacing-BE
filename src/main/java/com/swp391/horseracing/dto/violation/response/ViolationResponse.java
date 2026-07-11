@@ -1,4 +1,5 @@
 package com.swp391.horseracing.dto.violation.response;
+
 import com.swp391.horseracing.enums.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -36,6 +37,5 @@ public class ViolationResponse {
 
     LocalDateTime occurredAt;
     LocalDateTime createdAt;
-
     ViolationStatus status;
 }

@@ -6,10 +6,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface RefereeRepository extends JpaRepository<Referee, UUID> {
     List<Referee> findByStatus(RefereeStatus status);
-    java.util.Optional<Referee> findByUser_UserId(UUID userId);
+    Optional<Referee> findByUser_UserId(UUID userId);
 }
