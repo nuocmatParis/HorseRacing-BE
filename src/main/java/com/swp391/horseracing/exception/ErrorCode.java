@@ -386,6 +386,30 @@ public enum ErrorCode {
 
     NO_AVAILABLE_VETERINARIAN(1707, HttpStatus.NOT_FOUND, "No available veterinarian found"),
 
+    HORSE_INSPECTION_ALREADY_EXISTS(1708, HttpStatus.CONFLICT, "Horse inspection already exists for this entry"),
+
+    JOCKEY_INSPECTION_ALREADY_EXISTS(1709, HttpStatus.CONFLICT, "Jockey inspection already exists for this entry"),
+
+    VET_NOT_ASSIGNED_TO_RACE(1710, HttpStatus.FORBIDDEN, "Veterinarian is not assigned to this race"),
+
+    MEDICAL_STAFF_NOT_ASSIGNED_TO_RACE(1711, HttpStatus.FORBIDDEN, "Medical staff is not assigned to this race"),
+
+    RACE_NOT_IN_SCHEDULED_STATUS(1712, HttpStatus.BAD_REQUEST, "Race is not in scheduled status"),
+
+    REFEREE_NOT_ASSIGNED_TO_RACE(1713, HttpStatus.FORBIDDEN, "Referee is not assigned to this race"),
+
+    ENTRY_MISSING_HORSE_INSPECTION(1715, HttpStatus.BAD_REQUEST, "Race entry is missing a confirmed and passed horse inspection"),
+
+    ENTRY_MISSING_JOCKEY_INSPECTION(1716, HttpStatus.BAD_REQUEST, "Race entry is missing a confirmed and passed jockey inspection"),
+
+    ENTRY_HANDICAP_NOT_CONFIRMED(1717, HttpStatus.BAD_REQUEST, "Handicap weight is not confirmed for this entry"),
+
+    RACE_NOT_ENOUGH_ACTIVE_ENTRIES(1718, HttpStatus.BAD_REQUEST, "Race does not have enough active entries to start"),
+
+    INVALID_VIOLATION_TYPE_FOR_RACE_STATUS(1719, HttpStatus.BAD_REQUEST, "Violation type is not allowed for the current race status"),
+
+    RACE_VIOLATION_REPORTING_CLOSED(1720, HttpStatus.BAD_REQUEST, "Violation reporting is closed for this race"),
+
     ;
 
 

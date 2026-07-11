@@ -14,4 +14,5 @@ public interface RaceService {
     void delete(UUID raceId);
     List<RaceResponse> getRacesByRoundId(UUID roundId);
     RaceResponse publishSchedule(UUID raceId);
+    RaceResponse startRace(UUID raceId);
 }

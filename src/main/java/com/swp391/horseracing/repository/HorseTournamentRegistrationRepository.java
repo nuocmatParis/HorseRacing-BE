@@ -19,6 +19,8 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
 
     boolean existsByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
 
+    Optional<HorseTournamentRegistration> findByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
+
     List<HorseTournamentRegistration> findByOwner_OwnerId(UUID ownerId);
 
     List<HorseTournamentRegistration> findByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);

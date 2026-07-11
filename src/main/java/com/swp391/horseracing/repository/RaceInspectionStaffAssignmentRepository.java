@@ -11,7 +11,7 @@ public interface RaceInspectionStaffAssignmentRepository
 
     Optional<RaceInspectionAssignment> findByRace_RaceId(UUID raceId);
 
-    long countByVeterinarian_VeterinarianId(UUID veterinarianId);
+    long countByVeterinarian_VetId(UUID veterinarianId);
 
     long countByMedicalStaff_MedStaffId(UUID medStaffId);
 }

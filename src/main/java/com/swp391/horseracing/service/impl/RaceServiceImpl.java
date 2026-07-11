@@ -6,8 +6,15 @@ import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.entity.Referee;
+import com.swp391.horseracing.entity.RaceEntry;
+import com.swp391.horseracing.entity.HorseInspection;
+import com.swp391.horseracing.entity.JockeyInspection;
 import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentStatus;
+import com.swp391.horseracing.enums.RaceEntryStatus;
+import com.swp391.horseracing.enums.InspectionStatus;
+import com.swp391.horseracing.enums.InspectionResult;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceMapper;
@@ -16,6 +23,9 @@ import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.UserRepository;
+import com.swp391.horseracing.repository.RefereeRepository;
+import com.swp391.horseracing.repository.HorseInspectionRepository;
+import com.swp391.horseracing.repository.JockeyInspectionRepository;
 import com.swp391.horseracing.service.RaceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +49,9 @@ public class RaceServiceImpl implements RaceService {
     RaceEntryRepository raceEntryRepository;
     RaceRefereeRepository raceRefereeRepository;
     RaceMapper raceMapper;
+    RefereeRepository refereeRepository;
+    HorseInspectionRepository horseInspectionRepository;
+    JockeyInspectionRepository jockeyInspectionRepository;
 
     @Override
     @Transactional
@@ -202,6 +215,79 @@ public class RaceServiceImpl implements RaceService {
                 .stream()
                 .map(raceMapper::toRaceResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public RaceResponse startRace(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        if (race.getStatus() != RoundStatus.SCHEDULED) {
+            throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULED_STATUS);
+        }
+
+        User currentUser = getCurrentUser();
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+
+        boolean isAuthorized = false;
+        if (race.getRound().getHeadReferee() != null 
+                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
+            isAuthorized = true;
+        }
+        if (!isAuthorized) {
+            isAuthorized = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                    race.getRaceId(), referee.getRefereeId());
+        }
+        if (!isAuthorized) {
+            throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
+        }
+
+        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        int activeEntryCount = 0;
+        for (RaceEntry entry : entries) {
+            if (entry.getStatus() == RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
+                    || entry.getStatus() == RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE
+                    || entry.getStatus() == RaceEntryStatus.SCRATCHED
+                    || entry.getStatus() == RaceEntryStatus.DISQUALIFIED) {
+                continue;
+            }
+
+            HorseInspection horseInspection = horseInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ENTRY_MISSING_HORSE_INSPECTION));
+
+            if (horseInspection.getStatus() != InspectionStatus.CONFIRMED 
+                    || horseInspection.getResult() != InspectionResult.PASS) {
+                throw new AppException(ErrorCode.ENTRY_MISSING_HORSE_INSPECTION);
+            }
+
+            JockeyInspection jockeyInspection = jockeyInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId())
+                    .orElseThrow(() -> new AppException(ErrorCode.ENTRY_MISSING_JOCKEY_INSPECTION));
+
+            if (jockeyInspection.getStatus() != InspectionStatus.CONFIRMED 
+                    || jockeyInspection.getResult() != InspectionResult.PASS) {
+                throw new AppException(ErrorCode.ENTRY_MISSING_JOCKEY_INSPECTION);
+            }
+
+            if (horseInspection.getHandicapWeight() != null && horseInspection.getHandicapWeight() > 0) {
+                if (!Boolean.TRUE.equals(horseInspection.getIsHandicapConfirmed())) {
+                    throw new AppException(ErrorCode.ENTRY_HANDICAP_NOT_CONFIRMED);
+                }
+            }
+
+            activeEntryCount++;
+        }
+
+        if (activeEntryCount < race.getRound().getMinEntries()) {
+            throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ACTIVE_ENTRIES);
+        }
+
+        race.setStatus(RoundStatus.ONGOING);
+        race.setStartedAt(LocalDateTime.now());
+        race.setStartedBy(currentUser);
+
+        return raceMapper.toRaceResponse(raceRepository.save(race));
     }
 
     private User getCurrentUser() {
