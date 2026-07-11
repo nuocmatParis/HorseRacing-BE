@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.tournament.request;
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
 import jakarta.validation.constraints.FutureOrPresent;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +15,7 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
@@ -107,6 +109,42 @@ public class CreateTournamentRequest {
 
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore = 5;
+
+    @Min(value = 1, message = "Prediction card open hours must be at least 1")
+    Integer predictionCardOpenHoursBeforeFirstRace = 24;
+
+    @Min(value = 0, message = "Inspection open minutes must be at least 0")
+    Integer inspectionOpenMinutesBefore = 90;
+
+    @Min(value = 0, message = "Inspection close minutes must be at least 0")
+    Integer inspectionCloseMinutesBefore = 30;
+
+    @Min(value = 1, message = "Max races per day must be at least 1")
+    @Max(value = 9, message = "Max races per day must be at most 9")
+    Integer maxRacesPerDay = 9;
+
+    @Min(value = 30, message = "Min race interval minutes must be at least 30")
+    @Max(value = 60, message = "Min race interval minutes must be at most 60")
+    Integer minRaceIntervalMinutes = 35;
+
+    @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
+    Integer startEarlyToleranceMinutes = 0;
+
+    @Min(value = 0, message = "Start late tolerance minutes must be at least 0")
+    Integer startLateToleranceMinutes = 30;
+
+    @Min(value = 1, message = "Default race operational minutes must be at least 1")
+    Integer defaultRaceOperationalMinutes = 30;
+
+    LocalTime raceDayStartTime = LocalTime.of(8, 0);
+
+    LocalTime raceDayEndTime = LocalTime.of(18, 0);
+
+    Boolean applyBreakTime = false;
+
+    LocalTime breakStartTime;
+
+    LocalTime breakEndTime;
 
     @NotNull(message = "Registration open time is required")
     LocalDateTime registrationOpenAt;

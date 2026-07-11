@@ -22,11 +22,9 @@ public class CreateRaceResultRequest {
     @NotNull(message = "Entry ID is required")
     UUID entryId;
 
-    @NotNull(message = "Finish time is required")
     @PositiveOrZero(message = "Finish time must be zero or positive")
     Float finishTime;
 
-    @NotNull(message = "Rank is required")
     @Min(value = 1, message = "Rank must be at least 1")
     Integer rank;
 

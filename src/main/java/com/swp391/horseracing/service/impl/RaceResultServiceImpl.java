@@ -4,9 +4,7 @@ import com.swp391.horseracing.dto.race_result.request.CreateRaceResultRequest;
 import com.swp391.horseracing.dto.race_result.request.UpdateRaceResultRequest;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
 import com.swp391.horseracing.entity.*;
-import com.swp391.horseracing.enums.RefereeStatus;
-import com.swp391.horseracing.enums.ReportStatus;
-import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceResultMapper;
@@ -68,18 +66,6 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
-            if (!ranks.add(req.getRank())) {
-                throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
-            }
-
-            if (raceResultRepository.existsByRace_RaceIdAndRank(raceId, req.getRank())) {
-                throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
-            }
-
-            if (raceResultRepository.existsByRace_RaceIdAndEntry_EntryId(raceId, req.getEntryId())) {
-                throw new AppException(ErrorCode.RACE_RESULT_ALREADY_EXISTS);
-            }
-
             RaceEntry entry = raceEntryRepository.findById(req.getEntryId())
                     .orElseThrow(() -> new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND));
 
@@ -87,17 +73,58 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
+            if (raceResultRepository.existsByRace_RaceIdAndEntry_EntryId(raceId, req.getEntryId())) {
+                throw new AppException(ErrorCode.RACE_RESULT_ALREADY_EXISTS);
+            }
+
+            Float finishTime = req.getFinishTime();
+            Integer rank = req.getRank();
+            RaceResultStatus status = req.getStatus();
+
+            if (status == RaceResultStatus.FINISHED) {
+                if (finishTime == null || rank == null) {
+                    throw new AppException(ErrorCode.INVALID_REQUEST);
+                }
+                if (finishTime < 0) {
+                    throw new AppException(ErrorCode.FINISH_TIME_MUST_BE_POSITIVE);
+                }
+                if (rank < 1) {
+                    throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
+                }
+                if (!ranks.add(rank)) {
+                    throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
+                }
+                if (raceResultRepository.existsByRace_RaceIdAndRank(raceId, rank)) {
+                    throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
+                }
+                
+                entry.setStatus(RaceEntryStatus.FINISHED);
+            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
+                finishTime = null;
+                rank = null;
+                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
+            } else if (status == RaceResultStatus.DISQUALIFIED) {
+                finishTime = null;
+                rank = null;
+                entry.setStatus(RaceEntryStatus.DISQUALIFIED);
+            }
+            
+            raceEntryRepository.save(entry);
+
             RaceResult result = RaceResult.builder()
                     .race(race)
                     .entry(entry)
-                    .finishTime(req.getFinishTime())
-                    .rank(req.getRank())
-                    .status(req.getStatus())
+                    .finishTime(finishTime)
+                    .rank(rank)
+                    .status(status)
                     .recordedBy(referee.getUser())
                     .build();
 
             results.add(result);
         }
+
+        race.setStatus(RoundStatus.FINISHED);
+        raceRepository.save(race);
 
         return raceResultRepository.saveAll(results)
                 .stream()
@@ -136,10 +163,19 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
 
         Set<Integer> ranks = new HashSet<>();
-
         for (UpdateRaceResultRequest req : requests) {
-            if (req.getRank() != null && !ranks.add(req.getRank())) {
-                throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
+            RaceResultStatus status = req.getStatus() != null ? req.getStatus() : resultByEntryId.get(req.getEntryId()).getStatus();
+            Integer rank = req.getRank() != null ? req.getRank() : resultByEntryId.get(req.getEntryId()).getRank();
+            
+            if (status == RaceResultStatus.FINISHED) {
+                if (rank != null) {
+                    if (rank < 1) {
+                        throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
+                    }
+                    if (!ranks.add(rank)) {
+                        throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
+                    }
+                }
             }
         }
 
@@ -149,16 +185,40 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
             }
 
-            if (req.getFinishTime() != null) {
-                result.setFinishTime(req.getFinishTime());
+            RaceResultStatus status = req.getStatus() != null ? req.getStatus() : result.getStatus();
+            Float finishTime = req.getFinishTime() != null ? req.getFinishTime() : result.getFinishTime();
+            Integer rank = req.getRank() != null ? req.getRank() : result.getRank();
+
+            RaceEntry entry = result.getEntry();
+
+            if (status == RaceResultStatus.FINISHED) {
+                if (finishTime == null || rank == null) {
+                    throw new AppException(ErrorCode.INVALID_REQUEST);
+                }
+                if (finishTime < 0) {
+                    throw new AppException(ErrorCode.FINISH_TIME_MUST_BE_POSITIVE);
+                }
+                result.setStatus(status);
+                result.setFinishTime(finishTime);
+                result.setRank(rank);
+                entry.setStatus(RaceEntryStatus.FINISHED);
+            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
+                result.setStatus(status);
+                result.setFinishTime(null);
+                result.setRank(null);
+                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
+            } else if (status == RaceResultStatus.DISQUALIFIED) {
+                result.setStatus(status);
+                result.setFinishTime(null);
+                result.setRank(null);
+                entry.setStatus(RaceEntryStatus.DISQUALIFIED);
             }
-            if (req.getRank() != null) {
-                result.setRank(req.getRank());
-            }
-            if (req.getStatus() != null) {
-                result.setStatus(req.getStatus());
-            }
+            
+            raceEntryRepository.save(entry);
         }
+
+        race.setStatus(RoundStatus.FINISHED);
+        raceRepository.save(race);
 
         return raceResultRepository.saveAll(existingResults)
                 .stream()

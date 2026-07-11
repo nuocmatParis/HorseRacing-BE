@@ -3,17 +3,19 @@ package com.swp391.horseracing.service.impl;
 import com.swp391.horseracing.dto.race_report.response.RaceReportResponse;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
 import com.swp391.horseracing.entity.*;
-import com.swp391.horseracing.enums.AppealStatus;
-import com.swp391.horseracing.enums.NotificationType;
-import com.swp391.horseracing.enums.ReportStatus;
-import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.*;
+import com.swp391.horseracing.service.*;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Optional;
 import com.swp391.horseracing.mapper.RaceReportMapper;
 import com.swp391.horseracing.mapper.RaceResultMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.NotificationService;
 import com.swp391.horseracing.service.RaceReportService;
+import com.swp391.horseracing.service.ScoringService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,12 @@ public class RaceReportServiceImpl implements RaceReportService {
     RaceResultMapper raceResultMapper;
     UserCurrentService userCurrentService;
     NotificationService notificationService;
+    ScoringService scoringService;
+    PrizeStructureRepository prizeStructureRepository;
+    WalletRepository walletRepository;
+    WalletTransactionRepository walletTransactionRepository;
+    ContractService contractService;
+    JockeyHorseContractRepository jockeyHorseContractRepository;
 
     @Override
     @Transactional
@@ -155,6 +163,146 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         race.setStatus(RoundStatus.COMPLETED);
         raceRepository.save(race);
+
+        // Prize Payout & Release Jockey Escrow
+        if (race.getRound().isFinal()) {
+            Tournament tournament = race.getRound().getTournament();
+            List<PrizeStructure> prizes = prizeStructureRepository.findByTournament_TournamentId(tournament.getTournamentId());
+            List<RaceResult> results = raceResultRepository.findByRace_RaceId(raceId);
+
+            for (RaceResult result : results) {
+                if (result.getStatus() == RaceResultStatus.FINISHED && result.getRank() != null && !result.isPrizePaid()) {
+                    Optional<PrizeStructure> prizeOpt = prizes.stream()
+                            .filter(p -> p.getRank() == result.getRank())
+                            .findFirst();
+
+                    if (prizeOpt.isPresent()) {
+                        PrizeStructure prize = prizeOpt.get();
+                        BigDecimal totalPrizeAmount = BigDecimal.ZERO;
+                        if (prize.getPercentage() != null && prize.getPercentage() > 0) {
+                            totalPrizeAmount = tournament.getTotalPrizePool()
+                                    .multiply(BigDecimal.valueOf(prize.getPercentage()))
+                                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                        } else {
+                            totalPrizeAmount = prize.getFixedAmount();
+                        }
+
+                        if (totalPrizeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                            JockeyHorseContract contract = result.getEntry().getContract();
+                            BigDecimal ownerAmount = totalPrizeAmount.multiply(BigDecimal.valueOf(contract.getOwnerPrizeSharePercent()))
+                                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                            BigDecimal jockeyAmount = totalPrizeAmount.multiply(BigDecimal.valueOf(contract.getJockeyPrizeSharePercent()))
+                                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+
+                            Wallet systemPrizeWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
+                                    WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_PRIZE_POOL)
+                                    .orElseThrow(() -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+
+                            if (systemPrizeWallet.getBalance().compareTo(totalPrizeAmount) < 0) {
+                                throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+                            }
+
+                            Wallet ownerWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
+                                    contract.getOwner().getUser().getUserId(), WalletPurpose.USER_MAIN)
+                                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+                            Wallet jockeyWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
+                                    contract.getJockey().getUser().getUserId(), WalletPurpose.USER_MAIN)
+                                    .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+
+                            systemPrizeWallet.setBalance(systemPrizeWallet.getBalance().subtract(totalPrizeAmount));
+                            ownerWallet.setBalance(ownerWallet.getBalance().add(ownerAmount));
+                            jockeyWallet.setBalance(jockeyWallet.getBalance().add(jockeyAmount));
+
+                            walletRepository.save(systemPrizeWallet);
+                            walletRepository.save(ownerWallet);
+                            walletRepository.save(jockeyWallet);
+
+                            UUID txGroup = UUID.randomUUID();
+
+                            Transaction debitTx = Transaction.builder()
+                                    .wallet(systemPrizeWallet)
+                                    .contractId(contract.getContractId())
+                                    .type(TransactionType.PRIZE_OWNER_SHARE)
+                                    .direction(TransactionDirection.DEBIT)
+                                    .amount(totalPrizeAmount)
+                                    .balanceBefore(systemPrizeWallet.getBalance().add(totalPrizeAmount))
+                                    .balanceAfter(systemPrizeWallet.getBalance())
+                                    .counterpartyType(CounterpartyType.USER)
+                                    .transactionGroupId(txGroup)
+                                    .status(TransactionStatus.SUCCESS)
+                                    .note("Prize pool payout for rank " + result.getRank())
+                                    .build();
+
+                            Transaction ownerTx = Transaction.builder()
+                                    .wallet(ownerWallet)
+                                    .contractId(contract.getContractId())
+                                    .type(TransactionType.PRIZE_OWNER_SHARE)
+                                    .direction(TransactionDirection.CREDIT)
+                                    .amount(ownerAmount)
+                                    .balanceBefore(ownerWallet.getBalance().subtract(ownerAmount))
+                                    .balanceAfter(ownerWallet.getBalance())
+                                    .counterpartyWalletId(systemPrizeWallet.getWalletId())
+                                    .counterpartyType(CounterpartyType.SYSTEM)
+                                    .transactionGroupId(txGroup)
+                                    .status(TransactionStatus.SUCCESS)
+                                    .note("Owner prize share for rank " + result.getRank())
+                                    .build();
+
+                            Transaction jockeyTx = Transaction.builder()
+                                    .wallet(jockeyWallet)
+                                    .contractId(contract.getContractId())
+                                    .type(TransactionType.PRIZE_JOCKEY_SHARE)
+                                    .direction(TransactionDirection.CREDIT)
+                                    .amount(jockeyAmount)
+                                    .balanceBefore(jockeyWallet.getBalance().subtract(jockeyAmount))
+                                    .balanceAfter(jockeyWallet.getBalance())
+                                    .counterpartyWalletId(systemPrizeWallet.getWalletId())
+                                    .counterpartyType(CounterpartyType.SYSTEM)
+                                    .transactionGroupId(txGroup)
+                                    .status(TransactionStatus.SUCCESS)
+                                    .note("Jockey prize share for rank " + result.getRank())
+                                    .build();
+
+                            walletTransactionRepository.save(debitTx);
+                            walletTransactionRepository.save(ownerTx);
+                            walletTransactionRepository.save(jockeyTx);
+
+                            result.setPrizeMoney(totalPrizeAmount);
+                            result.setOwnerPrizeAmount(ownerAmount);
+                            result.setJockeyPrizeAmount(jockeyAmount);
+                            result.setPrizeStatus(PrizeStatus.Paid);
+                            result.setPrizePaid(true);
+                            result.setPrizePaidAt(LocalDateTime.now());
+                            raceResultRepository.save(result);
+                        }
+                    }
+                }
+
+                JockeyHorseContract contract = result.getEntry().getContract();
+                if (contract.getStatus() == ContractStatus.APPROVED && contract.getEscrowStatus() == EscrowStatus.PARTIALLY_RELEASED) {
+                    contractService.releaseFinalPayout(contract.getContractId());
+                }
+            }
+
+            boolean allFinalRacesCompleted = true;
+            for (Race r : race.getRound().getRaces()) {
+                RoundStatus rStatus = r.getRaceId().equals(raceId) ? RoundStatus.COMPLETED : r.getStatus();
+                if (rStatus != RoundStatus.COMPLETED && rStatus != RoundStatus.CANCELLED) {
+                    allFinalRacesCompleted = false;
+                    break;
+                }
+            }
+            if (allFinalRacesCompleted) {
+                List<JockeyHorseContract> tournamentContracts = jockeyHorseContractRepository.findByTournament_TournamentIdAndStatusAndEscrowStatus(
+                        tournament.getTournamentId(), ContractStatus.APPROVED, EscrowStatus.PARTIALLY_RELEASED);
+                for (JockeyHorseContract c : tournamentContracts) {
+                    contractService.releaseFinalPayout(c.getContractId());
+                }
+            }
+        }
+
+        scoringService.scoreRace(raceId);
 
         sendNotificationsForPublishedReport(race);
 

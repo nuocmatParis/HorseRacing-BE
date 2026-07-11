@@ -35,4 +35,10 @@ public interface JockeyHorseContractRepository extends JpaRepository<JockeyHorse
     List<JockeyHorseContract> findByOwner_User_UserIdOrderByRequestedAtDesc(UUID userId);
 
     List<JockeyHorseContract> findByJockey_User_UserIdOrderByRequestedAtDesc(UUID userId);
+
+    List<JockeyHorseContract> findByTournament_TournamentIdAndStatusAndEscrowStatus(
+            UUID tournamentId,
+            com.swp391.horseracing.enums.ContractStatus status,
+            com.swp391.horseracing.enums.EscrowStatus escrowStatus
+    );
 }

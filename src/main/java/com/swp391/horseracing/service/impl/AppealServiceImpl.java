@@ -7,6 +7,7 @@ import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.AppealStatus;
 import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.enums.ReportStatus;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.AppealMapper;
@@ -65,9 +66,14 @@ public class AppealServiceImpl implements AppealService {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
-        if (!raceResultRepository.existsByRace_RaceIdAndEntry_EntryId(
-                entry.getRace().getRaceId(), request.getEntryId())) {
-            throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
+        Race race = entry.getRace();
+        if (race.getStartedAt() == null || race.getStatus() == RoundStatus.SCHEDULED) {
+            throw new AppException(ErrorCode.RACE_HAS_NOT_STARTED);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isAfter(race.getEndTime())) {
+            throw new AppException(ErrorCode.APPEAL_SUBMISSION_CLOSED);
         }
 
         if (raceReportRepository.existsByRace_RaceId(entry.getRace().getRaceId())) {

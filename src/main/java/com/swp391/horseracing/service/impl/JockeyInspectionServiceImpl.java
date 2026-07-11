@@ -13,6 +13,7 @@ import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceInspectionStaffAssignmentRepository;
 import com.swp391.horseracing.service.JockeyInspectionService;
 import com.swp391.horseracing.service.UserCurrentService;
+import com.swp391.horseracing.service.PredictionService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -33,6 +34,7 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
     RaceInspectionStaffAssignmentRepository raceInspectionStaffAssignmentRepository;
     UserCurrentService userCurrentService;
     JockeyInspectionMapper jockeyInspectionMapper;
+    PredictionService predictionService;
 
     @Override
     @Transactional
@@ -43,6 +45,28 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
         Race race = raceEntry.getRace();
         if (race.getStatus() != RoundStatus.SCHEDULED) {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULED_STATUS);
+        }
+
+        if (raceEntry.getStatus() != RaceEntryStatus.CONFIRMED) {
+            throw new AppException(ErrorCode.RACE_ENTRY_NOT_ACTIVE);
+        }
+
+        if (race.getStartedAt() != null) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_CLOSED);
+        }
+
+        Tournament tournament = race.getRound().getTournament();
+        int openMin = tournament.getInspectionOpenMinutesBefore();
+        int closeMin = tournament.getInspectionCloseMinutesBefore();
+        LocalDateTime inspectionOpenAt = race.getStartTime().minusMinutes(openMin);
+        LocalDateTime inspectionCloseAt = race.getStartTime().minusMinutes(closeMin);
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isBefore(inspectionOpenAt)) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_NOT_OPEN);
+        }
+        if (now.isAfter(inspectionCloseAt)) {
+            throw new AppException(ErrorCode.INSPECTION_WINDOW_CLOSED);
         }
 
         if (jockeyInspectionRepository.existsByRaceEntry_EntryId(entryId)) {
@@ -74,6 +98,8 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
             raceEntry.setStatus(RaceEntryStatus.SCRATCHED);
             raceEntry.setScratchedReason("Failed jockey inspection. Note: " + request.getNote());
             raceEntryRepository.save(raceEntry);
+            predictionService.notifySpectatorsForScratchedEntry(
+                    race.getRaceId(), entryId, raceEntry.getContract().getHorse().getName());
         }
 
         JockeyInspection savedInspection = jockeyInspectionRepository.save(inspection);
