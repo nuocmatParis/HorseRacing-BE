@@ -15,6 +15,8 @@ import java.util.UUID;
 
 public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID> {
 
+    Optional<Veterinarian> findByUser_UserId(UUID userId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT v

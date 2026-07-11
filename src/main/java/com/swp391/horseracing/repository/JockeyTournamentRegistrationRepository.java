@@ -19,6 +19,8 @@ public interface JockeyTournamentRegistrationRepository extends JpaRepository<Jo
 
     boolean existsByTournament_TournamentIdAndJockey_JockeyId(UUID tournamentId, UUID jockeyId);
 
+    Optional<JockeyTournamentRegistration> findByTournament_TournamentIdAndJockey_JockeyId(UUID tournamentId, UUID jockeyId);
+
     List<JockeyTournamentRegistration> findByJockey_JockeyId(UUID jockeyId);
 
     List<JockeyTournamentRegistration> findByStatus(RegistrationStatus status);
