@@ -107,6 +107,12 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.MAX_RACES_REACHED);
         }
 
+        if (round.isFinal()) {
+            if (round.getRaces() != null && !round.getRaces().isEmpty()) {
+                throw new AppException(ErrorCode.INVALID_FINAL_ROUND_CONFIGURATION);
+            }
+        }
+
         validateRaceScheduleConstraints(round, request.getStartTime(), endTime, null);
 
         User currentUser = getCurrentUser();

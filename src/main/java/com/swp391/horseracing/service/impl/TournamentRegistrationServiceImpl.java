@@ -192,16 +192,17 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         validatePendingStatus(registration.getStatus());
 
         Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_HorseRegistrationId(registrationId).orElseThrow(()
-                -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
 
-        paymentService.refundInvoice(invoice.getInvoiceId());
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            paymentService.refundInvoice(invoice.getInvoiceId());
+        }
 
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
-
 
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(horseRegistrationRepository.save(registration));
     }

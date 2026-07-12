@@ -463,6 +463,7 @@ public enum ErrorCode {
     RACE_START_TOO_EARLY(1810, HttpStatus.BAD_REQUEST, "Race cannot start earlier than startEarlyToleranceMinutes before startTime"),
     RACE_START_WINDOW_EXPIRED(1811, HttpStatus.BAD_REQUEST, "Race start window has expired (startLateToleranceMinutes elapsed)"),
     APPEAL_SUBMISSION_CLOSED(1812, HttpStatus.BAD_REQUEST, "Appeal submission is closed for this race"),
+    INVALID_FINAL_ROUND_CONFIGURATION(1813, HttpStatus.BAD_REQUEST, "Final round must have exactly one race"),
 
     // PREDICTION
     PREDICTION_NOT_FOUND(1660, HttpStatus.NOT_FOUND, "Prediction not found"),

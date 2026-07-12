@@ -39,14 +39,18 @@ public class RaceResultServiceImpl implements RaceResultService {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        if (race.getStatus() != RoundStatus.ONGOING && race.getStatus() != RoundStatus.FINISHED) {
+        if (race.getStatus() != RoundStatus.ONGOING) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
-        if (raceReportRepository.existsByRace_RaceId(raceId)) {
-            RaceReport report = raceReportRepository.findByRace_RaceId(raceId).get();
-            if (report.getStatus() == ReportStatus.Published) {
+        Optional<RaceReport> reportOpt = raceReportRepository.findByRace_RaceId(raceId);
+        if (reportOpt.isPresent()) {
+            ReportStatus status = reportOpt.get().getStatus();
+            if (status == ReportStatus.Published) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
+            }
+            if (status == ReportStatus.Signed) {
+                throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SIGNED);
             }
         }
 
@@ -123,9 +127,6 @@ public class RaceResultServiceImpl implements RaceResultService {
             results.add(result);
         }
 
-        race.setStatus(RoundStatus.FINISHED);
-        raceRepository.save(race);
-
         return raceResultRepository.saveAll(results)
                 .stream()
                 .map(raceResultMapper::toRaceResultResponse)
@@ -138,14 +139,18 @@ public class RaceResultServiceImpl implements RaceResultService {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        if (race.getStatus() != RoundStatus.ONGOING && race.getStatus() != RoundStatus.FINISHED) {
+        if (race.getStatus() != RoundStatus.ONGOING) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
-        if (raceReportRepository.existsByRace_RaceId(raceId)) {
-            RaceReport report = raceReportRepository.findByRace_RaceId(raceId).get();
-            if (report.getStatus() == ReportStatus.Published) {
+        Optional<RaceReport> reportOpt = raceReportRepository.findByRace_RaceId(raceId);
+        if (reportOpt.isPresent()) {
+            ReportStatus status = reportOpt.get().getStatus();
+            if (status == ReportStatus.Published) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
+            }
+            if (status == ReportStatus.Signed) {
+                throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SIGNED);
             }
         }
 
@@ -216,9 +221,6 @@ public class RaceResultServiceImpl implements RaceResultService {
             
             raceEntryRepository.save(entry);
         }
-
-        race.setStatus(RoundStatus.FINISHED);
-        raceRepository.save(race);
 
         return raceResultRepository.saveAll(existingResults)
                 .stream()
