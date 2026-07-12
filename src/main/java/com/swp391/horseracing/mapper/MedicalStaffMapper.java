@@ -1,31 +1,31 @@
 package com.swp391.horseracing.mapper;
 
-import com.swp391.horseracing.dto.referee.request.RefereeCreationRequest;
-import com.swp391.horseracing.dto.referee.request.RefereeUpdateRequest;
-import com.swp391.horseracing.dto.referee.response.RefereeResponse;
-import com.swp391.horseracing.entity.Referee;
+import com.swp391.horseracing.dto.medical_staff.request.MedicalStaffCreationRequest;
+import com.swp391.horseracing.dto.medical_staff.request.MedicalStaffUpdateRequest;
+import com.swp391.horseracing.dto.medical_staff.response.MedicalStaffResponse;
+import com.swp391.horseracing.entity.MedicalStaff;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
-public interface RefereeMapper {
+public interface MedicalStaffMapper {
 
     @Mapping(target = "userId", source = "user.userId")
     @Mapping(target = "fullName", source = "user.fullName")
     @Mapping(target = "email", source = "user.email")
     @Mapping(target = "username", source = "user.username")
-    RefereeResponse toRefereeResponse(Referee referee);
+    MedicalStaffResponse toMedicalStaffResponse(MedicalStaff medicalStaff);
 
-    @Mapping(target = "refereeId", ignore = true)
+    @Mapping(target = "medStaffId", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-    Referee toReferee(RefereeCreationRequest request);
+    MedicalStaff toMedicalStaff(MedicalStaffCreationRequest request);
 
-    @Mapping(target = "refereeId", ignore = true)
+    @Mapping(target = "medStaffId", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-    void updateReferee(@MappingTarget Referee referee, RefereeUpdateRequest request);
+    void updateMedicalStaff(@MappingTarget MedicalStaff medicalStaff, MedicalStaffUpdateRequest request);
 }
