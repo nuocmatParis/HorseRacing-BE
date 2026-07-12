@@ -1,11 +1,12 @@
 package com.swp391.horseracing.repository;
 
-import com.swp391.horseracing.entity.Race;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.UUID;
+import com.swp391.horseracing.entity.Race;
 
 @Repository
 public interface RaceRepository extends JpaRepository<Race, UUID> {
