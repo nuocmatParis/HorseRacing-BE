@@ -67,11 +67,6 @@ public class RaceServiceImpl implements RaceService {
         if (raceRepository.existsByRound_RoundIdAndName(roundId, request.getName())) {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
         }
-
-        if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
-            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
-        }
-
         if(round.getMaxRaces() <= round.getRaces().size()){
             throw new AppException(ErrorCode.MAX_RACES_REACHED);
         }
@@ -82,6 +77,10 @@ public class RaceServiceImpl implements RaceService {
             if (request.getStartTime().isBefore(lastRace.getEndTime())) {
                 throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
             }
+        }
+
+        if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
+            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
         }
 
         User currentUser = getCurrentUser();
