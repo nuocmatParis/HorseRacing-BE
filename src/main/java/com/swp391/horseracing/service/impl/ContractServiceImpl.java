@@ -355,6 +355,7 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
+    @Transactional
     public ContractResponse rejectContractByAdmin(UUID contractId, String reason) {
         User admin = userCurrentService.getCurrentUser();
 
@@ -364,39 +365,33 @@ public class ContractServiceImpl implements ContractService {
         if (contract.getStatus() != ContractStatus.PENDING_ADMIN_REVIEW)
             throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
 
-        refundContractInvoices(contract);
+        // Refund hiring fee invoice
+        Optional<Invoice> hiringInvoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contract.getContractId(), InvoiceType.JOCKEY_HIRING_FEE);
+        boolean hiringRefunded = false;
+        if (hiringInvoice.isPresent() && hiringInvoice.get().getStatus() == InvoiceStatus.PAID) {
+            paymentService.refundInvoice(hiringInvoice.get().getInvoiceId());
+            hiringRefunded = true;
+        }
+
+        // Refund contract creation fee invoice
+        Optional<Invoice> contractFeeInvoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contract.getContractId(), InvoiceType.CONTRACT_CREATION_FEE);
+        if (contractFeeInvoice.isPresent() && contractFeeInvoice.get().getStatus() == InvoiceStatus.PAID) {
+            paymentService.refundInvoice(contractFeeInvoice.get().getInvoiceId());
+        }
 
         contract.setStatus(ContractStatus.REJECTED);
-
-        contract.setPaymentStatus(ContractPaymentStatus.REFUNDED);
-
-        contract.setEscrowStatus(EscrowStatus.REFUNDED);
+        if (hiringRefunded) {
+            contract.setPaymentStatus(ContractPaymentStatus.REFUNDED);
+            contract.setEscrowStatus(EscrowStatus.REFUNDED);
+        }
 
         contract.setRejectedReason(reason);
-
         contract.setReviewedBy(admin);
-
         contract.setReviewedAt(LocalDateTime.now());
 
         return contractMapper.toContractResponse(contractRepository.save(contract));
-    }
-
-    private void refundContractInvoices(JockeyHorseContract contract){
-        Invoice hiringInvoice = invoiceRepository.findByContractIdAndInvoiceType(
-                contract.getContractId(), InvoiceType.JOCKEY_HIRING_FEE).orElseThrow(()
-                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
-
-        if (hiringInvoice.getStatus() == InvoiceStatus.PAID)
-            paymentService.refundInvoice(hiringInvoice.getInvoiceId());
-
-
-        Invoice contractFeeInvoice = invoiceRepository.findByContractIdAndInvoiceType(
-                contract.getContractId(), InvoiceType.CONTRACT_CREATION_FEE).orElseThrow(()
-                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
-
-        if (contractFeeInvoice.getStatus() == InvoiceStatus.PAID)
-            paymentService.refundInvoice(contractFeeInvoice.getInvoiceId());
-
     }
 
     private void validateInvite(HorseOwner currentOwner, HorseTournamentRegistration horseTournamentRegistration,

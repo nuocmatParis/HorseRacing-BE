@@ -726,3 +726,119 @@ Các điểm sau cần chốt ngay trước phase tương ứng:
 5. Staff được release lúc race start hay lúc race finish.
 
 Các quyết định này không ảnh hưởng việc bắt đầu Phase 1–5.
+
+---
+
+## 19. BE1 — Hoàn thiện Prize, Jockey payout và khóa kết quả
+
+### Nghiệp vụ đã chốt
+
+```text
+Race thường được publish report
+→ Chỉ chấm điểm prediction cho spectator.
+→ Không chia prize.
+→ Không release final hire fee.
+
+Race duy nhất thuộc Final Round được publish report
+→ Chấm điểm prediction.
+→ Chia prize cho Owner và Jockey.
+→ Release 70% hire fee còn lại cho toàn bộ Jockey của Tournament.
+→ Race chuyển COMPLETED.
+```
+
+Final Round bắt buộc chỉ có đúng một Race. Nếu cấu hình khác một Race thì phải báo lỗi và rollback, không được publish report nhưng bỏ qua payout.
+
+### Phần đã triển khai đúng
+
+- [x] Tách luồng `publishReport()` thành `scoreRace()`, `payoutPrizeIfFinal()` và `releaseJockeyFinalPayoutIfTournamentFinished()`.
+- [x] Race thường chỉ chấm prediction; chỉ Final Race mới chia prize và release escrow.
+- [x] Chặn tạo Race thứ hai trong Final Round.
+- [x] Kiểm tra lại Final Round có đúng một Race trước khi payout.
+- [x] Lock `RaceReport`, `RaceResult`, Contract và Wallet bằng pessimistic write trong luồng tài chính.
+- [x] Chặn publish và payout lặp bằng trạng thái report, `isPrizePaid`, `escrowStatus` và `finalPayoutStatus`.
+- [x] Kiểm tra System Prize Wallet đủ số dư.
+- [x] Tính `jockeyAmount = totalPrizeAmount - ownerAmount` để tổng tiền credit luôn bằng tổng tiền debit.
+- [x] Chạy publish report và toàn bộ payout trong một transaction để lỗi ở bất kỳ bước nào cũng rollback.
+- [x] Release phần escrow còn lại theo `contract.escrowAmount`, tương ứng 70% hire fee chưa thanh toán.
+
+### Việc còn phải sửa
+
+#### 19.1. Khóa RaceResult sau khi report được ký
+
+Hiện tại `createResults()` và `updateResults()` vẫn chấp nhận Race có trạng thái `FINISHED`, sau đó còn có thể đưa Race trở lại `ONGOING`.
+
+Luồng đúng:
+
+```text
+Race ONGOING
+→ Referee được nhập và sửa RaceResult nháp.
+
+Head Referee sign report
+→ Race chuyển FINISHED.
+→ RaceResult bị khóa.
+→ API create/update result thông thường phải bị từ chối.
+
+Admin publish report
+→ Race chuyển COMPLETED.
+→ Chấm prediction và thực hiện payout nếu là Final Race.
+```
+
+Công việc:
+
+- [ ] Chỉ cho `createResults()` chạy khi Race là `ONGOING`.
+- [ ] Chỉ cho `updateResults()` chạy khi Race là `ONGOING`.
+- [ ] Không gọi `race.setStatus(ONGOING)` trong create/update result; Race đã được `startRace()` đưa vào trạng thái này.
+- [ ] Chặn sửa result khi report đã `Signed` hoặc `Published`.
+- [ ] Nếu appeal được chấp nhận và cần sửa kết quả, tạo luồng đặc biệt có audit người sửa, thời gian và lý do; không mở lại API update thông thường.
+
+#### 19.2. Kiểm tra kết quả đầy đủ trước khi ký report
+
+Không được chỉ kiểm tra Race có ít nhất một `RaceResult`.
+
+Trước `signReport()`, hệ thống phải bảo đảm:
+
+- [ ] Mỗi entry thực sự đã xuất phát có đúng một RaceResult.
+- [ ] RaceResult chỉ nhận một trong ba trạng thái `FINISHED`, `DID_NOT_FINISH`, `DISQUALIFIED`.
+- [ ] Entry `FINISHED` bắt buộc có `finishTime` và `rank`.
+- [ ] Entry `DID_NOT_FINISH` hoặc `DISQUALIFIED` được phép không có `finishTime` và `rank`.
+- [ ] Entry `SCRATCHED`, `WITHDRAWN_BEFORE_SCHEDULE` hoặc `WITHDRAWN_AFTER_SCHEDULE` không bắt buộc có RaceResult.
+- [ ] Không còn entry đã xuất phát nhưng thiếu kết quả trước khi chuyển Race sang `FINISHED`.
+
+#### 19.3. Bảo đảm refund contract chạy atomically
+
+`rejectContractByAdmin()` đang gọi repository pessimistic lock và có thể refund nhiều invoice, nên toàn bộ phương thức phải nằm trong một transaction.
+
+- [ ] Thêm `@Transactional` cho `rejectContractByAdmin()`.
+- [ ] Nếu refund bất kỳ invoice nào thất bại thì rollback toàn bộ refund và không chuyển Contract sang `REJECTED`.
+- [ ] Chỉ đánh dấu `paymentStatus`/`escrowStatus` là `REFUNDED` sau khi các khoản đã thanh toán thực sự được hoàn thành công.
+- [ ] Invoice không tồn tại hoặc chưa thanh toán được bỏ qua an toàn, không phát sinh `INVOICE_NOT_FOUND` ngoài ý muốn.
+
+#### 19.4. Sửa mapping trạng thái đã trả prize
+
+Build hiện cảnh báo `RaceResultMapper` chưa map `isPrizePaid`, nên response có thể trả `false` dù payout đã hoàn tất.
+
+- [ ] Thêm mapping rõ ràng từ `RaceResult.isPrizePaid` sang `RaceResultResponse.isPrizePaid`.
+- [ ] Kiểm tra response sau payout trả `isPrizePaid = true`, `prizeMoney`, `ownerPrizeAmount`, `jockeyPrizeAmount` và `prizePaidAt` chính xác.
+
+### Test bắt buộc cho BE1
+
+- [ ] Publish Race thường chỉ score prediction và không thay đổi wallet.
+- [ ] Publish Final Race chia đúng prize cho Owner/Jockey và release escrow toàn Tournament.
+- [ ] Final Round có số Race khác một bị reject và không thay đổi report/wallet.
+- [ ] Hai request publish đồng thời chỉ một request payout thành công.
+- [ ] System Prize Wallet thiếu tiền làm rollback report, Race, prediction scoring và mọi transaction.
+- [ ] `ownerAmount + jockeyAmount = totalPrizeAmount` với các trường hợp làm tròn lẻ.
+- [ ] RaceResult đã trả prize không bị payout lần hai.
+- [ ] Contract đã `RELEASED` không bị release escrow lần hai.
+- [ ] Sau `signReport`, create/update RaceResult bị reject.
+- [ ] Không thể sign report nếu còn entry đã xuất phát thiếu RaceResult.
+- [ ] Reject contract refund thành công atomically; lỗi ở một refund làm rollback toàn bộ.
+
+### Tiêu chí hoàn thành
+
+- Race status đi đúng chuỗi `ONGOING → FINISHED → COMPLETED` và không quay ngược bằng API result thông thường.
+- Kết quả được khóa ngay sau khi Head Referee ký report.
+- Race thường không phát sinh giao dịch prize hoặc final hire fee.
+- Final Race duy nhất chia tiền đúng và đủ, không payout lặp khi concurrent request.
+- Refund không tạo trạng thái nửa hoàn tất giữa Invoice, Wallet và Contract.
+- Maven build pass và có test tự động cho happy path, rollback và concurrent payout.

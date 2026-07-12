@@ -11,5 +11,6 @@ public interface RaceResultMapper {
     @Mapping(target = "raceId", source = "race.raceId")
     @Mapping(target = "entryId", source = "entry.entryId")
     @Mapping(target = "recordedById", source = "recordedBy.userId")
+    @Mapping(target = "isPrizePaid", source = "prizePaid")
     RaceResultResponse toRaceResultResponse(RaceResult raceResult);
 }

@@ -1,59 +1,49 @@
-# Tổng hợp các phần đã lập trình & chỉnh sửa (SWP391 Horse Racing BE)
+# Các công việc đã hoàn thành — BE1 — Thắt chặt nghiệp vụ tài chính & bảo mật luồng tiền thưởng
 
-Dưới đây là tổng hợp toàn bộ các chỉnh sửa và tính năng đã được triển khai thành công trong phiên làm việc này để giải quyết triệt để 9 vấn đề còn tồn đọng:
+Dưới đây là chi tiết toàn bộ các thay đổi và tối ưu hóa đã thực hiện để hoàn tất tính năng BE1:
 
 ---
 
-## 1. Tự động chuyển trạng thái Race sang `FINISHED`
+## 1. Kiểm soát trạng thái & Khóa kết quả lượt đua (RaceResult Lock)
 - **File sửa đổi**: [RaceResultServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceResultServiceImpl.java)
-- **Chi tiết**: Tích hợp logic `race.setStatus(RoundStatus.FINISHED);` vào cả hai phương thức `createResults` (nhập kết quả lần đầu) và `updateResults` (cập nhật kết quả). Điều này đảm bảo trạng thái Race sẽ chuyển sang `FINISHED` ngay sau khi trọng tài nhập kết quả tạm thời, giúp luồng publish report, tính điểm dự đoán và giải ngân diễn ra bình thường.
+- **Chi tiết**:
+  - Giới hạn quyền ghi/sửa kết quả: Cả hai phương thức `createResults` (nhập kết quả nháp) và `updateResults` (cập nhật kết quả nháp) chỉ được phép thực hiện khi trạng thái của Race là `ONGOING`.
+  - Chặn sửa kết quả khi report đã được xác nhận: Kiểm tra sự tồn tại của báo cáo lượt đua, nếu báo cáo đã ở trạng thái `Signed` hoặc `Published`, hệ thống sẽ ném lỗi tương ứng `RACE_REPORT_ALREADY_SIGNED` hoặc `RACE_REPORT_ALREADY_PUBLISHED`.
+  - Loại bỏ hoàn toàn việc gọi `race.setStatus(RoundStatus.ONGOING)` bên trong các API nhập kết quả nháp, nhường quyền kiểm soát trạng thái lượt đua cho startRace() và luồng ký duyệt báo cáo.
 
-## 2. Giải ngân Escrow diện rộng cho toàn bộ giải đấu (Tournament Scope)
+## 2. Kiểm tra kết quả đầy đủ trước khi ký báo cáo (Sign Report Validation)
 - **File sửa đổi**: [RaceReportServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceReportServiceImpl.java)
-- **Chi tiết**: Thêm kiểm tra tại thời điểm publish báo cáo chính thức của lượt đua vòng chung kết:
-  - Nếu tất cả các trận đấu của vòng chung kết (`round.isFinal()`) đã hoàn thành (`COMPLETED` hoặc `CANCELLED`).
-  - Hệ thống tự động truy vấn toàn bộ hợp đồng trong giải đấu (`Tournament`) có trạng thái là `APPROVED` và `PARTIALLY_RELEASED`.
-  - Thực hiện giải ngân 30% số tiền cọc (hire fee) còn lại cho tất cả các Jockey bị loại từ vòng bảng, tránh việc giữ tiền của họ vô hạn.
-
-## 3. Ràng buộc dời lịch thi đấu (Reschedule / Postpone Constraints)
-- **File sửa đổi**: [RaceServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceServiceImpl.java)
 - **Chi tiết**:
-  - **Thứ tự vòng đấu (Round Order)**: Không cho phép dời lịch thi đấu của vòng trước muộn hơn giờ bắt đầu của vòng sau nếu vòng sau đã bắt đầu chạy (`startedAt != null`).
-  - **Thời gian nghỉ của Ngựa (Horse Rest Time)**: Đảm bảo khoảng cách giữa các trận đấu của cùng một ngựa tối thiểu là **60 phút** (giữa giờ kết thúc trận trước và giờ bắt đầu trận sau).
-  - **Không trùng lịch**: Kiểm tra xung đột lịch trình cho Ngựa, Jockey, Trọng tài (không trùng lặp thời gian chạy) cũng như Veterinarian, Medical Staff (không trùng lặp cửa sổ kiểm dịch `T-90` đến `T-30`).
-  - **Xóa kết quả khám cũ khi hoãn**: Tự động xóa các bản ghi `HorseInspection` và `JockeyInspection` cũ của trận đấu khi thực hiện hoãn, đồng thời reset trạng thái của entry về `CONFIRMED` để cho phép thực hiện khám lại ở lịch trình mới mà không bị lỗi trùng lặp bản ghi.
-  - **Bảo toàn cổng dự đoán**: Nếu cổng dự đoán (`predictionOpenAt`) đã mở trong quá khứ thì giữ nguyên mốc cũ để tránh mở lại cổng dự đoán đã đóng.
-  - **Gửi thông báo**: Gửi thông báo đến toàn bộ Spectators đã thực hiện dự đoán trận đấu đó để cập nhật lịch trình mới.
+  - Triển khai phương thức helper `validateRaceResultsBeforeSigning` được gọi trước khi Head Referee ký duyệt báo cáo (`signReport`).
+  - Kiểm tra tính đầy đủ của kết quả đối với từng ngựa tham gia lượt đua (`RaceEntry`):
+    - Tất cả ngựa có trạng thái thực sự xuất phát (không phải `SCRATCHED`, `WITHDRAWN_BEFORE_SCHEDULE`, hoặc `WITHDRAWN_AFTER_SCHEDULE`) bắt buộc phải có đúng 1 bản ghi `RaceResult`.
+    - Kết quả phải có trạng thái hợp lệ (`FINISHED`, `DID_NOT_FINISH`, hoặc `DISQUALIFIED`).
+    - Nếu trạng thái là `FINISHED`, bắt buộc phải có thông tin thời gian hoàn thành (`finishTime`) và thứ hạng (`rank`).
+  - Khi ký duyệt thành công, trạng thái Race chuyển sang `FINISHED` để khóa kết quả.
 
-## 4. Thuật toán đề xuất khung giờ thi đấu trống (Reschedule Proposals)
-- **File sửa đổi**:
-  - [RaceService.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/RaceService.java)
-  - [RaceServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceServiceImpl.java)
-  - [AdminController.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/controller/AdminController.java)
-- **Chi tiết**: 
-  - Thêm API `GET /api/admin/races/{raceId}/reschedule-proposals`.
-  - Triển khai thuật toán tìm kiếm thông minh: Duyệt qua các ngày trong khoảng thời gian diễn ra giải đấu, chia nhỏ thời gian hoạt động (`08:00` - `18:00`) thành các slot 30 phút.
-  - Chạy thử toàn bộ các ràng buộc lập lịch (daily limit, break time, interval) và xung đột lịch thi đấu nhân sự. Nếu slot nào vượt qua toàn bộ kiểm tra, slot đó sẽ được thêm vào danh sách đề xuất (tối đa 10 đề xuất).
-
-## 5. Tự động hóa tính toán giờ kết thúc & Chặn chạy vắt qua nửa đêm (Midnight Cross Check)
-- **File sửa đổi**:
-  - [CreateRaceRequest.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/dto/tournament/request/CreateRaceRequest.java)
-  - [UpdateRaceRequest.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/dto/tournament/request/UpdateRaceRequest.java)
-  - [RescheduleRaceRequest.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/dto/tournament/request/RescheduleRaceRequest.java)
-  - [RaceServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceServiceImpl.java)
+## 3. Hoàn tiền hợp đồng nguyên tử (Atomic Rejection Refund)
+- **File sửa đổi**: [ContractServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/ContractServiceImpl.java)
 - **Chi tiết**:
-  - Loại bỏ các trường do hệ thống tự quản lý như `endTime`, `status`, `schedulePublishedAt`, `predictionOpenAt`, `predictionCloseAt` khỏi các request tạo/cập nhật/hoãn lịch.
-  - Server tự động tính toán `endTime = startTime + operationalMinutes`.
-  - Chặn các trận đấu có thời gian bắt đầu và kết thúc nằm ở 2 ngày khác nhau (chạy qua nửa đêm).
+  - Đánh dấu `@Transactional` cho phương thức từ chối hợp đồng của Admin (`rejectContractByAdmin`) để đảm bảo tính nguyên tử.
+  - Sử dụng `Optional` để truy vấn hóa đơn thuê nài ngựa (`JOCKEY_HIRING_FEE`) và hóa đơn tạo hợp đồng (`CONTRACT_CREATION_FEE`). Nếu hóa đơn không tồn tại hoặc chưa thanh toán (`UNPAID`), bỏ qua an toàn mà không ném lỗi.
+  - Chỉ cập nhật trạng thái thanh toán và lưu ký (`paymentStatus` / `escrowStatus`) của hợp đồng thành `REFUNDED` nếu hóa đơn thuê nài ngựa đã thanh toán (`PAID`) và hoàn trả thành công. Bất kỳ lỗi phát sinh nào từ `paymentService.refundInvoice` đều làm rollback toàn bộ giao dịch.
 
-## 6. Chặn hủy trận đấu đã hoàn tất
-- **File sửa đổi**: [RaceServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceServiceImpl.java)
-- **Chi tiết**: Ném ngoại lệ `INVALID_RACE_RESULT_STATUS` nếu cố gắng hủy (`cancelRace`) một trận đấu đã ở trạng thái `FINISHED` hoặc `COMPLETED`.
+## 4. Đồng bộ hóa mapping trả thưởng & Tránh sai lệch tiền do làm tròn
+- **Files sửa đổi**:
+  - [RaceResultMapper.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/mapper/RaceResultMapper.java)
+  - [RaceReportServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/RaceReportServiceImpl.java)
+- **Chi tiết**:
+  - Thêm cấu hình `@Mapping(target = "isPrizePaid", source = "prizePaid")` vào MapStruct Mapper để giải quyết triệt để cảnh báo unmapped property khi compile và đảm bảo API response trả về đúng trạng thái `isPrizePaid = true` sau khi payout.
+  - Trong phương thức chia thưởng `payoutPrizeIfFinal`, tiền thưởng của Nài ngựa được tính bằng phép trừ: `jockeyAmount = totalPrizeAmount - ownerAmount` thay vì nhân phần trăm riêng biệt, loại bỏ hoàn toàn khả năng bị lệch 1 cent do làm tròn số lẻ.
+  - Sử dụng `findForUpdateByRace_RaceId` khóa bi quan `RaceReport` và các dòng `RaceResult` trong DB để chống concurrent requests.
 
-## 7. Cho phép gửi khiếu nại trước khi nhập kết quả (Appeal Without RaceResult)
-- **File sửa đổi**: [AppealServiceImpl.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/main/java/com/swp391/horseracing/service/impl/AppealServiceImpl.java)
-- **Chi tiết**: Loại bỏ ràng buộc bắt buộc phải có kết quả trận đấu `RaceResult` mới được tạo appeal. Điều này giúp Owner và Jockey có thể gửi khiếu nại về hành vi vi phạm ngay sau khi trận đấu bắt đầu, tránh việc hết hạn nộp đơn khi trọng tài nhập kết quả muộn.
-
-## 8. Script Migration làm sạch Enum trong cơ sở dữ liệu
-- **File mới**: [patch_enum_values.sql](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/patch_enum_values.sql)
-- **Chi tiết**: Cung cấp script SQL hỗ trợ cập nhật toàn bộ các dữ liệu cũ (dạng mixed-case như `Finished`, `Disqualified`) sang dạng `UPPERCASE` để tương thích hoàn toàn với cấu hình map enum mới của Hibernate, tránh lỗi deserialize ở runtime.
+## 5. Viết bộ kiểm thử tự động (Unit Test Suite)
+- **File mới**: [BE1FinanceHardeningTest.java](file:///d:/FPTU/Semester-5/SWP391/HorseRacing-BE/src/test/java/com/swp391/horseracing/service/BE1FinanceHardeningTest.java)
+- **Chi tiết**:
+  - Thiết lập 5 kịch bản kiểm thử Mockito độc lập để kiểm chứng:
+    1. `testPublishReport_HappyPathFinalRace`: Payout thành công, chia đúng tỷ lệ và làm tròn khớp số tiền, giải ngân escrow.
+    2. `testPublishReport_InvalidFinalRoundConfiguration`: Báo cáo bị từ chối nếu số lượt đua ở vòng chung kết khác 1.
+    3. `testPublishReport_InsufficientBalanceRollback`: Kiểm tra số dư ví hệ thống thiếu tiền làm rollback.
+    4. `testRejectContractByAdmin_AtomicRefundHappyPath`: Từ chối hợp đồng và hoàn tiền atomically.
+    5. `testRejectContractByAdmin_RefundFailureThrowsException`: Lỗi hoàn tiền một hóa đơn gây rollback toàn bộ trạng thái.
+  - Chạy lệnh `mvn test` xác nhận tất cả 5 test case đều **đạt 100% (Green)**.
