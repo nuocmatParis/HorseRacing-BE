@@ -67,6 +67,17 @@ public class RaceServiceImpl implements RaceService {
         if (raceRepository.existsByRound_RoundIdAndName(roundId, request.getName())) {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
         }
+        if(round.getMaxRaces() <= round.getRaces().size()){
+            throw new AppException(ErrorCode.MAX_RACES_REACHED);
+        }
+
+        List<Race> existingRaces = raceRepository.findByRound_RoundIdOrderByStartTimeDesc(roundId);
+        if (!existingRaces.isEmpty()) {
+            Race lastRace = existingRaces.get(0);
+            if (request.getStartTime().isBefore(lastRace.getEndTime())) {
+                throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
+            }
+        }
 
         if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
             throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
