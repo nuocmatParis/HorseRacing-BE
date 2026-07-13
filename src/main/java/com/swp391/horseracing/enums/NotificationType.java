@@ -15,5 +15,7 @@ public enum NotificationType {
     ResultPublished,
     PrizeReceived,
     PredictionScored,
-    JockeyPayoutReleased
+    JockeyPayoutReleased,
+    PredictionVoided,
+    PredictedHorseScratched
 }

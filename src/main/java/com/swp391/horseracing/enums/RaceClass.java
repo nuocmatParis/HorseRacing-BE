@@ -29,4 +29,13 @@ public enum RaceClass {
 
         return maxRating == null || rating <= maxRating;
     }
+
+    public static RaceClass fromRating(int rating) {
+        for (RaceClass rc : values()) {
+            if (rc.isEligible(rating)) {
+                return rc;
+            }
+        }
+        return CLASS_5;
+    }
 }

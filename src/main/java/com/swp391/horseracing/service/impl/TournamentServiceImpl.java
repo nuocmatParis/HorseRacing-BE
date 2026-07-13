@@ -10,16 +10,20 @@ import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
+import com.swp391.horseracing.repository.RaceEntryRepository;
+import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.TournamentService;
+import java.time.LocalTime;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -44,6 +48,8 @@ public class TournamentServiceImpl implements TournamentService {
     TournamentEligibilityRepository eligibilityRepository;
     RoundRepository roundRepository;
     RaceRepository raceRepository;
+    RaceEntryRepository raceEntryRepository;
+    RaceRefereeRepository raceRefereeRepository;
 
     @Override
     @Transactional
@@ -56,13 +62,22 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.TOURNAMENT_NAME_EXISTS);
         }
 
-        int openMin = request.getPredictionOpenMinutesBefore() != null
-                ? request.getPredictionOpenMinutesBefore() : 120;
-        int closeMin = request.getPredictionCloseMinutesBefore() != null
-                ? request.getPredictionCloseMinutesBefore() : 5;
-        if (openMin <= closeMin || closeMin < 0) {
-            throw new AppException(ErrorCode.INVALID_PREDICTION_TIMES);
-        }
+        validateSchedulingAndTimeline(
+                request.getInspectionOpenMinutesBefore(),
+                request.getInspectionCloseMinutesBefore(),
+                request.getPredictionCloseMinutesBefore(),
+                request.getMaxRacesPerDay(),
+                request.getMinRaceIntervalMinutes(),
+                request.getStartEarlyToleranceMinutes(),
+                request.getStartLateToleranceMinutes(),
+                request.getDefaultRaceOperationalMinutes(),
+                request.getPredictionCardOpenHoursBeforeFirstRace(),
+                request.getRaceDayStartTime(),
+                request.getRaceDayEndTime(),
+                request.getApplyBreakTime(),
+                request.getBreakStartTime(),
+                request.getBreakEndTime()
+        );
 
         if (request.getMinHorseAge() >= request.getMaxHorseAge()) {
             throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
@@ -137,13 +152,23 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.INVALID_HORSE_AGE_RANGE);
         }
 
-        int openMin = request.getPredictionOpenMinutesBefore() != null
-                ? request.getPredictionOpenMinutesBefore() : tournament.getPredictionOpenMinutesBefore();
-        int closeMin = request.getPredictionCloseMinutesBefore() != null
-                ? request.getPredictionCloseMinutesBefore() : tournament.getPredictionCloseMinutesBefore();
-        if (openMin <= closeMin || closeMin < 0) {
-            throw new AppException(ErrorCode.INVALID_PREDICTION_TIMES);
-        }
+        Integer insOpen = request.getInspectionOpenMinutesBefore() != null ? request.getInspectionOpenMinutesBefore() : tournament.getInspectionOpenMinutesBefore();
+        Integer insClose = request.getInspectionCloseMinutesBefore() != null ? request.getInspectionCloseMinutesBefore() : tournament.getInspectionCloseMinutesBefore();
+        Integer predClose = request.getPredictionCloseMinutesBefore() != null ? request.getPredictionCloseMinutesBefore() : tournament.getPredictionCloseMinutesBefore();
+        Integer maxRaces = request.getMaxRacesPerDay() != null ? request.getMaxRacesPerDay() : tournament.getMaxRacesPerDay();
+        Integer minInterval = request.getMinRaceIntervalMinutes() != null ? request.getMinRaceIntervalMinutes() : tournament.getMinRaceIntervalMinutes();
+        Integer startEarly = request.getStartEarlyToleranceMinutes() != null ? request.getStartEarlyToleranceMinutes() : tournament.getStartEarlyToleranceMinutes();
+        Integer startLate = request.getStartLateToleranceMinutes() != null ? request.getStartLateToleranceMinutes() : tournament.getStartLateToleranceMinutes();
+        Integer operational = request.getDefaultRaceOperationalMinutes() != null ? request.getDefaultRaceOperationalMinutes() : tournament.getDefaultRaceOperationalMinutes();
+        Integer openHours = request.getPredictionCardOpenHoursBeforeFirstRace() != null ? request.getPredictionCardOpenHoursBeforeFirstRace() : tournament.getPredictionCardOpenHoursBeforeFirstRace();
+        
+        LocalTime dayStart = request.getRaceDayStartTime() != null ? request.getRaceDayStartTime() : tournament.getRaceDayStartTime();
+        LocalTime dayEnd = request.getRaceDayEndTime() != null ? request.getRaceDayEndTime() : tournament.getRaceDayEndTime();
+        Boolean applyBreak = request.getApplyBreakTime() != null ? request.getApplyBreakTime() : tournament.getApplyBreakTime();
+        LocalTime breakStart = request.getBreakStartTime() != null ? request.getBreakStartTime() : (applyBreak ? tournament.getBreakStartTime() : null);
+        LocalTime breakEnd = request.getBreakEndTime() != null ? request.getBreakEndTime() : (applyBreak ? tournament.getBreakEndTime() : null);
+
+        validateSchedulingAndTimeline(insOpen, insClose, predClose, maxRaces, minInterval, startEarly, startLate, operational, openHours, dayStart, dayEnd, applyBreak, breakStart, breakEnd);
 
         LocalDateTime regOpen = request.getRegistrationOpenAt() != null
                 ? request.getRegistrationOpenAt() : tournament.getRegistrationOpenAt();
@@ -270,6 +295,41 @@ public class TournamentServiceImpl implements TournamentService {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         validatePhase(tournament, TournamentPhase.SCHEDULING);
+
+        List<Race> races = raceRepository.findByRound_Tournament_TournamentId(id);
+        if (races.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+        }
+
+        for (Race race : races) {
+            if (race.getStatus() != RoundStatus.SCHEDULING && race.getStatus() != RoundStatus.SCHEDULED) {
+                throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
+            }
+            int entryCount = raceEntryRepository.countByRace_RaceId(race.getRaceId());
+            if (entryCount < race.getRound().getMinEntries()) {
+                throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ENTRIES);
+            }
+            int refereeCount = raceRefereeRepository.countByRace_RaceId(race.getRaceId());
+            if (refereeCount < 1) {
+                throw new AppException(ErrorCode.RACE_MISSING_REFEREES);
+            }
+        }
+
+        LocalDateTime firstRaceStartTime = races.stream()
+                .map(Race::getStartTime)
+                .min(LocalDateTime::compareTo)
+                .orElseThrow(() -> new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG));
+
+        LocalDateTime commonPredictionOpenAt = firstRaceStartTime.minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace());
+
+        for (Race race : races) {
+            race.setStatus(RoundStatus.SCHEDULED);
+            race.setSchedulePublishedAt(LocalDateTime.now());
+            race.setPredictionOpenAt(commonPredictionOpenAt);
+            race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
+            raceRepository.save(race);
+        }
+
         setPhaseAndStatus(tournament, TournamentPhase.RACING);
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -397,5 +457,52 @@ public class TournamentServiceImpl implements TournamentService {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         return toResponse(tournament);
+    }
+    private void validateSchedulingAndTimeline(
+            Integer insOpen, Integer insClose, Integer predClose,
+            Integer maxRaces, Integer minInterval, Integer startEarly, Integer startLate,
+            Integer operational, Integer openHours,
+            LocalTime dayStart, LocalTime dayEnd,
+            Boolean applyBreak, LocalTime breakStart, LocalTime breakEnd) {
+
+        int io = insOpen != null ? insOpen : 90;
+        int ic = insClose != null ? insClose : 30;
+        int pc = predClose != null ? predClose : 5;
+
+        if (!(io > ic && ic > pc && pc >= 0)) {
+            throw new AppException(ErrorCode.INVALID_INSPECTION_TIMELINE);
+        }
+
+        int mr = maxRaces != null ? maxRaces : 9;
+        int mi = minInterval != null ? minInterval : 35;
+        int se = startEarly != null ? startEarly : 0;
+        int sl = startLate != null ? startLate : 30;
+        int op = operational != null ? operational : 30;
+        int oh = openHours != null ? openHours : 24;
+
+        if (mr < 1 || mr > 9 || mi < 30 || mi > 60 || se < 0 || sl < 0 || op < 1 || oh < 1) {
+            throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+        }
+
+        LocalTime ds = dayStart != null ? dayStart : LocalTime.of(8, 0);
+        LocalTime de = dayEnd != null ? dayEnd : LocalTime.of(18, 0);
+
+        if (!ds.isBefore(de)) {
+            throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+        }
+
+        boolean applyB = applyBreak != null ? applyBreak : false;
+        if (applyB) {
+            if (breakStart == null || breakEnd == null) {
+                throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+            }
+            if (!(ds.isBefore(breakStart) && breakStart.isBefore(breakEnd) && breakEnd.isBefore(de))) {
+                throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+            }
+        } else {
+            if (breakStart != null || breakEnd != null) {
+                throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
+            }
+        }
     }
 }

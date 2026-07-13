@@ -10,7 +10,9 @@ import java.util.UUID;
 @Repository
 public interface ViolationRepository extends JpaRepository<Violation, UUID> {
 
-    List<Violation> findByEntry_EntryId(UUID entryId);
+    List<Violation> findByRaceEntry_Race_RaceIdOrderByCreatedAtDesc(UUID raceId);
 
-    List<Violation> findByEntry_Race_RaceId(UUID raceId);
+    List<Violation> findByRaceEntry_EntryId(UUID entryId);
+
+    List<Violation> findByRaceEntry_Race_RaceId(UUID raceId);
 }

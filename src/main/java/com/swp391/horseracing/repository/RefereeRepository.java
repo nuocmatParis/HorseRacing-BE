@@ -12,6 +12,5 @@ import java.util.UUID;
 @Repository
 public interface RefereeRepository extends JpaRepository<Referee, UUID> {
     List<Referee> findByStatus(RefereeStatus status);
-
     Optional<Referee> findByUser_UserId(UUID userId);
 }

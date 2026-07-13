@@ -19,4 +19,8 @@ public interface RaceEntryRepository extends JpaRepository<RaceEntry, UUID> {
     List<RaceEntry> findByRace_Round_RoundId(UUID roundId);
 
     int countByRace_RaceId(UUID raceId);
+
+    List<RaceEntry> findByContract_Horse_HorseId(UUID horseId);
+
+    List<RaceEntry> findByContract_Jockey_JockeyId(UUID jockeyId);
 }

@@ -65,6 +65,9 @@ public class RaceEntry {
     @Column(name = "disqualified_at")
     LocalDateTime disqualifiedAt;
 
+    @Column(name = "disqualified_reason", columnDefinition = "TEXT")
+    String disqualifiedReason;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

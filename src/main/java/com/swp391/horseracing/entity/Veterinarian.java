@@ -28,25 +28,23 @@ public class Veterinarian {
     UUID vetId;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true, nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     User user;
 
-    @Column(name = "license_number", nullable = false, unique = true, length = 50)
+    @Column(name = "license_number", length = 50)
     String licenseNumber;
 
     @Column(name = "specialization", length = 100)
     String specialization;
 
-    @Builder.Default
-    @Column(name = "years_of_service", nullable = false)
-    int yearsOfService = 0;
+    @Column(name = "years_of_service")
+    Integer yearsOfService;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    VetStatus status = VetStatus.AVAILABLE;
+    VetStatus status;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     LocalDateTime createdAt;
 }

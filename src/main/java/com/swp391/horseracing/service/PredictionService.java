@@ -20,4 +20,10 @@ public interface PredictionService {
     PredictionResponse getPredictionDetail(UUID predictionId);
 
     PredictionResponse getMyPredictionByRace(UUID raceId);
+
+    void voidInvalidPredictionsForRace(UUID raceId);
+
+    void notifySpectatorsForScratchedEntry(UUID raceId, UUID entryId, String entryName);
+
+    void voidAllPredictionsForRace(UUID raceId, String reason);
 }

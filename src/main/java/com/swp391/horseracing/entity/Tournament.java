@@ -14,6 +14,7 @@ import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,6 +94,56 @@ public class Tournament {
     @Builder.Default
     @Column(name = "prediction_close_minutes_before", nullable = false)
     int predictionCloseMinutesBefore = 5;
+
+    @Builder.Default
+    @Column(name = "prediction_card_open_hours_before_first_race", nullable = false)
+    int predictionCardOpenHoursBeforeFirstRace = 24;
+
+    @Builder.Default
+    @Column(name = "inspection_open_minutes_before", nullable = false)
+    int inspectionOpenMinutesBefore = 90;
+
+    @Builder.Default
+    @Column(name = "inspection_close_minutes_before", nullable = false)
+    int inspectionCloseMinutesBefore = 30;
+
+    @Builder.Default
+    @Column(name = "max_races_per_day", nullable = false)
+    int maxRacesPerDay = 9;
+
+    @Builder.Default
+    @Column(name = "min_race_interval_minutes", nullable = false)
+    int minRaceIntervalMinutes = 35;
+
+    @Builder.Default
+    @Column(name = "start_early_tolerance_minutes", nullable = false)
+    int startEarlyToleranceMinutes = 0;
+
+    @Builder.Default
+    @Column(name = "start_late_tolerance_minutes", nullable = false)
+    int startLateToleranceMinutes = 30;
+
+    @Builder.Default
+    @Column(name = "default_race_operational_minutes", nullable = false)
+    int defaultRaceOperationalMinutes = 30;
+
+    @Builder.Default
+    @Column(name = "race_day_start_time", nullable = false)
+    LocalTime raceDayStartTime = LocalTime.of(8, 0);
+
+    @Builder.Default
+    @Column(name = "race_day_end_time", nullable = false)
+    LocalTime raceDayEndTime = LocalTime.of(18, 0);
+
+    @Builder.Default
+    @Column(name = "apply_break_time", nullable = false)
+    Boolean applyBreakTime = false;
+
+    @Column(name = "break_start_time")
+    LocalTime breakStartTime;
+
+    @Column(name = "break_end_time")
+    LocalTime breakEndTime;
 
     @Column(name = "max_rounds", nullable = false)
     int maxRounds;

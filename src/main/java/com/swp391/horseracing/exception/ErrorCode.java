@@ -323,7 +323,7 @@ public enum ErrorCode {
     RACE_EXCEEDS_MAX_ENTRIES(1565, HttpStatus.BAD_REQUEST, "Race has reached maximum entries"),
     LANE_EXCEEDS_MAX(1566, HttpStatus.BAD_REQUEST, "Lane number exceeds maximum entries"),
     RACE_ALREADY_STARTED(1567, HttpStatus.BAD_REQUEST, "Race has already started"),
-    RACE_NOT_ENOUGH_ENTRIES(1568, HttpStatus.BAD_REQUEST, "Race must have at least 2 entries to publish schedule"),
+    RACE_NOT_ENOUGH_ENTRIES(1568, HttpStatus.BAD_REQUEST, "Race does not meet the minimum entries required by the round"),
     RACE_MISSING_REFEREES(1569, HttpStatus.BAD_REQUEST, "Race must have at least one referee assigned to publish schedule"),
 
     // RACE REFEREE
@@ -349,52 +349,125 @@ public enum ErrorCode {
     HANDICAP_DISABLE(1578, HttpStatus.BAD_REQUEST, "Weight fields (topWeightLbs, minWeightLbs, equipmentWeightKg) must not be provided when handicap is disabled"),
 
     HORSE_REGISTRATION_LIMIT_EXCEEDED(1579, HttpStatus.BAD_REQUEST, "Horse registration limit exceeded for this tournament"),
+
     JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
 
+    //Contract
+    TOURNAMENT_NOT_MATCH(1601, HttpStatus.BAD_REQUEST, "Tournament not match"),
+
+    INVALID_HIRE_FEE(1602, HttpStatus.BAD_REQUEST, "Invalid hire fee"),
+
+    INVALID_PRIZE_SHARE(1603, HttpStatus.BAD_REQUEST, "Invalid prize share"),
+
+    CONTRACT_ALREADY_EXISTS(1604, HttpStatus.BAD_REQUEST, "Contract already exists"),
+
+    CONTRACT_HIRING_FEE_NOT_PAID(1605, HttpStatus.BAD_REQUEST, "Hiring fee not paid"),
+
+    INVALID_ESCROW_STATUS(1606, HttpStatus.BAD_REQUEST, "Invalid escrow status"),
+
+    FINAL_PAYOUT_ALREADY_RELEASED(1608, HttpStatus.BAD_REQUEST, "Final payout has already been released"),
+
+    ESCROW_NOT_PARTIALLY_RELEASED(1609, HttpStatus.BAD_REQUEST, "Escrow is not in PARTIALLY_RELEASED status"),
+
+    //Inspection
+    MEDICAL_STAFF_NOT_FOUND(1701, HttpStatus.NOT_FOUND, "Medical staff not found"),
+
+    MEDICAL_STAFF_ALREADY_ASSIGNED(1702, HttpStatus.CONFLICT, "Medical staff already assigned"),
+
+    MEDICAL_STAFF_SUSPENDED(1703, HttpStatus.BAD_REQUEST, "Medical staff suspended"),
+
+    VETERINARIAN_NOT_FOUND(1704, HttpStatus.NOT_FOUND, "Veterinarian not found"),
+
+    VETERINARIAN_ALREADY_ASSIGNED(1705, HttpStatus.CONFLICT, "Veterinarian already assigned"),
+
+    VETERINARIAN_SUSPENDED(1704, HttpStatus.BAD_REQUEST, "Veterinarian suspended"),
+
+    NO_AVAILABLE_MEDICAL_STAFF(1706, HttpStatus.NOT_FOUND, "No available medical staff found"),
+
+    NO_AVAILABLE_VETERINARIAN(1707, HttpStatus.NOT_FOUND, "No available veterinarian found"),
+
+    HORSE_INSPECTION_ALREADY_EXISTS(1708, HttpStatus.CONFLICT, "Horse inspection already exists for this entry"),
+
+    JOCKEY_INSPECTION_ALREADY_EXISTS(1709, HttpStatus.CONFLICT, "Jockey inspection already exists for this entry"),
+
+    VET_NOT_ASSIGNED_TO_RACE(1710, HttpStatus.FORBIDDEN, "Veterinarian is not assigned to this race"),
+
+    MEDICAL_STAFF_NOT_ASSIGNED_TO_RACE(1711, HttpStatus.FORBIDDEN, "Medical staff is not assigned to this race"),
+
+    RACE_NOT_IN_SCHEDULED_STATUS(1712, HttpStatus.BAD_REQUEST, "Race is not in scheduled status"),
+
+    REFEREE_NOT_ASSIGNED_TO_RACE(1713, HttpStatus.FORBIDDEN, "Referee is not assigned to this race"),
+
+    ENTRY_MISSING_HORSE_INSPECTION(1715, HttpStatus.BAD_REQUEST, "Race entry is missing a confirmed and passed horse inspection"),
+
+    ENTRY_MISSING_JOCKEY_INSPECTION(1716, HttpStatus.BAD_REQUEST, "Race entry is missing a confirmed and passed jockey inspection"),
+
+    ENTRY_HANDICAP_NOT_CONFIRMED(1717, HttpStatus.BAD_REQUEST, "Handicap weight is not confirmed for this entry"),
+
+    RACE_NOT_ENOUGH_ACTIVE_ENTRIES(1718, HttpStatus.BAD_REQUEST, "Race does not have enough active entries to start"),
+
+    INVALID_VIOLATION_TYPE_FOR_RACE_STATUS(1719, HttpStatus.BAD_REQUEST, "Violation type is not allowed for the current race status"),
+
+    RACE_VIOLATION_REPORTING_CLOSED(1720, HttpStatus.BAD_REQUEST, "Violation reporting is closed for this race"),
+
     // RACE RESULT
-    RACE_RESULT_NOT_FOUND(1601, HttpStatus.NOT_FOUND, "Race result not found"),
-    RACE_RESULT_ALREADY_EXISTS(1602, HttpStatus.CONFLICT, "Race result already exists for this entry"),
-    RACE_ALREADY_HAS_RESULTS(1603, HttpStatus.CONFLICT, "Race already has results recorded"),
-    INVALID_RACE_RESULT_STATUS(1604, HttpStatus.BAD_REQUEST, "Invalid race result status"),
-    DUPLICATE_RACE_RESULT_RANK(1605, HttpStatus.CONFLICT, "Duplicate rank in the same race"),
-    FINISH_TIME_MUST_BE_POSITIVE(1606, HttpStatus.BAD_REQUEST, "Finish time must be zero or positive"),
-    RANK_MUST_BE_POSITIVE(1607, HttpStatus.BAD_REQUEST, "Rank must be at least 1"),
-    PRIZE_ALREADY_PAID(1608, HttpStatus.CONFLICT, "Prize has already been paid for this result"),
-    PRIZE_NOT_ELIGIBLE(1609, HttpStatus.BAD_REQUEST, "Result is not eligible for prize payout"),
+    RACE_RESULT_NOT_FOUND(2601, HttpStatus.NOT_FOUND, "Race result not found"),
+    RACE_RESULT_ALREADY_EXISTS(2602, HttpStatus.CONFLICT, "Race result already exists for this entry"),
+    RACE_ALREADY_HAS_RESULTS(2603, HttpStatus.CONFLICT, "Race already has results recorded"),
+    INVALID_RACE_RESULT_STATUS(2604, HttpStatus.BAD_REQUEST, "Invalid race result status"),
+    DUPLICATE_RACE_RESULT_RANK(2605, HttpStatus.CONFLICT, "Duplicate rank in the same race"),
+    FINISH_TIME_MUST_BE_POSITIVE(2606, HttpStatus.BAD_REQUEST, "Finish time must be zero or positive"),
+    RANK_MUST_BE_POSITIVE(2607, HttpStatus.BAD_REQUEST, "Rank must be at least 1"),
+    PRIZE_ALREADY_PAID(2608, HttpStatus.CONFLICT, "Prize has already been paid for this result"),
+    PRIZE_NOT_ELIGIBLE(2609, HttpStatus.BAD_REQUEST, "Result is not eligible for prize payout"),
 
     // RACE REPORT
-    RACE_REPORT_NOT_FOUND(1610, HttpStatus.NOT_FOUND, "Race report not found"),
-    RACE_REPORT_ALREADY_EXISTS(1611, HttpStatus.CONFLICT, "Race report already exists for this race"),
-    RACE_REPORT_ALREADY_SIGNED(1612, HttpStatus.CONFLICT, "Race report has already been signed"),
-    RACE_REPORT_ALREADY_PUBLISHED(1613, HttpStatus.CONFLICT, "Race report has already been published"),
-    RACE_REPORT_NOT_SIGNED(1614, HttpStatus.BAD_REQUEST, "Race report must be signed before publishing"),
-    RACE_REPORT_NOT_IN_DRAFT(1615, HttpStatus.BAD_REQUEST, "Race report is not in draft status"),
-    RACE_REPORT_NOT_IN_SIGNED(1616, HttpStatus.BAD_REQUEST, "Race report is not in signed status"),
+    RACE_REPORT_NOT_FOUND(2610, HttpStatus.NOT_FOUND, "Race report not found"),
+    RACE_REPORT_ALREADY_EXISTS(2611, HttpStatus.CONFLICT, "Race report already exists for this race"),
+    RACE_REPORT_ALREADY_SIGNED(2612, HttpStatus.CONFLICT, "Race report has already been signed"),
+    RACE_REPORT_ALREADY_PUBLISHED(2613, HttpStatus.CONFLICT, "Race report has already been published"),
+    RACE_REPORT_NOT_SIGNED(2614, HttpStatus.BAD_REQUEST, "Race report must be signed before publishing"),
+    RACE_REPORT_NOT_IN_DRAFT(2615, HttpStatus.BAD_REQUEST, "Race report is not in draft status"),
+    RACE_REPORT_NOT_IN_SIGNED(2616, HttpStatus.BAD_REQUEST, "Race report is not in signed status"),
 
     // APPEAL CATEGORY
-    APPEAL_CATEGORY_NOT_FOUND(1620, HttpStatus.NOT_FOUND, "Appeal category not found"),
-    APPEAL_CATEGORY_CODE_EXISTS(1621, HttpStatus.CONFLICT, "Appeal category code already exists"),
-    APPEAL_CATEGORY_INACTIVE(1622, HttpStatus.BAD_REQUEST, "Appeal category is inactive"),
+    APPEAL_CATEGORY_NOT_FOUND(2620, HttpStatus.NOT_FOUND, "Appeal category not found"),
+    APPEAL_CATEGORY_CODE_EXISTS(2621, HttpStatus.CONFLICT, "Appeal category code already exists"),
+    APPEAL_CATEGORY_INACTIVE(2622, HttpStatus.BAD_REQUEST, "Appeal category is inactive"),
 
     // APPEAL
-    APPEAL_NOT_FOUND(1630, HttpStatus.NOT_FOUND, "Appeal not found"),
-    APPEAL_ALREADY_REVIEWED(1631, HttpStatus.CONFLICT, "Appeal has already been reviewed"),
-    APPEAL_NOT_PENDING(1632, HttpStatus.BAD_REQUEST, "Appeal is not in pending status"),
-    INVALID_APPEAL_STATUS_TRANSITION(1633, HttpStatus.BAD_REQUEST, "Invalid appeal status transition"),
-    APPEAL_ALREADY_CANCELLED(1634, HttpStatus.CONFLICT, "Appeal has already been cancelled"),
+    APPEAL_NOT_FOUND(2630, HttpStatus.NOT_FOUND, "Appeal not found"),
+    APPEAL_ALREADY_REVIEWED(2631, HttpStatus.CONFLICT, "Appeal has already been reviewed"),
+    APPEAL_NOT_PENDING(2632, HttpStatus.BAD_REQUEST, "Appeal is not in pending status"),
+    INVALID_APPEAL_STATUS_TRANSITION(2633, HttpStatus.BAD_REQUEST, "Invalid appeal status transition"),
+    APPEAL_ALREADY_CANCELLED(2634, HttpStatus.CONFLICT, "Appeal has already been cancelled"),
 
     // APPEAL EVIDENCE
-    APPEAL_EVIDENCE_NOT_FOUND(1640, HttpStatus.NOT_FOUND, "Appeal evidence not found"),
-    APPEAL_EVIDENCE_REQUIRED(1641, HttpStatus.BAD_REQUEST, "Either file URL or text content must be provided for evidence"),
+    APPEAL_EVIDENCE_NOT_FOUND(2640, HttpStatus.NOT_FOUND, "Appeal evidence not found"),
+    APPEAL_EVIDENCE_REQUIRED(2641, HttpStatus.BAD_REQUEST, "Either file URL or text content must be provided for evidence"),
 
-    // VIOLATION
-    VIOLATION_NOT_FOUND(1650, HttpStatus.NOT_FOUND, "Violation not found"),
-    VIOLATION_ALREADY_RESOLVED(1651, HttpStatus.CONFLICT, "Violation has already been resolved"),
-    VIOLATION_ALREADY_CANCELLED(1652, HttpStatus.CONFLICT, "Violation has already been cancelled"),
-    INVALID_VIOLATION_STATUS_TRANSITION(1653, HttpStatus.BAD_REQUEST, "Invalid violation status transition"),
+    VIOLATION_NOT_FOUND(2650, HttpStatus.NOT_FOUND, "Violation not found"),
+    VIOLATION_ALREADY_RESOLVED(2651, HttpStatus.CONFLICT, "Violation has already been resolved"),
+    VIOLATION_ALREADY_CANCELLED(2652, HttpStatus.CONFLICT, "Violation has already been cancelled"),
+    INVALID_VIOLATION_STATUS_TRANSITION(2653, HttpStatus.BAD_REQUEST, "Invalid violation status transition"),
+
+    INVALID_INSPECTION_TIMELINE(1801, HttpStatus.BAD_REQUEST, "Invalid inspection timeline: inspectionOpenMinutesBefore > inspectionCloseMinutesBefore > predictionCloseMinutesBefore >= 0"),
+    INVALID_SCHEDULING_CONFIG(1802, HttpStatus.BAD_REQUEST, "Invalid scheduling configuration"),
+    MAX_RACES_PER_DAY_EXCEEDED(1803, HttpStatus.BAD_REQUEST, "Daily race limit exceeded for this tournament"),
+    RACE_OUTSIDE_OPERATING_HOURS(1804, HttpStatus.BAD_REQUEST, "Race time is outside tournament operating hours"),
+    RACE_OVERLAPS_BREAK(1805, HttpStatus.BAD_REQUEST, "Race time overlaps with tournament break time"),
+    RACE_SCHEDULE_CONFLICT(1806, HttpStatus.BAD_REQUEST, "Race schedule conflict with an existing race (minimum interval required)"),
+    INSPECTION_WINDOW_NOT_OPEN(1807, HttpStatus.BAD_REQUEST, "Inspection window is not open yet"),
+    INSPECTION_WINDOW_CLOSED(1808, HttpStatus.BAD_REQUEST, "Inspection window has closed"),
+    RACE_ENTRY_NOT_ACTIVE(1809, HttpStatus.BAD_REQUEST, "Race entry is not active"),
+    RACE_START_TOO_EARLY(1810, HttpStatus.BAD_REQUEST, "Race cannot start earlier than startEarlyToleranceMinutes before startTime"),
+    RACE_START_WINDOW_EXPIRED(1811, HttpStatus.BAD_REQUEST, "Race start window has expired (startLateToleranceMinutes elapsed)"),
+    APPEAL_SUBMISSION_CLOSED(1812, HttpStatus.BAD_REQUEST, "Appeal submission is closed for this race"),
+    INVALID_FINAL_ROUND_CONFIGURATION(1813, HttpStatus.BAD_REQUEST, "Final round must have exactly one race"),
 
     // PREDICTION
     PREDICTION_NOT_FOUND(1660, HttpStatus.NOT_FOUND, "Prediction not found"),
+    INVALID_PREDICTION_TYPE(1673, HttpStatus.BAD_REQUEST, "Only TOP3 predictions are supported"),
     PREDICTION_ALREADY_EXISTS(1661, HttpStatus.CONFLICT, "You have already submitted a prediction for this race"),
     PREDICTION_WINDOW_NOT_OPEN(1662, HttpStatus.BAD_REQUEST, "Prediction window has not opened yet"),
     PREDICTION_WINDOW_CLOSED(1663, HttpStatus.BAD_REQUEST, "Prediction window has already closed"),
@@ -411,6 +484,12 @@ public enum ErrorCode {
     // AI PREDICTION
     AI_PREDICTION_GENERATION_FAILED(1673, HttpStatus.INTERNAL_SERVER_ERROR, "AI prediction generation failed"),
     AI_PREDICTION_INVALID_RESPONSE(1674, HttpStatus.INTERNAL_SERVER_ERROR, "AI returned an invalid response format"),
+
+    // HORSE RATING
+    RACE_ENTRY_DID_NOT_START(1815, HttpStatus.BAD_REQUEST, "Race result cannot be created for an entry that did not start"),
+    HORSE_RATING_CHANGED_RETRY_REQUIRED(1814, HttpStatus.BAD_REQUEST, "Horse rating has changed since the calculation was made, please try again"),
+    HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
+    RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
     ;
 
 

@@ -6,11 +6,8 @@ import com.swp391.horseracing.dto.prediction.request.UpdatePredictionRequest;
 import com.swp391.horseracing.dto.prediction.response.AIPredictionResponse;
 import com.swp391.horseracing.dto.prediction.response.PredictionResponse;
 import com.swp391.horseracing.entity.*;
-import com.swp391.horseracing.enums.AccountStatus;
-import com.swp391.horseracing.enums.PredictionDetailStatus;
-import com.swp391.horseracing.enums.PredictionStatus;
-import com.swp391.horseracing.enums.PredictionType;
-import com.swp391.horseracing.enums.RoleName;
+import com.swp391.horseracing.enums.*;
+import com.swp391.horseracing.service.NotificationService;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.AIPredictionMapper;
@@ -44,6 +41,7 @@ public class PredictionServiceImpl implements PredictionService {
     UserCurrentService userCurrentService;
     AIPredictionRepository aiPredictionRepository;
     AIPredictionMapper aiPredictionMapper;
+    NotificationService notificationService;
 
     @Override
     @Transactional
@@ -60,6 +58,10 @@ public class PredictionServiceImpl implements PredictionService {
         if (predictionRepository.existsByRace_RaceIdAndSpectator_SpectatorIdAndStatusNot(
                 raceId, spectatorId, PredictionStatus.CANCELLED)) {
             throw new AppException(ErrorCode.PREDICTION_ALREADY_EXISTS);
+        }
+
+        if (request.getPredictionType() != PredictionType.TOP3) {
+            throw new AppException(ErrorCode.INVALID_PREDICTION_TYPE);
         }
 
         List<PredictionEntryRequest> entries = request.getEntries();
@@ -111,6 +113,7 @@ public class PredictionServiceImpl implements PredictionService {
 
         Race race = prediction.getRace();
         validatePredictionWindow(race);
+        validateRaceNotStarted(race);
 
         List<PredictionEntryRequest> entries = request.getEntries();
         validateEntries(race, entries, prediction.getPredictionType());
@@ -272,9 +275,100 @@ public class PredictionServiceImpl implements PredictionService {
             RaceEntry raceEntry = raceEntryRepository.findById(e.getEntryId())
                     .orElseThrow(() -> new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND));
 
+            if (raceEntry.getStatus() != RaceEntryStatus.CONFIRMED) {
+                throw new AppException(ErrorCode.RACE_ENTRY_NOT_ACTIVE);
+            }
+
             if (!raceEntry.getRace().getRaceId().equals(race.getRaceId())) {
                 throw new AppException(ErrorCode.HORSE_NOT_IN_THIS_RACE);
             }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void voidInvalidPredictionsForRace(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        List<Prediction> predictions = predictionRepository.findByRace_RaceIdAndStatus(raceId, PredictionStatus.PENDING);
+        for (Prediction p : predictions) {
+            boolean hasScratched = false;
+            StringBuilder scratchedInfo = new StringBuilder();
+            for (PredictionDetail d : p.getPredictionDetails()) {
+                if (d.getEntry().getStatus() == RaceEntryStatus.SCRATCHED 
+                        || d.getEntry().getStatus() == RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
+                        || d.getEntry().getStatus() == RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE) {
+                    hasScratched = true;
+                    if (scratchedInfo.length() > 0) {
+                        scratchedInfo.append(", ");
+                    }
+                    scratchedInfo.append(d.getEntry().getContract().getHorse().getName());
+                }
+            }
+
+            if (hasScratched) {
+                p.setStatus(PredictionStatus.VOIDED);
+                p.setVoidedAt(LocalDateTime.now());
+                p.setVoidReason("Prediction voided due to scratched entries: " + scratchedInfo.toString());
+                predictionRepository.save(p);
+
+                // Send notification
+                notificationService.sendNotification(
+                        p.getSpectator().getUser().getUserId(),
+                        "Prediction Voided",
+                        "Your prediction for race " + race.getName() + " has been voided because it contained scratched horse(s): " + scratchedInfo.toString(),
+                        NotificationType.PredictionVoided,
+                        "Prediction",
+                        p.getPredictionId()
+                );
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void notifySpectatorsForScratchedEntry(UUID raceId, UUID entryId, String horseName) {
+        List<Prediction> predictions = predictionRepository.findByRace_RaceIdAndStatus(raceId, PredictionStatus.PENDING);
+        for (Prediction p : predictions) {
+            boolean matches = p.getPredictionDetails().stream()
+                    .anyMatch(d -> d.getEntry().getEntryId().equals(entryId));
+
+            if (matches) {
+                notificationService.sendNotification(
+                        p.getSpectator().getUser().getUserId(),
+                        "Predicted Horse Scratched",
+                        "The horse " + horseName + " in your prediction for race " + p.getRace().getName() + " has been scratched. Please update your prediction before it closes!",
+                        NotificationType.PredictedHorseScratched,
+                        "Prediction",
+                        p.getPredictionId()
+                );
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void voidAllPredictionsForRace(UUID raceId, String reason) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        List<Prediction> predictions = predictionRepository.findByRace_RaceIdAndStatus(raceId, PredictionStatus.PENDING);
+        for (Prediction p : predictions) {
+            p.setStatus(PredictionStatus.VOIDED);
+            p.setVoidedAt(LocalDateTime.now());
+            p.setVoidReason("Race cancelled: " + reason);
+            predictionRepository.save(p);
+
+            // Send notification
+            notificationService.sendNotification(
+                    p.getSpectator().getUser().getUserId(),
+                    "Prediction Voided (Race Cancelled)",
+                    "Your prediction for race " + race.getName() + " has been voided because the race was cancelled. Reason: " + reason,
+                    NotificationType.PredictionVoided,
+                    "Prediction",
+                    p.getPredictionId()
+            );
         }
     }
 }

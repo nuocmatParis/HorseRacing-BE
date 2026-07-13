@@ -1,25 +1,38 @@
 package com.swp391.horseracing.service;
 
-import com.swp391.horseracing.dto.contract.request.CreateContractRequest;
-import com.swp391.horseracing.dto.contract.request.UpdateContractRequest;
+import com.swp391.horseracing.dto.contract.request.InviteRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
+import com.swp391.horseracing.dto.invoice.response.PaymentResponse;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface ContractService {
+    ContractResponse inviteJockey(InviteRequest request);
 
-    ContractResponse create(CreateContractRequest request);
+    List<ContractResponse> getOwnerContracts();
 
-    ContractResponse updateStatus(UUID contractId, UpdateContractRequest request);
+    ContractResponse getOwnerContractById(UUID contractId);
 
-    ContractResponse getContractById(UUID contractId);
+    List<ContractResponse> getMyInvitations();
 
-    List<ContractResponse> getContractsByTournament(UUID tournamentId);
+    List<ContractResponse> getJockeyContracts();
 
-    List<ContractResponse> getContractsByOwner(UUID ownerId);
+    ContractResponse getJockeyContractById(UUID contractId);
 
-    List<ContractResponse> getContractsByJockey(UUID jockeyId);
+    ContractResponse acceptContract(UUID contractId);
 
-    List<ContractResponse> getApprovedContractsByTournament(UUID tournamentId);
+    ContractResponse rejectContractByJockey(UUID contractId, String reason);
+
+    PaymentResponse payHiringFee(UUID contractId);
+
+    PaymentResponse payContractCreationFee(UUID contractId);
+
+    List<ContractResponse> getPendingContracts();
+
+    ContractResponse approveContract(UUID contractId);
+
+    ContractResponse rejectContractByAdmin(UUID contractId, String reason);
+
+    ContractResponse releaseFinalPayout(UUID contractId);
 }

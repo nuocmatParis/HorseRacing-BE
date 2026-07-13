@@ -1,25 +1,22 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.PenaltyType;
-import com.swp391.horseracing.enums.ViolationStatus;
-import com.swp391.horseracing.enums.ViolationType;
+import com.swp391.horseracing.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table(name = "violations")
 @Entity
+@Table(name = "violations")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Violation {
 
@@ -31,21 +28,21 @@ public class Violation {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "entry_id", nullable = false)
-    RaceEntry entry;
+    RaceEntry raceEntry;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "referee_id", nullable = false)
     Referee referee;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20)
+    @Column(name = "type", nullable = false)
     ViolationType type;
 
-    @Column(name = "description", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "description", columnDefinition = "TEXT")
     String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "penalty_type", nullable = false, length = 20)
+    @Column(name = "penalty_type", nullable = false)
     PenaltyType penaltyType;
 
     @Column(name = "penalty_value")
@@ -54,12 +51,10 @@ public class Violation {
     @Column(name = "occurred_at", nullable = false)
     LocalDateTime occurredAt;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false)
     LocalDateTime createdAt;
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    ViolationStatus status = ViolationStatus.Active;
+    @Column(name = "status", nullable = false)
+    ViolationStatus status;
 }

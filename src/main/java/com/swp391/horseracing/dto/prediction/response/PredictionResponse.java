@@ -26,6 +26,8 @@ public class PredictionResponse {
     PredictionStatus status;
     Integer rewardPoints;
     LocalDateTime scoredAt;
+    LocalDateTime voidedAt;
+    String voidReason;
     List<PredictionDetailResponse> details;
     List<AIPredictionResponse> aiPredictions;
 }

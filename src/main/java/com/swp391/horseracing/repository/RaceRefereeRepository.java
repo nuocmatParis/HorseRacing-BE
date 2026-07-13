@@ -19,4 +19,6 @@ public interface RaceRefereeRepository extends JpaRepository<RaceReferee, UUID> 
     int countByRace_RaceId(UUID raceId);
 
     boolean existsByReferee_RefereeId(UUID refereeId);
+
+    List<RaceReferee> findByReferee_RefereeId(UUID refereeId);
 }

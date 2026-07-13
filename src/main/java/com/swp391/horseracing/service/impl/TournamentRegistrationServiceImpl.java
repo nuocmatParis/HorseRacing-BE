@@ -92,6 +92,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .horse(horse)
                 .owner(owner)
                 .status(RegistrationStatus.PENDING_PAYMENT)
+                .ratingAtRegistration(horse.getCurrentRating())
+                .raceClassAtRegistration(horse.getRaceClass())
                 .build();
         HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
 
@@ -192,16 +194,17 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         validatePendingStatus(registration.getStatus());
 
         Invoice invoice = invoiceRepository.findByHorseTournamentRegistration_HorseRegistrationId(registrationId).orElseThrow(()
-                -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
 
-        paymentService.refundInvoice(invoice.getInvoiceId());
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            paymentService.refundInvoice(invoice.getInvoiceId());
+        }
 
         User currentUser = userCurrentService.getCurrentUser();
         registration.setStatus(RegistrationStatus.REJECTED);
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
-
 
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(horseRegistrationRepository.save(registration));
     }
@@ -314,7 +317,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
-        if (tournament.getRaceClass() != null && tournament.getRaceClass() != horse.getRaceClass()) {
+        if (tournament.getRaceClass() != null && !tournament.getRaceClass().isEligible(horse.getCurrentRating())) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 

@@ -57,6 +57,12 @@ public class Prediction {
     @Column(name = "scored_at")
     LocalDateTime scoredAt;
 
+    @Column(name = "voided_at")
+    LocalDateTime voidedAt;
+
+    @Column(name = "void_reason")
+    String voidReason;
+
     @Builder.Default
     @OneToMany(mappedBy = "prediction", cascade = CascadeType.ALL, orphanRemoval = true)
     List<PredictionDetail> predictionDetails = new ArrayList<>();

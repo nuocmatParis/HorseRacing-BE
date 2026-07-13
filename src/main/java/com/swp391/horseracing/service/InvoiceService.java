@@ -18,6 +18,4 @@ public interface InvoiceService {
     Invoice createContractCreationInvoice(UUID payerUserId, UUID contractId, BigDecimal amount);
 
     Invoice createHiringFeeInvoice(UUID payerUserId, UUID contractId, BigDecimal amount);
-
-    Invoice getByContractIdAndType(UUID contractId);
 }
