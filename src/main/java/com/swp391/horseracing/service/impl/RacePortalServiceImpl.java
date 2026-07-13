@@ -1,0 +1,348 @@
+package com.swp391.horseracing.service.impl;
+
+import com.swp391.horseracing.dto.common.PageResponse;
+import com.swp391.horseracing.dto.race_portal.AssignedRaceResponse;
+import com.swp391.horseracing.dto.race_portal.RaceEntryViewResponse;
+import com.swp391.horseracing.dto.race_portal.RaceResultItemResponse;
+import com.swp391.horseracing.dto.race_portal.RaceResultsResponse;
+import com.swp391.horseracing.dto.race_portal.RaceScheduleResponse;
+import com.swp391.horseracing.dto.race_portal.RaceSummaryResponse;
+import com.swp391.horseracing.dto.race_portal.SpectatorRaceDetailResponse;
+import com.swp391.horseracing.entity.MedicalStaff;
+import com.swp391.horseracing.entity.Race;
+import com.swp391.horseracing.entity.RaceEntry;
+import com.swp391.horseracing.entity.RaceInspectionAssignment;
+import com.swp391.horseracing.entity.RaceReferee;
+import com.swp391.horseracing.entity.RaceReport;
+import com.swp391.horseracing.entity.RaceResult;
+import com.swp391.horseracing.entity.Referee;
+import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.entity.Veterinarian;
+import com.swp391.horseracing.exception.AppException;
+import com.swp391.horseracing.exception.ErrorCode;
+import com.swp391.horseracing.repository.MedicalStaffRepository;
+import com.swp391.horseracing.repository.RaceEntryRepository;
+import com.swp391.horseracing.repository.RaceInspectionStaffAssignmentRepository;
+import com.swp391.horseracing.repository.RaceRefereeRepository;
+import com.swp391.horseracing.repository.RaceReportRepository;
+import com.swp391.horseracing.repository.RaceRepository;
+import com.swp391.horseracing.repository.RaceResultRepository;
+import com.swp391.horseracing.repository.RefereeRepository;
+import com.swp391.horseracing.repository.TournamentRepository;
+import com.swp391.horseracing.repository.VeterinarianRepository;
+import com.swp391.horseracing.service.RacePortalService;
+import com.swp391.horseracing.service.UserCurrentService;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+public class RacePortalServiceImpl implements RacePortalService {
+    RaceRepository raceRepository;
+    RaceEntryRepository raceEntryRepository;
+    RaceResultRepository raceResultRepository;
+    RaceReportRepository raceReportRepository;
+    RaceRefereeRepository raceRefereeRepository;
+    RaceInspectionStaffAssignmentRepository inspectionAssignmentRepository;
+    RefereeRepository refereeRepository;
+    VeterinarianRepository veterinarianRepository;
+    MedicalStaffRepository medicalStaffRepository;
+    TournamentRepository tournamentRepository;
+    UserCurrentService userCurrentService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceScheduleResponse> getOwnerSchedule(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findUpcomingForOwner(
+                user.getUserId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<RaceScheduleResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Owner_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toScheduleResponse(race, entries));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceScheduleResponse> getJockeySchedule(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findUpcomingForJockey(
+                user.getUserId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<RaceScheduleResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Jockey_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toScheduleResponse(race, entries));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceResultsResponse> getOwnerResults(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findPublishedResultsForOwner(
+                user.getUserId(), PageRequest.of(page, size));
+        List<RaceResultsResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Owner_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toResultsResponse(race, entries, true));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceResultsResponse> getJockeyResults(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findPublishedResultsForJockey(
+                user.getUserId(), PageRequest.of(page, size));
+        List<RaceResultsResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Jockey_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toResultsResponse(race, entries, false));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceSummaryResponse> getUpcomingRaces(
+            LocalDateTime from, LocalDateTime to, UUID tournamentId, int page, int size) {
+        validatePage(page, size);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime fromTime = from == null || from.isBefore(now) ? now : from;
+        if (to != null && to.isBefore(fromTime)) {
+            throw new AppException(ErrorCode.INVALID_DATE_RANGE);
+        }
+        if (tournamentId != null && !tournamentRepository.existsById(tournamentId)) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+
+        Page<Race> races = raceRepository.findUpcomingForSpectator(
+                fromTime, to, tournamentId, PageRequest.of(page, size));
+        List<RaceSummaryResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            items.add(toRaceSummary(race));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SpectatorRaceDetailResponse getSpectatorRaceDetail(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        if (race.getSchedulePublishedAt() == null) {
+            throw new AppException(ErrorCode.SCHEDULE_NOT_PUBLISHED);
+        }
+        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        return SpectatorRaceDetailResponse.builder()
+                .race(toRaceSummary(race))
+                .cancelledAt(race.getCancelledAt())
+                .cancellationReason(race.getCancellationReason())
+                .rescheduledAt(race.getRescheduledAt())
+                .rescheduleReason(race.getRescheduleReason())
+                .entries(toEntryResponses(entries))
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AssignedRaceResponse> getRefereeAssignedRaces(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Referee referee = refereeRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        Page<Race> races = raceRepository.findCurrentForReferee(
+                referee.getRefereeId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<AssignedRaceResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            String role = "REFEREE";
+            LocalDateTime assignedAt = null;
+            if (race.getRound().getHeadReferee() != null
+                    && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
+                role = "HEAD_REFEREE";
+                assignedAt = race.getRound().getHeadRefereeAssignedAt();
+            } else {
+                Optional<RaceReferee> assignment = raceRefereeRepository
+                        .findByRace_RaceIdAndReferee_RefereeId(race.getRaceId(), referee.getRefereeId());
+                if (assignment.isPresent()) {
+                    assignedAt = assignment.get().getAssignedAt();
+                }
+            }
+            items.add(toAssignedResponse(race, role, assignedAt));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AssignedRaceResponse> getVeterinarianAssignedRaces(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Veterinarian veterinarian = veterinarianRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.VETERINARIAN_PROFILE_NOT_FOUND));
+        Page<RaceInspectionAssignment> assignments = inspectionAssignmentRepository
+                .findCurrentForVeterinarian(veterinarian.getVetId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<AssignedRaceResponse> items = new ArrayList<>();
+        for (RaceInspectionAssignment assignment : assignments.getContent()) {
+            items.add(toAssignedResponse(assignment.getRace(), "VETERINARIAN", assignment.getAssignedAt()));
+        }
+        return toAssignmentPageResponse(assignments, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<AssignedRaceResponse> getMedicalAssignedRaces(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        MedicalStaff medicalStaff = medicalStaffRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEDICAL_STAFF_PROFILE_NOT_FOUND));
+        Page<RaceInspectionAssignment> assignments = inspectionAssignmentRepository
+                .findCurrentForMedicalStaff(medicalStaff.getMedStaffId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<AssignedRaceResponse> items = new ArrayList<>();
+        for (RaceInspectionAssignment assignment : assignments.getContent()) {
+            items.add(toAssignedResponse(assignment.getRace(), "MEDICAL_STAFF", assignment.getAssignedAt()));
+        }
+        return toAssignmentPageResponse(assignments, items);
+    }
+
+    private RaceScheduleResponse toScheduleResponse(Race race, List<RaceEntry> entries) {
+        return RaceScheduleResponse.builder()
+                .race(toRaceSummary(race))
+                .myEntries(toEntryResponses(entries))
+                .build();
+    }
+
+    private RaceResultsResponse toResultsResponse(Race race, List<RaceEntry> entries, boolean ownerView) {
+        RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId())
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
+        List<RaceResultItemResponse> results = new ArrayList<>();
+        for (RaceEntry entry : entries) {
+            Optional<RaceResult> optionalResult = raceResultRepository.findByEntry_EntryId(entry.getEntryId());
+            if (optionalResult.isEmpty()) {
+                continue;
+            }
+            RaceResult result = optionalResult.get();
+            BigDecimal myPrize = ownerView ? result.getOwnerPrizeAmount() : result.getJockeyPrizeAmount();
+            results.add(RaceResultItemResponse.builder()
+                    .resultId(result.getResultId())
+                    .entry(toEntryResponse(entry))
+                    .finishTime(result.getFinishTime())
+                    .rank(result.getRank())
+                    .status(result.getStatus())
+                    .prizeMoney(result.getPrizeMoney())
+                    .myPrizeAmount(myPrize)
+                    .prizeStatus(result.getPrizeStatus())
+                    .prizePaid(result.isPrizePaid())
+                    .build());
+        }
+        return RaceResultsResponse.builder()
+                .race(toRaceSummary(race))
+                .reportId(report.getReportId())
+                .publishedAt(report.getPublishedAt())
+                .myResults(results)
+                .build();
+    }
+
+    private AssignedRaceResponse toAssignedResponse(Race race, String role, LocalDateTime assignedAt) {
+        Tournament tournament = race.getRound().getTournament();
+        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(race.getRaceId());
+        return AssignedRaceResponse.builder()
+                .race(toRaceSummary(race))
+                .assignmentRole(role)
+                .assignedAt(assignedAt)
+                .inspectionOpenAt(race.getStartTime().minusMinutes(tournament.getInspectionOpenMinutesBefore()))
+                .inspectionCloseAt(race.getStartTime().minusMinutes(tournament.getInspectionCloseMinutesBefore()))
+                .entryCount(entries.size())
+                .entries(toEntryResponses(entries))
+                .build();
+    }
+
+    private RaceSummaryResponse toRaceSummary(Race race) {
+        return RaceSummaryResponse.builder()
+                .tournamentId(race.getRound().getTournament().getTournamentId())
+                .tournamentName(race.getRound().getTournament().getName())
+                .roundId(race.getRound().getRoundId())
+                .roundName(race.getRound().getRoundName())
+                .raceId(race.getRaceId())
+                .raceName(race.getName())
+                .startTime(race.getStartTime())
+                .endTime(race.getEndTime())
+                .trackCondition(race.getTrackCondition())
+                .distance(race.getDistance())
+                .sequenceOrder(race.getSequenceOrder())
+                .status(race.getStatus())
+                .predictionOpenAt(race.getPredictionOpenAt())
+                .predictionCloseAt(race.getPredictionCloseAt())
+                .schedulePublishedAt(race.getSchedulePublishedAt())
+                .build();
+    }
+
+    private List<RaceEntryViewResponse> toEntryResponses(List<RaceEntry> entries) {
+        List<RaceEntryViewResponse> responses = new ArrayList<>();
+        for (RaceEntry entry : entries) {
+            responses.add(toEntryResponse(entry));
+        }
+        return responses;
+    }
+
+    private RaceEntryViewResponse toEntryResponse(RaceEntry entry) {
+        return RaceEntryViewResponse.builder()
+                .entryId(entry.getEntryId())
+                .laneNumber(entry.getLaneNumber())
+                .status(entry.getStatus())
+                .horseId(entry.getContract().getHorse().getHorseId())
+                .horseName(entry.getContract().getHorse().getName())
+                .jockeyId(entry.getContract().getJockey().getJockeyId())
+                .jockeyName(entry.getContract().getJockey().getUser().getFullName())
+                .scratchedReason(entry.getScratchedReason())
+                .disqualifiedReason(entry.getDisqualifiedReason())
+                .build();
+    }
+
+    private <T> PageResponse<T> toPageResponse(Page<Race> source, List<T> items) {
+        return new PageResponse<>(items, source.getNumber(), source.getSize(), source.getTotalElements(),
+                source.getTotalPages(), source.isFirst(), source.isLast());
+    }
+
+    private PageResponse<AssignedRaceResponse> toAssignmentPageResponse(
+            Page<RaceInspectionAssignment> source, List<AssignedRaceResponse> items) {
+        return new PageResponse<>(items, source.getNumber(), source.getSize(), source.getTotalElements(),
+                source.getTotalPages(), source.isFirst(), source.isLast());
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
+        }
+    }
+}

@@ -222,6 +222,89 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    public PaymentResponse refundInvoiceAmount(UUID invoiceId, BigDecimal amount) {
+        Invoice invoice = invoiceRepository.findForUpdateByInvoiceId(invoiceId).orElseThrow(()
+                -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        validateInvoiceCanBeRefund(invoice);
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0
+                || amount.compareTo(invoice.getAmount()) > 0) {
+            throw new AppException(ErrorCode.INVALID_REFUND_AMOUNT);
+        }
+
+        Wallet userWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
+                invoice.getPayerUser().getUserId(), WalletPurpose.USER_MAIN).orElseThrow(()
+                -> new AppException(ErrorCode.WALLET_NOT_FOUND));
+        Wallet systemWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
+                WalletOwnerType.SYSTEM, getDestinationWalletPurpose(invoice.getInvoiceType())).orElseThrow(()
+                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+
+        validateWalletActive(userWallet);
+        validateWalletActive(systemWallet);
+        if (systemWallet.getBalance().compareTo(amount) < 0) {
+            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        BigDecimal systemBalanceBefore = systemWallet.getBalance();
+        BigDecimal systemBalanceAfter = systemBalanceBefore.subtract(amount);
+        BigDecimal userBalanceBefore = userWallet.getBalance();
+        BigDecimal userBalanceAfter = userBalanceBefore.add(amount);
+        systemWallet.setBalance(systemBalanceAfter);
+        userWallet.setBalance(userBalanceAfter);
+        walletRepository.save(systemWallet);
+        walletRepository.save(userWallet);
+
+        UUID transactionGroupId = UUID.randomUUID();
+        Transaction systemTransaction = Transaction.builder()
+                .wallet(systemWallet)
+                .invoice(invoice)
+                .contractId(invoice.getContractId())
+                .type(TransactionType.REFUND)
+                .direction(TransactionDirection.DEBIT)
+                .amount(amount)
+                .balanceBefore(systemBalanceBefore)
+                .balanceAfter(systemBalanceAfter)
+                .counterpartyWalletId(userWallet.getWalletId())
+                .counterpartyType(CounterpartyType.USER)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Partial refund invoice: " + invoice.getInvoiceType().name())
+                .build();
+        Transaction userTransaction = Transaction.builder()
+                .wallet(userWallet)
+                .invoice(invoice)
+                .contractId(invoice.getContractId())
+                .type(TransactionType.REFUND)
+                .direction(TransactionDirection.CREDIT)
+                .amount(amount)
+                .balanceBefore(userBalanceBefore)
+                .balanceAfter(userBalanceAfter)
+                .counterpartyWalletId(systemWallet.getWalletId())
+                .counterpartyType(CounterpartyType.SYSTEM)
+                .transactionGroupId(transactionGroupId)
+                .status(TransactionStatus.SUCCESS)
+                .note("Receive partial refund: " + invoice.getInvoiceType().name())
+                .build();
+
+        Transaction savedSystemTransaction = walletTransactionRepository.save(systemTransaction);
+        Transaction savedUserTransaction = walletTransactionRepository.save(userTransaction);
+        if (amount.compareTo(invoice.getAmount()) == 0) {
+            invoice.setStatus(InvoiceStatus.REFUNDED);
+        } else {
+            invoice.setStatus(InvoiceStatus.PARTIALLY_REFUNDED);
+        }
+        invoice.setRefundedAt(LocalDateTime.now());
+        Invoice savedInvoice = invoiceRepository.save(invoice);
+
+        return PaymentResponse.builder()
+                .invoiceResponse(invoiceMapper.toInvoiceResponse(savedInvoice))
+                .userTransaction(transactionMapper.toTransactionResponse(savedUserTransaction))
+                .systemTransaction(transactionMapper.toTransactionResponse(savedSystemTransaction))
+                .build();
+    }
+
+    @Override
+    @Transactional
     public PaymentResponse payHiringFee(UUID contractId) {
         JockeyHorseContract contract = contractRepository.findById(contractId).orElseThrow(()
                 -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
@@ -259,6 +342,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         if(invoice.getStatus() == InvoiceStatus.CANCELLED)
             throw new AppException(ErrorCode.INVOICE_CANCELLED);
+
+        if(invoice.getStatus() == InvoiceStatus.PARTIALLY_REFUNDED)
+            throw new AppException(ErrorCode.REFUND_NOT_ALLOWED);
     }
 
 
@@ -277,6 +363,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         if(invoice.getStatus() == InvoiceStatus.REFUNDED)
             throw new AppException(ErrorCode.INVOICE_ALREADY_REFUNDED);
+
+        if(invoice.getStatus() == InvoiceStatus.PARTIALLY_REFUNDED)
+            throw new AppException(ErrorCode.REFUND_NOT_ALLOWED);
 
         if(invoice.getDueDate() != null && invoice.getDueDate().isBefore(LocalDateTime.now()))
             throw new AppException(ErrorCode.INVOICE_EXPIRED);

@@ -86,6 +86,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         if(invoice.getStatus() == InvoiceStatus.REFUNDED)
             throw new AppException(ErrorCode.INVOICE_ALREADY_REFUNDED);
 
+        if(invoice.getStatus() == InvoiceStatus.PARTIALLY_REFUNDED)
+            throw new AppException(ErrorCode.PAID_INVOICE_CANNOT_BE_CANCELLED);
+
         if(invoice.getStatus() == InvoiceStatus.CANCELLED)
             return;
 

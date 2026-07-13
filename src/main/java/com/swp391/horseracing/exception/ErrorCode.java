@@ -190,6 +190,7 @@ public enum ErrorCode {
     INVALID_PAYMENT_AMOUNT(1425, HttpStatus.BAD_REQUEST, "Invalid payment amount"),
 
     INVALID_VNPAY_SIGNATURE(1426, HttpStatus.BAD_REQUEST, "Invalid Vnpay signature"),
+    INVALID_REFUND_AMOUNT(1427, HttpStatus.BAD_REQUEST, "Refund amount is invalid"),
 
     // TOURNAMENT / REGISTRATION
     TOURNAMENT_NOT_FOUND(1501, HttpStatus.NOT_FOUND, "Tournament not found"),
@@ -352,6 +353,13 @@ public enum ErrorCode {
 
     JOCKEY_REGISTRATION_LIMIT_EXCEEDED(1580, HttpStatus.BAD_REQUEST, "Jockey registration limit exceeded for this tournament"),
 
+    REGISTRATION_WITHDRAW_NOT_ALLOWED(1581, HttpStatus.CONFLICT, "Registration cannot be withdrawn in its current state"),
+    REGISTRATION_HAS_ACTIVE_CONTRACT(1582, HttpStatus.CONFLICT, "Cancel the active contract before withdrawing this registration"),
+    REGISTRATION_ALREADY_WITHDRAWN(1583, HttpStatus.CONFLICT, "Registration has already been withdrawn"),
+    REGISTRATION_ALREADY_CLOSED(1584, HttpStatus.CONFLICT, "Tournament registration has already been closed"),
+    INVALID_PAGE_REQUEST(1585, HttpStatus.BAD_REQUEST, "Page must be non-negative and size must be between 1 and 100"),
+    INVALID_DATE_RANGE(1586, HttpStatus.BAD_REQUEST, "The from time must be before or equal to the to time"),
+
     //Contract
     TOURNAMENT_NOT_MATCH(1601, HttpStatus.BAD_REQUEST, "Tournament not match"),
 
@@ -368,6 +376,9 @@ public enum ErrorCode {
     FINAL_PAYOUT_ALREADY_RELEASED(1608, HttpStatus.BAD_REQUEST, "Final payout has already been released"),
 
     ESCROW_NOT_PARTIALLY_RELEASED(1609, HttpStatus.BAD_REQUEST, "Escrow is not in PARTIALLY_RELEASED status"),
+
+    CONTRACT_CANCELLATION_NOT_ALLOWED(1610, HttpStatus.CONFLICT, "Contract cannot be cancelled in its current state"),
+    CONTRACT_HAS_ACTIVE_RACE(1611, HttpStatus.CONFLICT, "Contract is attached to a race that can no longer be changed"),
 
     //Inspection
     MEDICAL_STAFF_NOT_FOUND(1701, HttpStatus.NOT_FOUND, "Medical staff not found"),
@@ -490,6 +501,7 @@ public enum ErrorCode {
     HORSE_RATING_CHANGED_RETRY_REQUIRED(1814, HttpStatus.BAD_REQUEST, "Horse rating has changed since the calculation was made, please try again"),
     HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
     RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
+    PREDICTION_RESULT_NOT_AVAILABLE(1818, HttpStatus.CONFLICT, "Prediction result is not available yet"),
     ;
 
 

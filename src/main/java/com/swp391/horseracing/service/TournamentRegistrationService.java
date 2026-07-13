@@ -32,4 +32,6 @@ public interface TournamentRegistrationService {
     List<JockeyTournamentRegistrationResponse> getApprovedJockeysByTournament(UUID tournamentId);
 
     List<HorseTournamentRegistrationResponse> getApprovedHorsesByTournament(UUID tournamentId);
+
+    HorseTournamentRegistrationResponse withdrawHorseRegistration(UUID registrationId, String reason);
 }

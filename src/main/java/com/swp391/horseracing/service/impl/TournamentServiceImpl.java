@@ -8,6 +8,10 @@ import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.entity.HorseTournamentRegistration;
+import com.swp391.horseracing.entity.Invoice;
+import com.swp391.horseracing.enums.RegistrationStatus;
+import com.swp391.horseracing.enums.InvoiceStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.RoundStatus;
@@ -22,6 +26,9 @@ import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
+import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
+import com.swp391.horseracing.repository.InvoiceRepository;
+import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.TournamentService;
 import java.time.LocalTime;
 import lombok.AccessLevel;
@@ -50,6 +57,9 @@ public class TournamentServiceImpl implements TournamentService {
     RaceRepository raceRepository;
     RaceEntryRepository raceEntryRepository;
     RaceRefereeRepository raceRefereeRepository;
+    HorseTournamentRegistrationRepository horseRegistrationRepository;
+    InvoiceRepository invoiceRepository;
+    InvoiceService invoiceService;
 
     @Override
     @Transactional
@@ -341,6 +351,38 @@ public class TournamentServiceImpl implements TournamentService {
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         validatePhase(tournament, TournamentPhase.RESULT_PENDING);
         setPhaseAndStatus(tournament, TournamentPhase.RESULT_PUBLISHED);
+        return toResponse(tournamentRepository.save(tournament));
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse closeRegistration(UUID id) {
+        Tournament tournament = tournamentRepository.findForUpdateByTournamentId(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        if (tournament.getPhase() != TournamentPhase.REGISTRATION_OPEN) {
+            throw new AppException(ErrorCode.REGISTRATION_ALREADY_CLOSED);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        User admin = getCurrentUser();
+        List<HorseTournamentRegistration> unpaidRegistrations = horseRegistrationRepository
+                .findForUpdateByTournamentIdAndStatus(id, RegistrationStatus.PENDING_PAYMENT);
+
+        for (HorseTournamentRegistration registration : unpaidRegistrations) {
+            java.util.Optional<Invoice> invoice = invoiceRepository
+                    .findByHorseTournamentRegistration_HorseRegistrationId(registration.getHorseRegistrationId());
+            if (invoice.isPresent() && invoice.get().getStatus() == InvoiceStatus.UNPAID) {
+                invoiceService.cancelInvoice(invoice.get().getInvoiceId());
+            }
+            registration.setStatus(RegistrationStatus.REJECTED);
+            registration.setReviewedBy(admin);
+            registration.setReviewedAt(now);
+            registration.setRejectedReason("Registration closed before payment was completed");
+            horseRegistrationRepository.save(registration);
+        }
+
+        tournament.setRegistrationCloseAt(now);
+        setPhaseAndStatus(tournament, TournamentPhase.REGISTRATION_REVIEW);
         return toResponse(tournamentRepository.save(tournament));
     }
 
