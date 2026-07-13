@@ -1,7 +1,9 @@
 package com.swp391.horseracing.scheduler;
 
+import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.repository.RaceRepository;
@@ -57,11 +59,36 @@ public class TournamentPhaseScheduler {
             List<Round> rounds = roundRepository
                     .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournament.getTournamentId());
 
-            boolean allFinished = rounds.stream()
-                    .flatMap(round -> raceRepository.findByRound_RoundId(round.getRoundId()).stream())
-                    .allMatch(race -> race.getFinishedAt() != null);
+            if (rounds.isEmpty()) continue;
 
-            if (allFinished && !rounds.isEmpty()) {
+            Round currentRound = findCurrentRound(tournament, rounds);
+
+            boolean allFinished = raceRepository.findByRound_RoundId(currentRound.getRoundId())
+                    .stream()
+                    .allMatch(race -> race.getStatus() == RoundStatus.FINISHED
+                            || race.getStatus() == RoundStatus.COMPLETED
+                            || race.getStatus() == RoundStatus.CANCELLED);
+
+            if (!allFinished) continue;
+
+            int currentIndex = -1;
+            for (int i = 0; i < rounds.size(); i++) {
+                if (rounds.get(i).getRoundId().equals(currentRound.getRoundId())) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            int nextIndex = currentIndex + 1;
+
+            if (nextIndex < rounds.size()) {
+                Round nextRound = rounds.get(nextIndex);
+                tournament.setCurrentRoundName(nextRound.getRoundName());
+                tournamentRepository.save(tournament);
+                log.info("Tournament {} round complete: '{}' → '{}'",
+                        tournament.getTournamentId(),
+                        currentRound.getRoundName(),
+                        nextRound.getRoundName());
+            } else {
                 tournament.setPhase(TournamentPhase.RESULT_PENDING);
                 tournament.setStatus(TournamentStatus.ONGOING);
                 tournamentRepository.save(tournament);
@@ -69,5 +96,17 @@ public class TournamentPhaseScheduler {
                         tournament.getTournamentId());
             }
         }
+    }
+
+    private Round findCurrentRound(Tournament tournament, List<Round> rounds) {
+        String currentRoundName = tournament.getCurrentRoundName();
+        if (currentRoundName != null) {
+            for (Round round : rounds) {
+                if (round.getRoundName().equals(currentRoundName)) {
+                    return round;
+                }
+            }
+        }
+        return rounds.get(0);
     }
 }

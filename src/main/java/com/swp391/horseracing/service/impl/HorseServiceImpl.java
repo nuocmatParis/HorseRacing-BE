@@ -13,6 +13,7 @@ import com.swp391.horseracing.mapper.HorseMapper;
 import com.swp391.horseracing.repository.HorseOwnerRepository;
 import com.swp391.horseracing.repository.HorseRepository;
 import com.swp391.horseracing.repository.UserRepository;
+import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.HorseService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,9 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +38,7 @@ public class HorseServiceImpl implements HorseService {
     HorseOwnerRepository horseOwnerRepository;
     UserRepository userRepository;
     HorseMapper horseMapper;
+    CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -86,6 +90,22 @@ public class HorseServiceImpl implements HorseService {
         Horse horse = horseRepository.findByHorseIdAndOwner_OwnerId(horseId, owner.getOwnerId())
                 .orElseThrow(() -> new AppException(ErrorCode.HORSE_NOT_FOUND));
         horseRepository.delete(horse);
+    }
+
+    @Override
+    @Transactional
+    public HorseResponse uploadImage(UUID horseId, MultipartFile file) {
+        HorseOwner owner = getCurrentOwner();
+        Horse horse = horseRepository.findByHorseIdAndOwner_OwnerId(horseId, owner.getOwnerId())
+                .orElseThrow(() -> new AppException(ErrorCode.HORSE_NOT_FOUND));
+
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file, "horses");
+            horse.setImageUrl(imageUrl);
+            return horseMapper.toHorseResponse(horseRepository.save(horse));
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
     }
 
     private HorseOwner getCurrentOwner() {

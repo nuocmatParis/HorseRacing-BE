@@ -18,4 +18,12 @@ public interface RaceEntryService {
     RaceEntryResponse getEntryById(UUID entryId);
 
     void delete(UUID entryId);
+
+    void autoAssignRound(UUID roundId);
+
+    void autoAssignLanes(UUID raceId);
+
+    RaceEntryResponse updateLane(UUID entryId, Integer laneNumber);
+
+    RaceEntryResponse swapLanes(UUID entryId1, UUID entryId2);
 }

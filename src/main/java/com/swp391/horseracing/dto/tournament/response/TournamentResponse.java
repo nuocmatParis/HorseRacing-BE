@@ -69,6 +69,8 @@ public class TournamentResponse {
     LocalDateTime reviewDeadlineAt;
     LocalDateTime jockeyMatchingDeadlineAt;
     LocalDateTime schedulingDeadlineAt;
+    String currentRoundName;
+    int minRoundGapDays;
     UUID createdById;
     String createdByName;
     boolean overdue;

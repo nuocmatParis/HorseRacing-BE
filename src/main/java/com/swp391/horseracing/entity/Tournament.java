@@ -178,6 +178,13 @@ public class Tournament {
     @Column(name = "scheduling_deadline_at", nullable = false)
     LocalDateTime schedulingDeadlineAt;
 
+    @Column(name = "current_round_name", length = 100)
+    String currentRoundName;
+
+    @Builder.Default
+    @Column(name = "min_round_gap_days", nullable = false)
+    int minRoundGapDays = 7;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "race_class", length = 50)
     RaceClass raceClass;

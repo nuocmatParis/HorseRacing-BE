@@ -50,6 +50,9 @@ public class Horse {
     @Column(name = "color", nullable = false, length = 50)
     String color;
 
+    @Column(name = "image_url", length = 500)
+    String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "health_status", nullable = false, length = 50)
     HealthStatus healthStatus;

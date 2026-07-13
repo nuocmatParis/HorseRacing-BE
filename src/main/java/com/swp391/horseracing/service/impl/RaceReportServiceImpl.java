@@ -125,6 +125,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         raceReportRepository.save(report);
 
         race.setStatus(RoundStatus.FINISHED);
+        race.setFinishedAt(LocalDateTime.now());
         raceRepository.save(race);
 
         return raceReportMapper.toRaceReportResponse(report);

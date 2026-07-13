@@ -27,4 +27,5 @@ public class UserResponse {
     AccountStatus status;
     RoleName roleName;
     LocalDateTime lastLoginAt;
+    String imageUrl;
 }

@@ -116,6 +116,7 @@ public class RaceServiceImpl implements RaceService {
         User currentUser = getCurrentUser();
 
         Race race = raceMapper.toRace(request);
+        race.setStatus(RoundStatus.SCHEDULING);
         race.setEndTime(endTime);
         race.setRound(round);
         race.setCreatedBy(currentUser);

@@ -11,6 +11,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,7 @@ public class RaceDeadlineScheduler {
     PredictionService predictionService;
 
     @Scheduled(fixedRate = 30000) // Runs every 30 seconds
+    @Transactional(readOnly = true)
     public void checkDeadlineAndFinalize() {
         LocalDateTime now = LocalDateTime.now();
         List<Race> races = raceRepository.findAll();

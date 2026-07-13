@@ -69,8 +69,8 @@ public class RoundServiceImpl implements RoundService {
 
         if (!existingRounds.isEmpty()) {
             Round lastRound = existingRounds.get(existingRounds.size() - 1);
-            if (request.getStartDate().isBefore(lastRound.getEndDate())) {
-                throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
+            if (request.getStartDate().isBefore(lastRound.getEndDate().plusDays(tournament.getMinRoundGapDays()))) {
+                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
         }
 
@@ -134,6 +134,21 @@ public class RoundServiceImpl implements RoundService {
         if (startDate.toLocalDate().isBefore(tournament.getStartDate())
                 || endDate.toLocalDate().isAfter(tournament.getEndDate())) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
+        }
+
+        int gapDays = tournament.getMinRoundGapDays();
+        List<Round> allRounds = roundRepository
+                .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournament.getTournamentId());
+        for (Round r : allRounds) {
+            if (r.getRoundId().equals(round.getRoundId())) continue;
+            if (r.getSequenceOrder() < round.getSequenceOrder()
+                    && startDate.isBefore(r.getEndDate().plusDays(gapDays))) {
+                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
+            }
+            if (r.getSequenceOrder() > round.getSequenceOrder()
+                    && r.getStartDate().isBefore(endDate.plusDays(gapDays))) {
+                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
+            }
         }
 
         roundMapper.updateRound(request, round);
