@@ -92,6 +92,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .horse(horse)
                 .owner(owner)
                 .status(RegistrationStatus.PENDING_PAYMENT)
+                .ratingAtRegistration(horse.getCurrentRating())
+                .raceClassAtRegistration(horse.getRaceClass())
                 .build();
         HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
 
@@ -315,7 +317,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
-        if (tournament.getRaceClass() != null && tournament.getRaceClass() != horse.getRaceClass()) {
+        if (tournament.getRaceClass() != null && !tournament.getRaceClass().isEligible(horse.getCurrentRating())) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 

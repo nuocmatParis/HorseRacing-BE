@@ -1,6 +1,7 @@
 package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.RegistrationStatus;
+import com.swp391.horseracing.enums.RaceClass;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -69,4 +70,11 @@ public class HorseTournamentRegistration {
 
     @Column(name = "note", columnDefinition = "TEXT")
     String note;
+
+    @Column(name = "rating_at_registration")
+    Integer ratingAtRegistration;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "race_class_at_registration")
+    RaceClass raceClassAtRegistration;
 }

@@ -77,6 +77,10 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
+            if (!isActualStarter(entry)) {
+                throw new AppException(ErrorCode.RACE_ENTRY_DID_NOT_START);
+            }
+
             if (raceResultRepository.existsByRace_RaceIdAndEntry_EntryId(raceId, req.getEntryId())) {
                 throw new AppException(ErrorCode.RACE_RESULT_ALREADY_EXISTS);
             }
@@ -196,6 +200,10 @@ public class RaceResultServiceImpl implements RaceResultService {
 
             RaceEntry entry = result.getEntry();
 
+            if (!isActualStarter(entry)) {
+                throw new AppException(ErrorCode.RACE_ENTRY_DID_NOT_START);
+            }
+
             if (status == RaceResultStatus.FINISHED) {
                 if (finishTime == null || rank == null) {
                     throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -267,5 +275,11 @@ public class RaceResultServiceImpl implements RaceResultService {
         }
 
         return referee;
+    }
+
+    private boolean isActualStarter(RaceEntry entry) {
+        return entry.getStatus() != RaceEntryStatus.SCRATCHED
+                && entry.getStatus() != RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
+                && entry.getStatus() != RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE;
     }
 }
