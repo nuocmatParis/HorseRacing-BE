@@ -38,6 +38,12 @@ public class UpdateRoundRequest {
     @Min(value = 1, message = "Max races must be at least 1")
     Integer maxRaces;
 
+    @Min(value = 1, message = "Max entries must be at least 1")
+    Integer maxEntries;
+
+    @Min(value = 1, message = "Min entries must be at least 1")
+    Integer minEntries;
+
     RoundStatus status;
 
     UUID headRefereeId;

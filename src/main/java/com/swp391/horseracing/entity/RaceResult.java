@@ -39,11 +39,11 @@ public class RaceResult {
     @JoinColumn(name = "entry_id", nullable = false)
     RaceEntry entry;
 
-    @Column(name = "finish_time", nullable = false)
+    @Column(name = "finish_time", nullable = true)
     Float finishTime;
 
-    @Column(name = "finish_position", nullable = false)
-    int rank;
+    @Column(name = "finish_position", nullable = true)
+    Integer rank;
 
     @Column(name = "prize_money", precision = 15, scale = 2)
     BigDecimal prizeMoney;
@@ -69,7 +69,7 @@ public class RaceResult {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    RaceResultStatus status = RaceResultStatus.Finished;
+    RaceResultStatus status = RaceResultStatus.FINISHED;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recorded_by", nullable = false)

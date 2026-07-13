@@ -57,6 +57,12 @@ public class Round {
     @Column(name = "max_races", nullable = false)
     Integer maxRaces;
 
+    @Column(name = "max_entries", nullable = false)
+    int maxEntries;
+
+    @Column(name = "min_entries", nullable = false)
+    int minEntries;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     RoundStatus status;

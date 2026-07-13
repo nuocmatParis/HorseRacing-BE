@@ -1,7 +1,10 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
+import com.swp391.horseracing.dto.medicalstaff.request.AssignInspectionStaffRequest;
+import com.swp391.horseracing.dto.medicalstaff.response.InspectionStaffAssignmentResponse;
 import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
 import com.swp391.horseracing.dto.race_referee.request.CreateRaceRefereeRequest;
@@ -39,6 +42,7 @@ public class AdminController {
     RaceEntryService raceEntryService;
     RaceRefereeService raceRefereeService;
     RefereeService refereeService;
+    RaceInspectionStaffService raceInspectionStaffService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -158,13 +162,6 @@ public class AdminController {
     }
 
 
-    @GetMapping("/contracts/approved/tournaments/{id}")
-    public ApiResponse<List<ContractResponse>> getApprovedContracts(@PathVariable UUID id) {
-        return ApiResponse.<List<ContractResponse>>builder()
-                .result(contractService.getApprovedContractsByTournament(id))
-                .build();
-    }
-
     @PostMapping("/races/{raceId}/entries")
     public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,
                                                           @RequestBody CreateRaceEntryRequest request) {
@@ -279,5 +276,72 @@ public class AdminController {
     public ApiResponse<Void> deleteEligibility(@PathVariable UUID eligibilityId) {
         tournamentEligibilityService.delete(eligibilityId);
         return ApiResponse.<Void>builder().build();
+    }
+
+    @GetMapping("/contracts/pending")
+    public ApiResponse<List<ContractResponse>> getPendingContracts(){
+        return ApiResponse.<List<ContractResponse>>builder()
+                .result(contractService.getPendingContracts())
+                .build();
+    }
+
+    @PostMapping("/contracts/{id}/approve")
+    public ApiResponse<ContractResponse> approveContract(@PathVariable UUID id){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.approveContract(id))
+                .build();
+    }
+
+    @PostMapping("/contracts/{id}/reject")
+    public ApiResponse<ContractResponse> rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.rejectContractByAdmin(id, request.getReason()))
+                .build();
+    }
+
+    @PostMapping("/contracts/{id}/release-final-payout")
+    public ApiResponse<ContractResponse> releaseFinalPayout(@PathVariable UUID id){
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.releaseFinalPayout(id))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/inspection-staff/assign")
+    public ApiResponse<InspectionStaffAssignmentResponse> assign(@PathVariable UUID raceId,
+                                                                 @Valid @RequestBody AssignInspectionStaffRequest request){
+        return ApiResponse.<InspectionStaffAssignmentResponse>builder()
+                .result(raceInspectionStaffService.assign(raceId, request))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/inspection-staff/auto-assign")
+    public ApiResponse<InspectionStaffAssignmentResponse> assign(@PathVariable UUID raceId){
+        return ApiResponse.<InspectionStaffAssignmentResponse>builder()
+                .result(raceInspectionStaffService.autoAssign(raceId))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/postpone")
+    public ApiResponse<RaceResponse> postponeRace(@PathVariable UUID raceId,
+                                                  @Valid @RequestBody com.swp391.horseracing.dto.tournament.request.RescheduleRaceRequest request) {
+        return ApiResponse.<RaceResponse>builder()
+                .result(raceService.rescheduleRace(raceId, request))
+                .build();
+    }
+
+    @PostMapping("/races/{raceId}/cancel")
+    public ApiResponse<Void> cancelRace(@PathVariable UUID raceId,
+                                        @Valid @RequestBody com.swp391.horseracing.dto.tournament.request.CancelRaceRequest request) {
+        raceService.cancelRace(raceId, request);
+        return ApiResponse.<Void>builder()
+                .message("Race cancelled successfully")
+                .build();
+    }
+
+    @GetMapping("/races/{raceId}/reschedule-proposals")
+    public ApiResponse<List<java.time.LocalDateTime>> getRescheduleProposals(@PathVariable UUID raceId) {
+        return ApiResponse.<List<java.time.LocalDateTime>>builder()
+                .result(raceService.getRescheduleProposals(raceId))
+                .build();
     }
 }

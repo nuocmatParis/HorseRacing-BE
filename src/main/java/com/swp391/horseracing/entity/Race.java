@@ -41,9 +41,6 @@ public class Race {
     @Column(name = "distance", nullable = false)
     Float distance;
 
-    @Column(name = "max_entries", nullable = false)
-    int maxEntries;
-
     @Column(name = "sequence_order", nullable = false)
     int sequenceOrder;
 
@@ -79,4 +76,19 @@ public class Race {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "started_by")
     private User startedBy;
+
+    @Column(name = "inspection_finalized_at")
+    LocalDateTime inspectionFinalizedAt;
+
+    @Column(name = "cancelled_at")
+    LocalDateTime cancelledAt;
+
+    @Column(name = "cancellation_reason")
+    String cancellationReason;
+
+    @Column(name = "rescheduled_at")
+    LocalDateTime rescheduledAt;
+
+    @Column(name = "reschedule_reason")
+    String rescheduleReason;
 }

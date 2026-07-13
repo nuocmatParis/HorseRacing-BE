@@ -2,19 +2,24 @@ package com.swp391.horseracing.repository;
 
 import com.swp391.horseracing.entity.HorseTournamentRegistration;
 import com.swp391.horseracing.enums.RegistrationStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface HorseTournamentRegistrationRepository extends JpaRepository<HorseTournamentRegistration, UUID> {
 
     boolean existsByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
+
+    Optional<HorseTournamentRegistration> findByTournament_TournamentIdAndHorse_HorseId(UUID tournamentId, UUID horseId);
 
     List<HorseTournamentRegistration> findByOwner_OwnerId(UUID ownerId);
 
@@ -32,4 +37,8 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
             @Param("statuses") List<RegistrationStatus> statuses);
 
     long countByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM HorseTournamentRegistration r WHERE r.horseRegistrationId = :registrationId")
+    Optional<HorseTournamentRegistration> findForUpdateById(@Param("registrationId") UUID registrationId);
 }

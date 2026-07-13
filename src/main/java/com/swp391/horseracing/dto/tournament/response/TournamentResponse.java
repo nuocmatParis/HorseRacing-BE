@@ -10,6 +10,7 @@ import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Data
@@ -43,6 +44,19 @@ public class TournamentResponse {
     int predictionTop3PerfectBonusPoints;
     int predictionOpenMinutesBefore;
     int predictionCloseMinutesBefore;
+    int predictionCardOpenHoursBeforeFirstRace;
+    int inspectionOpenMinutesBefore;
+    int inspectionCloseMinutesBefore;
+    int maxRacesPerDay;
+    int minRaceIntervalMinutes;
+    int startEarlyToleranceMinutes;
+    int startLateToleranceMinutes;
+    int defaultRaceOperationalMinutes;
+    LocalTime raceDayStartTime;
+    LocalTime raceDayEndTime;
+    Boolean applyBreakTime;
+    LocalTime breakStartTime;
+    LocalTime breakEndTime;
     Integer maxRounds;
     Integer maxApprovedHorses;
     Integer maxApprovedJockeys;

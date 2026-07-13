@@ -21,25 +21,12 @@ public class UpdateRaceRequest {
 
     LocalDateTime startTime;
 
-    LocalDateTime endTime;
-
     @Size(max = 100, message = "Track condition must not exceed 100 characters")
     String trackCondition;
 
     @Positive(message = "Distance must be positive")
     Float distance;
 
-    @Min(value = 1, message = "Max entries must be at least 1")
-    Integer maxEntries;
-
     @Min(value = 1, message = "Sequence order must be at least 1")
     Integer sequenceOrder;
-
-    RoundStatus status;
-
-    LocalDateTime schedulePublishedAt;
-
-    LocalDateTime predictionOpenAt;
-
-    LocalDateTime predictionCloseAt;
 }

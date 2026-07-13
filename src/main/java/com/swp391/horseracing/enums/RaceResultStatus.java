@@ -1,5 +1,7 @@
 package com.swp391.horseracing.enums;
 
 public enum RaceResultStatus {
-    Finished, Disqualified
+    FINISHED,
+    DID_NOT_FINISH,
+    DISQUALIFIED
 }

@@ -59,11 +59,19 @@ public class ScoringServiceImpl implements ScoringService {
         for (PredictionDetail detail : prediction.getPredictionDetails()) {
             int points = scoreDetail(detail, resultMap, prediction.getPredictionType(), tournament);
             if (points < 0) {
-                allExactPosition = false;
                 points = 0;
             }
             detail.setAwardedPoints(points);
             totalRewardPoints += points;
+
+            RaceResult result = resultMap.get(detail.getEntry().getEntryId());
+            if (result == null 
+                    || result.getStatus() == RaceResultStatus.DISQUALIFIED 
+                    || result.getStatus() == RaceResultStatus.DID_NOT_FINISH
+                    || result.getRank() == null 
+                    || !result.getRank().equals(detail.getPredictedRank())) {
+                allExactPosition = false;
+            }
         }
 
         if (prediction.getPredictionType() == PredictionType.TOP3 && allExactPosition) {
@@ -92,7 +100,10 @@ public class ScoringServiceImpl implements ScoringService {
                             PredictionType type, Tournament tournament) {
         RaceResult result = resultMap.get(detail.getEntry().getEntryId());
 
-        if (result == null || result.getStatus() == RaceResultStatus.Disqualified) {
+        if (result == null 
+                || result.getStatus() == RaceResultStatus.DISQUALIFIED 
+                || result.getStatus() == RaceResultStatus.DID_NOT_FINISH
+                || result.getRank() == null) {
             detail.setStatus(PredictionDetailStatus.INCORRECT);
             return -1;
         }
