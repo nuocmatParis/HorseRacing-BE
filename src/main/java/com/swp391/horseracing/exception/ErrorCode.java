@@ -490,6 +490,10 @@ public enum ErrorCode {
     HORSE_RATING_CHANGED_RETRY_REQUIRED(1814, HttpStatus.BAD_REQUEST, "Horse rating has changed since the calculation was made, please try again"),
     HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
     RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
+
+    ROUND_GAP_TOO_SHORT(1818, HttpStatus.BAD_REQUEST, "Insufficient gap between rounds"),
+
+    FILE_UPLOAD_FAILED(2001, HttpStatus.INTERNAL_SERVER_ERROR, "File upload failed"),
     ;
 
 

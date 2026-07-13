@@ -12,6 +12,8 @@ public interface RaceEntryRepository extends JpaRepository<RaceEntry, UUID> {
 
     List<RaceEntry> findByRace_RaceIdOrderByLaneNumberAsc(UUID raceId);
 
+    List<RaceEntry> findByRace_RaceIdOrderByCreatedAtAsc(UUID raceId);
+
     boolean existsByRace_RaceIdAndLaneNumber(UUID raceId, int laneNumber);
 
     boolean existsByRace_RaceIdAndContract_ContractId(UUID raceId, UUID contractId);

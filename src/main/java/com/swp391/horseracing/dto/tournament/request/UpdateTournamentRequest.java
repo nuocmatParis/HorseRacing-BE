@@ -133,6 +133,9 @@ public class UpdateTournamentRequest {
     @Min(value = 1, message = "Max rounds must be at least 1")
     Integer maxRounds;
 
+    @Min(value = 0, message = "Min round gap days must be at least 0")
+    Integer minRoundGapDays;
+
     @Min(value = 1, message = "Max approved horses must be at least 1")
     Integer maxApprovedHorses;
 

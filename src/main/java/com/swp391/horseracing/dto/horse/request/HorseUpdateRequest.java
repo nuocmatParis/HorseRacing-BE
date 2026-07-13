@@ -35,4 +35,7 @@ public class HorseUpdateRequest {
 
     @Size(max = 50, message = "Race class must not exceed 50 characters")
     String raceClass;
+
+    @Size(max = 500, message = "Image URL must not exceed 500 characters")
+    String imageUrl;
 }

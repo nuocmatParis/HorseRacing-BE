@@ -13,6 +13,7 @@ public interface JockeyMapper {
 
     @Mapping(target = "userId", source = "user.userId")
     @Mapping(target = "fullName", source = "user.fullName")
+    @Mapping(target = "imageUrl", source = "user.imageUrl")
     JockeyResponse toJockeyResponse(Jockey jockey);
 
     @Mapping(target = "jockeyId", ignore = true)

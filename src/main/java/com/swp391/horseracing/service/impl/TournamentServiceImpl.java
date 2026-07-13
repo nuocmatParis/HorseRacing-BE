@@ -315,6 +315,33 @@ public class TournamentServiceImpl implements TournamentService {
             }
         }
 
+        // Validate gap between consecutive rounds
+        List<Round> orderedRounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(id);
+        int gapDays = tournament.getMinRoundGapDays();
+        for (int i = 0; i < orderedRounds.size() - 1; i++) {
+            Round current = orderedRounds.get(i);
+            Round next = orderedRounds.get(i + 1);
+
+            LocalDateTime lastRaceEnd = raceRepository.findByRound_RoundId(current.getRoundId())
+                    .stream()
+                    .filter(r -> r.getStatus() != RoundStatus.CANCELLED)
+                    .map(Race::getEndTime)
+                    .max(LocalDateTime::compareTo)
+                    .orElse(null);
+
+            LocalDateTime firstRaceStart = raceRepository.findByRound_RoundId(next.getRoundId())
+                    .stream()
+                    .filter(r -> r.getStatus() != RoundStatus.CANCELLED)
+                    .map(Race::getStartTime)
+                    .min(LocalDateTime::compareTo)
+                    .orElse(null);
+
+            if (lastRaceEnd != null && firstRaceStart != null
+                    && firstRaceStart.isBefore(lastRaceEnd.plusDays(gapDays))) {
+                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
+            }
+        }
+
         LocalDateTime firstRaceStartTime = races.stream()
                 .map(Race::getStartTime)
                 .min(LocalDateTime::compareTo)
@@ -328,6 +355,11 @@ public class TournamentServiceImpl implements TournamentService {
             race.setPredictionOpenAt(commonPredictionOpenAt);
             race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
             raceRepository.save(race);
+        }
+
+        List<Round> rounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(id);
+        if (!rounds.isEmpty()) {
+            tournament.setCurrentRoundName(rounds.get(0).getRoundName());
         }
 
         setPhaseAndStatus(tournament, TournamentPhase.RACING);
