@@ -5,6 +5,9 @@ import com.swp391.horseracing.dto.prediction.request.PredictionEntryRequest;
 import com.swp391.horseracing.dto.prediction.request.UpdatePredictionRequest;
 import com.swp391.horseracing.dto.prediction.response.AIPredictionResponse;
 import com.swp391.horseracing.dto.prediction.response.PredictionResponse;
+import com.swp391.horseracing.dto.prediction.response.PredictionResultResponse;
+import com.swp391.horseracing.dto.prediction.response.PredictionResultDetailResponse;
+import com.swp391.horseracing.dto.prediction.response.OfficialRaceResultResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.service.NotificationService;
@@ -16,6 +19,7 @@ import com.swp391.horseracing.repository.AIPredictionRepository;
 import com.swp391.horseracing.repository.PredictionRepository;
 import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceRepository;
+import com.swp391.horseracing.repository.RaceResultRepository;
 import com.swp391.horseracing.repository.SpectatorRepository;
 import com.swp391.horseracing.service.PredictionService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -42,6 +46,7 @@ public class PredictionServiceImpl implements PredictionService {
     AIPredictionRepository aiPredictionRepository;
     AIPredictionMapper aiPredictionMapper;
     NotificationService notificationService;
+    RaceResultRepository raceResultRepository;
 
     @Override
     @Transactional
@@ -197,6 +202,67 @@ public class PredictionServiceImpl implements PredictionService {
                 .orElseThrow(() -> new AppException(ErrorCode.PREDICTION_NOT_FOUND));
 
         return attachAiPredictions(predictionMapper.toPredictionResponse(prediction), raceId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PredictionResultResponse getMyPredictionResultByRace(UUID raceId) {
+        Spectator spectator = getCurrentSpectator();
+        Prediction prediction = predictionRepository
+                .findByRace_RaceIdAndSpectator_SpectatorId(raceId, spectator.getSpectatorId())
+                .orElseThrow(() -> new AppException(ErrorCode.PREDICTION_NOT_FOUND));
+
+        if (prediction.getStatus() == PredictionStatus.PENDING) {
+            throw new AppException(ErrorCode.PREDICTION_RESULT_NOT_AVAILABLE);
+        }
+
+        List<PredictionResultDetailResponse> predictedItems = new ArrayList<>();
+        for (PredictionDetail detail : prediction.getPredictionDetails()) {
+            RaceEntry entry = detail.getEntry();
+            Integer officialRank = null;
+            Optional<RaceResult> raceResult = raceResultRepository.findByEntry_EntryId(entry.getEntryId());
+            if (raceResult.isPresent()) {
+                officialRank = raceResult.get().getRank();
+            }
+            predictedItems.add(PredictionResultDetailResponse.builder()
+                    .entryId(entry.getEntryId())
+                    .horseId(entry.getContract().getHorse().getHorseId())
+                    .horseName(entry.getContract().getHorse().getName())
+                    .predictedRank(detail.getPredictedRank())
+                    .officialRank(officialRank)
+                    .status(detail.getStatus())
+                    .awardedPoints(detail.getAwardedPoints())
+                    .build());
+        }
+        predictedItems.sort(Comparator.comparingInt(PredictionResultDetailResponse::getPredictedRank));
+
+        List<OfficialRaceResultResponse> officialTopThree = new ArrayList<>();
+        List<RaceResult> results = raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId);
+        for (RaceResult result : results) {
+            Integer rank = result.getRank();
+            if (rank == null || rank < 1 || rank > 3) {
+                continue;
+            }
+            RaceEntry entry = result.getEntry();
+            officialTopThree.add(OfficialRaceResultResponse.builder()
+                    .entryId(entry.getEntryId())
+                    .horseId(entry.getContract().getHorse().getHorseId())
+                    .horseName(entry.getContract().getHorse().getName())
+                    .rank(rank)
+                    .build());
+        }
+
+        return PredictionResultResponse.builder()
+                .predictionId(prediction.getPredictionId())
+                .raceId(raceId)
+                .status(prediction.getStatus())
+                .rewardPoints(prediction.getRewardPoints())
+                .scoredAt(prediction.getScoredAt())
+                .voidedAt(prediction.getVoidedAt())
+                .voidReason(prediction.getVoidReason())
+                .predictions(predictedItems)
+                .officialTopThree(officialTopThree)
+                .build();
     }
 
     private PredictionResponse attachAiPredictions(PredictionResponse response, UUID raceId) {

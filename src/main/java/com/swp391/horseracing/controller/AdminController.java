@@ -1,6 +1,7 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.common.PageResponse;
 import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.medicalstaff.request.AssignInspectionStaffRequest;
@@ -14,6 +15,7 @@ import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
 import com.swp391.horseracing.enums.RefereeStatus;
+import com.swp391.horseracing.enums.ContractStatus;
 import com.swp391.horseracing.service.*;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -282,6 +284,33 @@ public class AdminController {
     public ApiResponse<List<ContractResponse>> getPendingContracts(){
         return ApiResponse.<List<ContractResponse>>builder()
                 .result(contractService.getPendingContracts())
+                .build();
+    }
+
+    @GetMapping("/contracts")
+    public ApiResponse<PageResponse<ContractResponse>> getContractsByStatus(
+            @RequestParam ContractStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<ContractResponse>>builder()
+                .result(contractService.getContractsByStatus(status, page, size))
+                .build();
+    }
+
+    @GetMapping("/contracts/approved/tournaments/{tournamentId}")
+    public ApiResponse<PageResponse<ContractResponse>> getApprovedContractsByTournament(
+            @PathVariable UUID tournamentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<ContractResponse>>builder()
+                .result(contractService.getApprovedContractsByTournament(tournamentId, page, size))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/close-registration")
+    public ApiResponse<TournamentResponse> closeRegistration(@PathVariable UUID id) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.closeRegistration(id))
                 .build();
     }
 

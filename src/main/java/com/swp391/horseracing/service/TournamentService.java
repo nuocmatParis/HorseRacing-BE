@@ -28,4 +28,6 @@ public interface TournamentService {
     List<TournamentResponse> getAll();
 
     TournamentResponse getById(UUID id);
+
+    TournamentResponse closeRegistration(UUID id);
 }

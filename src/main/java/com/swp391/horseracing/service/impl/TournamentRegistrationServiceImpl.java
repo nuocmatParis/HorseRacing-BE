@@ -44,6 +44,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     InvoiceService invoiceService;
     PaymentService paymentService;
     InvoiceRepository invoiceRepository;
+    JockeyHorseContractRepository contractRepository;
 
     @Override
     @Transactional
@@ -445,5 +446,76 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 .stream()
                 .map(horseRegistrationMapper::toHorseTournamentRegistrationResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public HorseTournamentRegistrationResponse withdrawHorseRegistration(UUID registrationId, String reason) {
+        HorseTournamentRegistration registration = horseRegistrationRepository.findForUpdateById(registrationId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
+        User currentUser = userCurrentService.getCurrentUser();
+
+        if (registration.getOwner() == null
+                || !registration.getOwner().getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (registration.getStatus() == RegistrationStatus.WITHDRAWN) {
+            throw new AppException(ErrorCode.REGISTRATION_ALREADY_WITHDRAWN);
+        }
+        if (!isWithdrawableStatus(registration.getStatus())
+                || !isWithdrawablePhase(registration.getTournament().getPhase())) {
+            throw new AppException(ErrorCode.REGISTRATION_WITHDRAW_NOT_ALLOWED);
+        }
+
+        List<ContractStatus> blockingStatuses = Arrays.asList(
+                ContractStatus.ACCEPTED,
+                ContractStatus.HIRING_PAID,
+                ContractStatus.PENDING_ADMIN_REVIEW,
+                ContractStatus.APPROVED
+        );
+        List<JockeyHorseContract> activeContracts = contractRepository
+                .findByHorseTournamentRegistration_HorseRegistrationIdAndStatusIn(
+                        registrationId, blockingStatuses);
+        if (!activeContracts.isEmpty()) {
+            throw new AppException(ErrorCode.REGISTRATION_HAS_ACTIVE_CONTRACT);
+        }
+
+        List<JockeyHorseContract> invitations = contractRepository
+                .findByHorseTournamentRegistration_HorseRegistrationIdAndStatus(
+                        registrationId, ContractStatus.PENDING_JOCKEY);
+        LocalDateTime now = LocalDateTime.now();
+        for (JockeyHorseContract invitation : invitations) {
+            invitation.setStatus(ContractStatus.CANCELLED);
+            invitation.setCancelledAt(now);
+            invitation.setCancelReason("Owner withdrew the horse registration: " + reason.trim());
+            invitation.setAdvancePayoutStatus(AdvancePayoutStatus.CANCELLED);
+            invitation.setFinalPayoutStatus(FinalPayoutStatus.CANCELLED);
+            contractRepository.save(invitation);
+        }
+
+        java.util.Optional<Invoice> invoice = invoiceRepository
+                .findByHorseTournamentRegistration_HorseRegistrationId(registrationId);
+        if (invoice.isPresent() && invoice.get().getStatus() == InvoiceStatus.UNPAID) {
+            invoiceService.cancelInvoice(invoice.get().getInvoiceId());
+        }
+
+        registration.setStatus(RegistrationStatus.WITHDRAWN);
+        registration.setWithdrawnAt(now);
+        registration.setWithdrawReason(reason.trim());
+        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(
+                horseRegistrationRepository.save(registration));
+    }
+
+    private boolean isWithdrawableStatus(RegistrationStatus status) {
+        return status == RegistrationStatus.PENDING_PAYMENT
+                || status == RegistrationStatus.PENDING_REVIEW
+                || status == RegistrationStatus.APPROVED;
+    }
+
+    private boolean isWithdrawablePhase(TournamentPhase phase) {
+        return phase == TournamentPhase.REGISTRATION_OPEN
+                || phase == TournamentPhase.REGISTRATION_REVIEW
+                || phase == TournamentPhase.JOCKEY_MATCHING
+                || phase == TournamentPhase.SCHEDULING;
     }
 }

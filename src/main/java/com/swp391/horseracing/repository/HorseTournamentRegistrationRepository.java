@@ -25,6 +25,11 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
 
     List<HorseTournamentRegistration> findByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM HorseTournamentRegistration r WHERE r.tournament.tournamentId = :tournamentId AND r.status = :status")
+    List<HorseTournamentRegistration> findForUpdateByTournamentIdAndStatus(
+            @Param("tournamentId") UUID tournamentId, @Param("status") RegistrationStatus status);
+
     @Query("SELECT COUNT(r) > 0 FROM HorseTournamentRegistration r " +
             "WHERE r.horse.horseId = :horseId " +
             "AND r.status IN :statuses " +

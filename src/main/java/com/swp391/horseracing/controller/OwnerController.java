@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.horseowner.request.OwnerUpdateRequest;
 import com.swp391.horseracing.dto.horseowner.response.OwnerResponse;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.registration.request.RegisterHorseRequest;
+import com.swp391.horseracing.dto.registration.request.WithdrawRegistrationRequest;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.dto.registration.response.JockeyTournamentRegistrationResponse;
 import com.swp391.horseracing.service.OwnerService;
@@ -73,6 +74,16 @@ public class OwnerController {
     public ApiResponse<OwnerResponse> getMyProfile(){
         return ApiResponse.<OwnerResponse>builder()
                 .result(ownerService.getMyProfile())
+                .build();
+    }
+
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    @PostMapping("/registrations/{id}/withdraw")
+    public ApiResponse<HorseTournamentRegistrationResponse> withdrawRegistration(
+            @PathVariable UUID id,
+            @RequestBody @Valid WithdrawRegistrationRequest request) {
+        return ApiResponse.<HorseTournamentRegistrationResponse>builder()
+                .result(tournamentRegistrationService.withdrawHorseRegistration(id, request.getReason()))
                 .build();
     }
 }

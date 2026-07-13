@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,6 +41,8 @@ public class ContractServiceImpl implements ContractService {
     PaymentService paymentService;
     WalletRepository walletRepository;
     WalletTransactionRepository walletTransactionRepository;
+    TournamentRepository tournamentRepository;
+    RaceEntryRepository raceEntryRepository;
 
     @Override
     @Transactional
@@ -56,6 +60,10 @@ public class ContractServiceImpl implements ContractService {
         validateInvite(currentOwner, horseTournamentRegistration, jockeyTournamentRegistration, request);
 
         Tournament tournament = horseTournamentRegistration.getTournament();
+
+        if (tournament.getPhase() != TournamentPhase.JOCKEY_MATCHING) {
+            throw new AppException(ErrorCode.INVALID_PHASE_TRANSITION);
+        }
 
         JockeyHorseContract contract = JockeyHorseContract.builder()
                         .tournament(tournament)
@@ -527,6 +535,137 @@ public class ContractServiceImpl implements ContractService {
         contract.setFinalPayoutAt(now);
 
         return contractMapper.toContractResponse(contractRepository.save(contract));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.swp391.horseracing.dto.common.PageResponse<ContractResponse> getContractsByStatus(
+            ContractStatus status, int page, int size) {
+        validatePage(page, size);
+        Page<JockeyHorseContract> contracts = contractRepository.findByStatusOrderByRequestedAtDesc(
+                status, PageRequest.of(page, size));
+        return toContractPage(contracts);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.swp391.horseracing.dto.common.PageResponse<ContractResponse> getApprovedContractsByTournament(
+            UUID tournamentId, int page, int size) {
+        validatePage(page, size);
+        if (!tournamentRepository.existsById(tournamentId)) {
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+        Page<JockeyHorseContract> contracts = contractRepository
+                .findByTournament_TournamentIdAndStatusOrderByRequestedAtDesc(
+                        tournamentId, ContractStatus.APPROVED, PageRequest.of(page, size));
+        return toContractPage(contracts);
+    }
+
+    @Override
+    @Transactional
+    public ContractResponse cancelByOwner(UUID contractId, String reason) {
+        User currentUser = userCurrentService.getCurrentUser();
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (!contract.getOwner().getUser().getUserId().equals(currentUser.getUserId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (!isOwnerCancellable(contract.getStatus())) {
+            throw new AppException(ErrorCode.CONTRACT_CANCELLATION_NOT_ALLOWED);
+        }
+
+        TournamentPhase phase = contract.getTournament().getPhase();
+        if (phase == TournamentPhase.RACING || phase == TournamentPhase.RESULT_PENDING
+                || phase == TournamentPhase.RESULT_PUBLISHED || phase == TournamentPhase.FINISHED) {
+            throw new AppException(ErrorCode.CONTRACT_CANCELLATION_NOT_ALLOWED);
+        }
+
+        List<RaceEntry> entries = raceEntryRepository.findByContract_ContractId(contractId);
+        for (RaceEntry entry : entries) {
+            if (entry.getRace().getStatus() != RoundStatus.SCHEDULING) {
+                throw new AppException(ErrorCode.CONTRACT_HAS_ACTIVE_RACE);
+            }
+        }
+
+        cancelOrRefundHiringInvoice(contract);
+        cancelUnpaidContractFeeInvoice(contractId);
+
+        if (!entries.isEmpty()) {
+            raceEntryRepository.deleteAll(entries);
+        }
+
+        contract.setStatus(ContractStatus.CANCELLED);
+        contract.setCancelledAt(LocalDateTime.now());
+        contract.setCancelReason(reason.trim());
+        contract.setFinalPayoutStatus(FinalPayoutStatus.CANCELLED);
+        if (contract.getAdvancePayoutStatus() == AdvancePayoutStatus.NOT_PAID) {
+            contract.setAdvancePayoutStatus(AdvancePayoutStatus.CANCELLED);
+        }
+        return contractMapper.toContractResponse(contractRepository.save(contract));
+    }
+
+    private boolean isOwnerCancellable(ContractStatus status) {
+        return status == ContractStatus.PENDING_JOCKEY
+                || status == ContractStatus.ACCEPTED
+                || status == ContractStatus.HIRING_PAID
+                || status == ContractStatus.PENDING_ADMIN_REVIEW
+                || status == ContractStatus.APPROVED;
+    }
+
+    private void cancelOrRefundHiringInvoice(JockeyHorseContract contract) {
+        Optional<Invoice> optionalInvoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contract.getContractId(), InvoiceType.JOCKEY_HIRING_FEE);
+        if (optionalInvoice.isEmpty()) {
+            return;
+        }
+
+        Invoice invoice = optionalInvoice.get();
+        if (invoice.getStatus() == InvoiceStatus.UNPAID) {
+            invoiceService.cancelInvoice(invoice.getInvoiceId());
+            return;
+        }
+        if (invoice.getStatus() != InvoiceStatus.PAID) {
+            throw new AppException(ErrorCode.CONTRACT_CANCELLATION_NOT_ALLOWED);
+        }
+
+        if (contract.getStatus() == ContractStatus.APPROVED) {
+            BigDecimal remainingEscrow = contract.getEscrowAmount();
+            if (remainingEscrow == null || remainingEscrow.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new AppException(ErrorCode.INVALID_ESCROW_STATUS);
+            }
+            paymentService.refundInvoiceAmount(invoice.getInvoiceId(), remainingEscrow);
+            contract.setPaymentStatus(ContractPaymentStatus.PARTIALLY_REFUNDED);
+        } else {
+            paymentService.refundInvoice(invoice.getInvoiceId());
+            contract.setPaymentStatus(ContractPaymentStatus.REFUNDED);
+        }
+        contract.setEscrowAmount(BigDecimal.ZERO);
+        contract.setEscrowStatus(EscrowStatus.REFUNDED);
+    }
+
+    private void cancelUnpaidContractFeeInvoice(UUID contractId) {
+        Optional<Invoice> invoice = invoiceRepository.findByContractIdAndInvoiceType(
+                contractId, InvoiceType.CONTRACT_CREATION_FEE);
+        if (invoice.isPresent() && invoice.get().getStatus() == InvoiceStatus.UNPAID) {
+            invoiceService.cancelInvoice(invoice.get().getInvoiceId());
+        }
+    }
+
+    private com.swp391.horseracing.dto.common.PageResponse<ContractResponse> toContractPage(
+            Page<JockeyHorseContract> source) {
+        List<ContractResponse> items = new ArrayList<>();
+        for (JockeyHorseContract contract : source.getContent()) {
+            items.add(contractMapper.toContractResponse(contract));
+        }
+        return new com.swp391.horseracing.dto.common.PageResponse<>(items, source.getNumber(), source.getSize(),
+                source.getTotalElements(), source.getTotalPages(), source.isFirst(), source.isLast());
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0 || size < 1 || size > 100) {
+            throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
+        }
     }
 
     private void releaseFinalPayoutToJockey(JockeyHorseContract contract, BigDecimal amount) {

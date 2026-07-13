@@ -4,6 +4,7 @@ import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.prediction.request.CreatePredictionRequest;
 import com.swp391.horseracing.dto.prediction.request.UpdatePredictionRequest;
 import com.swp391.horseracing.dto.prediction.response.PredictionResponse;
+import com.swp391.horseracing.dto.prediction.response.PredictionResultResponse;
 import com.swp391.horseracing.service.PredictionService;
 import jakarta.validation.Valid;
 import lombok.AccessLevel;
@@ -68,6 +69,14 @@ public class SpectatorPredictionController {
     public ApiResponse<PredictionResponse> getMyPredictionByRace(@PathVariable UUID raceId) {
         return ApiResponse.<PredictionResponse>builder()
                 .result(predictionService.getMyPredictionByRace(raceId))
+                .build();
+    }
+
+    @GetMapping("/api/spectator/races/{raceId}/predictions/me/result")
+    @PreAuthorize("hasRole('SPECTATOR')")
+    public ApiResponse<PredictionResultResponse> getMyPredictionResultByRace(@PathVariable UUID raceId) {
+        return ApiResponse.<PredictionResultResponse>builder()
+                .result(predictionService.getMyPredictionResultByRace(raceId))
                 .build();
     }
 }

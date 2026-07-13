@@ -5,6 +5,8 @@ import com.swp391.horseracing.enums.ContractStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -35,6 +37,14 @@ public interface JockeyHorseContractRepository extends JpaRepository<JockeyHorse
     List<JockeyHorseContract> findByOwner_User_UserIdOrderByRequestedAtDesc(UUID userId);
 
     List<JockeyHorseContract> findByJockey_User_UserIdOrderByRequestedAtDesc(UUID userId);
+
+    Page<JockeyHorseContract> findByStatusOrderByRequestedAtDesc(ContractStatus status, Pageable pageable);
+
+    Page<JockeyHorseContract> findByTournament_TournamentIdAndStatusOrderByRequestedAtDesc(
+            UUID tournamentId, ContractStatus status, Pageable pageable);
+
+    List<JockeyHorseContract> findByHorseTournamentRegistration_HorseRegistrationIdAndStatusIn(
+            UUID registrationId, Collection<ContractStatus> statuses);
 
     List<JockeyHorseContract> findByTournament_TournamentIdAndStatusAndEscrowStatus(
             UUID tournamentId,
