@@ -51,6 +51,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     WalletTransactionRepository walletTransactionRepository;
     ContractService contractService;
     JockeyHorseContractRepository jockeyHorseContractRepository;
+    HorseRatingService horseRatingService;
 
     @Override
     @Transactional
@@ -162,6 +163,11 @@ public class RaceReportServiceImpl implements RaceReportService {
                         throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
                     }
                 }
+            } else {
+                RaceResult result = resultMap.get(entry.getEntryId());
+                if (result != null) {
+                    throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
+                }
             }
         }
     }
@@ -212,10 +218,13 @@ public class RaceReportServiceImpl implements RaceReportService {
         // 1. Chấm điểm prediction cho spectator (với mọi race)
         scoringService.scoreRace(raceId);
 
-        // 2. Chia tiền thưởng (nếu là final round)
+        // 2. Cập nhật Horse Rating (với mọi race)
+        horseRatingService.calculateAndApplyForPublish(raceId);
+
+        // 3. Chia tiền thưởng (nếu là final round)
         payoutPrizeIfFinal(race);
 
-        // 3. Giải ngân 70% hire fee cho toàn bộ Jockey (nếu là final round)
+        // 4. Giải ngân 70% hire fee cho toàn bộ Jockey (nếu là final round)
         releaseJockeyFinalPayoutIfTournamentFinished(race);
 
         sendNotificationsForPublishedReport(race);

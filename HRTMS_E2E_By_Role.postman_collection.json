@@ -1,0 +1,3889 @@
+{
+  "info": {
+    "_postman_id": "119f0ab1-4e3f-4d8f-9e2a-1a7a5e2e0001",
+    "name": "HRTMS - E2E Test by Role",
+    "description": "Collection test HRTMS từ đầu đến cuối, chia folder theo role và đúng thứ tự lifecycle.\n\nQUAN TRỌNG:\n- Điền username/password cho từng role trong Collection Variables.\n- Admin/referee/veterinarian/medical staff phải có sẵn account + profile trong DB.\n- Cần 3 owner, 3 horse, 3 jockey và 3 contract để test TOP3.\n- Các request inspection/start phụ thuộc thời gian thật; xem folder description trước khi chạy.\n- Không dùng /api/contracts/{id}/pay-hiring-fee vì implementation hiện trả null; collection trả qua invoice.\n- SYSTEM_PRIZE_POOL phải có đủ tiền nếu test final payout.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "function pad(n) { return String(n).padStart(2, \"0\"); }",
+          "function localDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }",
+          "function localDateTime(d) { return `${localDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }",
+          "if (!pm.collectionVariables.get(\"generatedTimeline\")) {",
+          "  const now = new Date();",
+          "  const at = mins => new Date(now.getTime() + mins * 60000);",
+          "  const race = new Date(now.getTime() + 180 * 60000);",
+          "  pm.collectionVariables.set(\"registrationOpenAt\", localDateTime(at(-5)));",
+          "  pm.collectionVariables.set(\"registrationCloseAt\", localDateTime(at(30)));",
+          "  pm.collectionVariables.set(\"reviewDeadlineAt\", localDateTime(at(60)));",
+          "  pm.collectionVariables.set(\"jockeyMatchingDeadlineAt\", localDateTime(at(90)));",
+          "  pm.collectionVariables.set(\"schedulingDeadlineAt\", localDateTime(at(120)));",
+          "  pm.collectionVariables.set(\"tournamentDate\", localDate(race));",
+          "  pm.collectionVariables.set(\"roundStartAt\", `${localDate(race)}T00:00:00`);",
+          "  pm.collectionVariables.set(\"roundEndAt\", `${localDate(race)}T23:59:00`);",
+          "  pm.collectionVariables.set(\"raceStartAt\", localDateTime(race));",
+          "  pm.collectionVariables.set(\"uniqueSuffix\", String(Date.now()));",
+          "  pm.collectionVariables.set(\"generatedTimeline\", \"true\");",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "12345678",
+      "type": "string"
+    },
+    {
+      "key": "owner1Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey1Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey1Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey2Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey2Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey3Username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey3Password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spectatorUsername",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spectatorPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refereeUsername",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refereePassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vetUsername",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vetPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "medicalUsername",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "medicalPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey1Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockey3Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "spectatorToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refereeToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vetToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "medicalToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tournamentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roundId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "raceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "headRefereeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vetId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "medicalStaffId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horse1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horse2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horse3Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horseReg1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horseReg2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "horseReg3Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockeyReg1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockeyReg2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockeyReg3Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contract1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contract2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contract3Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "entry1Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "entry2Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "entry3Id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "predictionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reportId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1RegistrationInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2RegistrationInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3RegistrationInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1HiringInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2HiringInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3HiringInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner1ContractInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner2ContractInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "owner3ContractInvoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "generatedTimeline",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "registrationOpenAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "registrationCloseAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewDeadlineAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "jockeyMatchingDeadlineAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "schedulingDeadlineAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tournamentDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roundStartAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roundEndAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "raceStartAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "uniqueSuffix",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - AUTH - Login All Roles",
+      "description": "",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables adminUsername và adminPassword trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUsername}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"adminToken\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables owner1Username và owner1Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{owner1Username}}\",\n  \"password\": \"{{owner1Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"owner1Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables owner2Username và owner2Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{owner2Username}}\",\n  \"password\": \"{{owner2Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"owner2Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables owner3Username và owner3Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{owner3Username}}\",\n  \"password\": \"{{owner3Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"owner3Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Jockey 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables jockey1Username và jockey1Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{jockey1Username}}\",\n  \"password\": \"{{jockey1Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"jockey1Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Jockey 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables jockey2Username và jockey2Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{jockey2Username}}\",\n  \"password\": \"{{jockey2Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"jockey2Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Jockey 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables jockey3Username và jockey3Password trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{jockey3Username}}\",\n  \"password\": \"{{jockey3Password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"jockey3Token\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Spectator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables spectatorUsername và spectatorPassword trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{spectatorUsername}}\",\n  \"password\": \"{{spectatorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"spectatorToken\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Referee",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables refereeUsername và refereePassword trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{refereeUsername}}\",\n  \"password\": \"{{refereePassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"refereeToken\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Veterinarian",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables vetUsername và vetPassword trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{vetUsername}}\",\n  \"password\": \"{{vetPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"vetToken\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Medical staff",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Điền collection variables medicalUsername và medicalPassword trước khi chạy.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{medicalUsername}}\",\n  \"password\": \"{{medicalPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.token) pm.collectionVariables.set(\"medicalToken\", json.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - HORSE_OWNER - Profiles, Horses, Wallets",
+      "description": "Bỏ qua request Create profile nếu profile đã tồn tại. Nếu chạy lại collection, đổi tên horse hoặc dùng horseId có sẵn.",
+      "item": [
+        {
+          "name": "Owner 1 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có owner profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmName\": \"Postman Farm 1\",\n  \"address\": \"Ho Chi Minh City\",\n  \"licenseNumber\": \"OWN-00000001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 1 - Create horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/horses",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thunder One\",\n  \"breed\": \"THOROUGHBRED\",\n  \"gender\": \"MALE\",\n  \"age\": 4,\n  \"weight\": 481,\n  \"color\": \"Bay\",\n  \"healthStatus\": \"HEALTHY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseId) pm.collectionVariables.set(\"horse1Id\", json.result.horseId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 1 - Deposit wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wallets/deposit",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 20000000,\n  \"description\": \"Postman E2E test balance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 2 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có owner profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmName\": \"Postman Farm 2\",\n  \"address\": \"Ho Chi Minh City\",\n  \"licenseNumber\": \"OWN-00000002\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 2 - Create horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/horses",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thunder Two\",\n  \"breed\": \"THOROUGHBRED\",\n  \"gender\": \"MALE\",\n  \"age\": 4,\n  \"weight\": 482,\n  \"color\": \"Bay\",\n  \"healthStatus\": \"HEALTHY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseId) pm.collectionVariables.set(\"horse2Id\", json.result.horseId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Deposit wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wallets/deposit",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 20000000,\n  \"description\": \"Postman E2E test balance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 3 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có owner profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmName\": \"Postman Farm 3\",\n  \"address\": \"Ho Chi Minh City\",\n  \"licenseNumber\": \"OWN-00000003\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 3 - Create horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/horses",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Thunder Three\",\n  \"breed\": \"THOROUGHBRED\",\n  \"gender\": \"MALE\",\n  \"age\": 4,\n  \"weight\": 483,\n  \"color\": \"Bay\",\n  \"healthStatus\": \"HEALTHY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseId) pm.collectionVariables.set(\"horse3Id\", json.result.horseId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Deposit wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/wallets/deposit",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 20000000,\n  \"description\": \"Postman E2E test balance\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - JOCKEY - Profiles",
+      "description": "Bỏ qua nếu jockey profile đã tồn tại.",
+      "item": [
+        {
+          "name": "Jockey 1 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockeys/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có jockey profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height\": 165,\n  \"weight\": 52,\n  \"licenseNumber\": \"JOC-00000001\",\n  \"specialization\": \"Flat racing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 2 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockeys/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có jockey profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height\": 165,\n  \"weight\": 52,\n  \"licenseNumber\": \"JOC-00000002\",\n  \"specialization\": \"Flat racing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 3 - Create profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockeys/profile",
+            "description": "Chỉ chạy nếu tài khoản chưa có jockey profile.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"height\": 165,\n  \"weight\": 52,\n  \"licenseNumber\": \"JOC-00000003\",\n  \"specialization\": \"Flat racing\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - ADMIN - Create Draft Tournament",
+      "description": "Timeline được tự sinh lần đầu: registration đóng sau 30 phút, race bắt đầu sau 180 phút. Có thể sửa collection variables nếu cần.",
+      "item": [
+        {
+          "name": "Admin - Get available referees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/referees?status=AVAILABLE",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const referee = (json.result || [])[0];",
+                  "pm.test(\"Available referee found\", () => pm.expect(referee).to.exist);",
+                  "if (referee) pm.collectionVariables.set(\"headRefereeId\", referee.refereeId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Get system wallets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/wallets/system",
+            "description": "Ứng dụng tự tạo system wallets khi startup. SYSTEM_PRIZE_POOL cần balance nếu test payout.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Create tournament",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/tournaments",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman E2E Final {{uniqueSuffix}}\",\n  \"description\": \"Tournament used for full Postman E2E testing\",\n  \"startDate\": \"{{tournamentDate}}\",\n  \"endDate\": \"{{tournamentDate}}\",\n  \"location\": \"HRTMS Test Track\",\n  \"registrationFee\": 100000,\n  \"systemContractFee\": 50000,\n  \"totalPrizePool\": 3000000,\n  \"allowedBreed\": \"THOROUGHBRED\",\n  \"raceClass\": \"CLASS_5\",\n  \"minHorseAge\": 2,\n  \"maxHorseAge\": 12,\n  \"topWeightLbs\": 0,\n  \"minWeightLbs\": 0,\n  \"equipmentWeightKg\": 0,\n  \"handicapEnabled\": false,\n  \"predictionTop1CorrectPoints\": 100,\n  \"predictionTop3ExactPositionPoints\": 30,\n  \"predictionTop3CorrectHorsePoints\": 10,\n  \"predictionTop3PerfectBonusPoints\": 50,\n  \"maxRounds\": 1,\n  \"maxApprovedHorses\": 10,\n  \"maxApprovedJockeys\": 10,\n  \"predictionOpenMinutesBefore\": 120,\n  \"predictionCloseMinutesBefore\": 5,\n  \"predictionCardOpenHoursBeforeFirstRace\": 24,\n  \"inspectionOpenMinutesBefore\": 90,\n  \"inspectionCloseMinutesBefore\": 30,\n  \"maxRacesPerDay\": 9,\n  \"minRaceIntervalMinutes\": 35,\n  \"startEarlyToleranceMinutes\": 0,\n  \"startLateToleranceMinutes\": 30,\n  \"defaultRaceOperationalMinutes\": 30,\n  \"raceDayStartTime\": \"00:00:00\",\n  \"raceDayEndTime\": \"23:59:59\",\n  \"applyBreakTime\": false,\n  \"breakStartTime\": null,\n  \"breakEndTime\": null,\n  \"registrationOpenAt\": \"{{registrationOpenAt}}\",\n  \"registrationCloseAt\": \"{{registrationCloseAt}}\",\n  \"reviewDeadlineAt\": \"{{reviewDeadlineAt}}\",\n  \"jockeyMatchingDeadlineAt\": \"{{jockeyMatchingDeadlineAt}}\",\n  \"schedulingDeadlineAt\": \"{{schedulingDeadlineAt}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.tournamentId) pm.collectionVariables.set(\"tournamentId\", json.result.tournamentId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Create final round",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/rounds",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roundName\": \"Final Round\",\n  \"sequenceOrder\": 1,\n  \"isFinal\": true,\n  \"predictionType\": \"TOP3\",\n  \"advancementRule\": \"No advancement - final round\",\n  \"startDate\": \"{{roundStartAt}}\",\n  \"endDate\": \"{{roundEndAt}}\",\n  \"description\": \"Single final race for Postman E2E\",\n  \"maxRaces\": 1,\n  \"maxEntries\": 10,\n  \"minEntries\": 3,\n  \"status\": \"SCHEDULING\",\n  \"headRefereeId\": \"{{headRefereeId}}\",\n  \"races\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.roundId) pm.collectionVariables.set(\"roundId\", json.result.roundId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Create race",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/rounds/{{roundId}}/races",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Final Race 1\",\n  \"startTime\": \"{{raceStartAt}}\",\n  \"trackCondition\": \"TURF\",\n  \"distance\": 1600,\n  \"sequenceOrder\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.raceId) pm.collectionVariables.set(\"raceId\", json.result.raceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Create prize rank 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/prize-structures",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rank\": 1,\n  \"percentage\": null,\n  \"fixedAmount\": 3000000,\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Create eligibility",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/eligibility",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"HORSE\",\n  \"conditionName\": \"BREED\",\n  \"conditionOperator\": \"EQUAL\",\n  \"conditionValue\": \"THOROUGHBRED\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Publish tournament",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/publish",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - HORSE_OWNER & JOCKEY - Registration",
+      "description": "Chạy trước registrationCloseAt.",
+      "item": [
+        {
+          "name": "Owner 1 - Register horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/tournaments/{{tournamentId}}/register-horse",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horseId\": \"{{horse1Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseRegistrationId) pm.collectionVariables.set(\"horseReg1Id\", json.result.horseRegistrationId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 1 - Find registration invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"OWNER_TOURNAMENT_REGISTRATION_FEE\" && x.status === \"UNPAID\" && x.tournamentRegId === pm.collectionVariables.get(\"horseReg1Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice OWNER_TOURNAMENT_REGISTRATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner1RegistrationInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 1 - Pay registration invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner1RegistrationInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 1 - Register tournament",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockey/tournaments/{{tournamentId}}/register",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hireFee\": 1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.jockeyTournamentRegId) pm.collectionVariables.set(\"jockeyReg1Id\", json.result.jockeyTournamentRegId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Register horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/tournaments/{{tournamentId}}/register-horse",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horseId\": \"{{horse2Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseRegistrationId) pm.collectionVariables.set(\"horseReg2Id\", json.result.horseRegistrationId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Find registration invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"OWNER_TOURNAMENT_REGISTRATION_FEE\" && x.status === \"UNPAID\" && x.tournamentRegId === pm.collectionVariables.get(\"horseReg2Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice OWNER_TOURNAMENT_REGISTRATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner2RegistrationInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Pay registration invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner2RegistrationInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 2 - Register tournament",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockey/tournaments/{{tournamentId}}/register",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hireFee\": 1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.jockeyTournamentRegId) pm.collectionVariables.set(\"jockeyReg2Id\", json.result.jockeyTournamentRegId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Register horse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owners/tournaments/{{tournamentId}}/register-horse",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"horseId\": \"{{horse3Id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.horseRegistrationId) pm.collectionVariables.set(\"horseReg3Id\", json.result.horseRegistrationId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Find registration invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"OWNER_TOURNAMENT_REGISTRATION_FEE\" && x.status === \"UNPAID\" && x.tournamentRegId === pm.collectionVariables.get(\"horseReg3Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice OWNER_TOURNAMENT_REGISTRATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner3RegistrationInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Pay registration invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner3RegistrationInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 3 - Register tournament",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/jockey/tournaments/{{tournamentId}}/register",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hireFee\": 1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.jockeyTournamentRegId) pm.collectionVariables.set(\"jockeyReg3Id\", json.result.jockeyTournamentRegId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - ADMIN - Review Registrations",
+      "description": "Không chạy folder này trước khi tournament tự chuyển sang REGISTRATION_REVIEW.",
+      "item": [
+        {
+          "name": "Public - Check tournament phase",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/tournaments/{{tournamentId}}",
+            "description": "Đợi qua registrationCloseAt và tối đa 60 giây cho scheduler."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "pm.test(\"Phase is REGISTRATION_REVIEW\", () => pm.expect(json.result?.phase).to.eql(\"REGISTRATION_REVIEW\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Approve horse registration 1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/horse-registrations/{{horseReg1Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve jockey registration 1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/jockey-registrations/{{jockeyReg1Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve horse registration 2",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/horse-registrations/{{horseReg2Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve jockey registration 2",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/jockey-registrations/{{jockeyReg2Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve horse registration 3",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/horse-registrations/{{horseReg3Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve jockey registration 3",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/jockey-registrations/{{jockeyReg3Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Complete review",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/complete-review",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - OWNER, JOCKEY, ADMIN - Contract Matching",
+      "description": "",
+      "item": [
+        {
+          "name": "Owner 1 - Invite jockey 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owner/contracts/invite",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tournamentRegistrationId\": \"{{horseReg1Id}}\",\n  \"jockeyTournamentRegistrationId\": \"{{jockeyReg1Id}}\",\n  \"ownerPrizeSharePercent\": 70,\n  \"jockeyPrizeSharePercent\": 30,\n  \"contractNote\": \"Postman E2E contract 1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.contractId) pm.collectionVariables.set(\"contract1Id\", json.result.contractId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Jockey 1 - Accept contract",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/jockey/contracts/{{contract1Id}}/accept",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 1 - Find hiring invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"JOCKEY_HIRING_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract1Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice JOCKEY_HIRING_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner1HiringInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 1 - Pay hiring invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner1HiringInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 1 - Find contract fee invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"CONTRACT_CREATION_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract1Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice CONTRACT_CREATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner1ContractInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 1 - Pay contract fee invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner1ContractInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve contract 1",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/contracts/{{contract1Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 2 - Invite jockey 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owner/contracts/invite",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tournamentRegistrationId\": \"{{horseReg2Id}}\",\n  \"jockeyTournamentRegistrationId\": \"{{jockeyReg2Id}}\",\n  \"ownerPrizeSharePercent\": 70,\n  \"jockeyPrizeSharePercent\": 30,\n  \"contractNote\": \"Postman E2E contract 2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.contractId) pm.collectionVariables.set(\"contract2Id\", json.result.contractId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Jockey 2 - Accept contract",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/jockey/contracts/{{contract2Id}}/accept",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 2 - Find hiring invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"JOCKEY_HIRING_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract2Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice JOCKEY_HIRING_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner2HiringInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Pay hiring invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner2HiringInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 2 - Find contract fee invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"CONTRACT_CREATION_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract2Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice CONTRACT_CREATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner2ContractInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 2 - Pay contract fee invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner2ContractInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve contract 2",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/contracts/{{contract2Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 3 - Invite jockey 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/owner/contracts/invite",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tournamentRegistrationId\": \"{{horseReg3Id}}\",\n  \"jockeyTournamentRegistrationId\": \"{{jockeyReg3Id}}\",\n  \"ownerPrizeSharePercent\": 70,\n  \"jockeyPrizeSharePercent\": 30,\n  \"contractNote\": \"Postman E2E contract 3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.contractId) pm.collectionVariables.set(\"contract3Id\", json.result.contractId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Jockey 3 - Accept contract",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/jockey/contracts/{{contract3Id}}/accept",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 3 - Find hiring invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"JOCKEY_HIRING_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract3Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice JOCKEY_HIRING_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner3HiringInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Pay hiring invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner3HiringInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 3 - Find contract fee invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/my-invoices",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "const invoice = (json.result || []).find(x => x.invoiceType === \"CONTRACT_CREATION_FEE\" && x.status === \"UNPAID\" && x.contractId === pm.collectionVariables.get(\"contract3Id\"));",
+                  "pm.test(\"Invoice found\", () => pm.expect(invoice, \"Không tìm thấy invoice CONTRACT_CREATION_FEE\").to.exist);",
+                  "if (invoice) pm.collectionVariables.set(\"owner3ContractInvoiceId\", invoice.invoiceId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner 3 - Pay contract fee invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/invoices/{{owner3ContractInvoiceId}}/pay",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner3Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Approve contract 3",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/contracts/{{contract3Id}}/approve",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Complete matching",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/complete-matching",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 - ADMIN - Race Scheduling",
+      "description": "",
+      "item": [
+        {
+          "name": "Admin - Create entry lane 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/entries",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": \"{{contract1Id}}\",\n  \"laneNumber\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.entryId) pm.collectionVariables.set(\"entry1Id\", json.result.entryId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Create entry lane 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/entries",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": \"{{contract2Id}}\",\n  \"laneNumber\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.entryId) pm.collectionVariables.set(\"entry2Id\", json.result.entryId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Create entry lane 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/entries",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": \"{{contract3Id}}\",\n  \"laneNumber\": 3\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.entryId) pm.collectionVariables.set(\"entry3Id\", json.result.entryId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Assign referee to race",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/referees",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refereeId\": \"{{headRefereeId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Auto assign inspection staff",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/inspection-staff/auto-assign",
+            "description": "Chỉ đúng nếu database có đúng veterinarian/medical staff AVAILABLE tương ứng với token đang dùng.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.veterinarianId) pm.collectionVariables.set(\"vetId\", json.result.veterinarianId);",
+                  "if (json.result?.medStaffId) pm.collectionVariables.set(\"medicalStaffId\", json.result.medStaffId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin - Publish tournament schedule",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/tournaments/{{tournamentId}}/publish-schedule",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - SPECTATOR - Prediction",
+      "description": "Chạy sau predictionOpenAt và trước predictionCloseAt.",
+      "item": [
+        {
+          "name": "Public - Get race entries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/races/{{raceId}}/entries",
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Spectator - Create TOP3 prediction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/spectator/races/{{raceId}}/predictions",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spectatorToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"predictionType\": \"TOP3\",\n  \"entries\": [\n    {\n      \"entryId\": \"{{entry1Id}}\",\n      \"predictedRank\": 1\n    },\n    {\n      \"entryId\": \"{{entry2Id}}\",\n      \"predictedRank\": 2\n    },\n    {\n      \"entryId\": \"{{entry3Id}}\",\n      \"predictedRank\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.predictionId) pm.collectionVariables.set(\"predictionId\", json.result.predictionId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 - VETERINARIAN - Horse Inspection",
+      "description": "Chỉ chạy trong T-90 đến T-30. Mỗi entry chỉ submit đúng một lần; gọi lại sẽ nhận code 1708.",
+      "item": [
+        {
+          "name": "Vet - Horse inspection entry 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/vet/race-entries/{{entry1Id}}/horse-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vetToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Horse 1 is fit to race\",\n  \"handicapWeight\": 0,\n  \"handicapConfirmed\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vet - Horse inspection entry 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/vet/race-entries/{{entry2Id}}/horse-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vetToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Horse 2 is fit to race\",\n  \"handicapWeight\": 0,\n  \"handicapConfirmed\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Vet - Horse inspection entry 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/vet/race-entries/{{entry3Id}}/horse-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vetToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Horse 3 is fit to race\",\n  \"handicapWeight\": 0,\n  \"handicapConfirmed\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "10 - MEDICAL_STAFF - Jockey Inspection",
+      "description": "Chỉ chạy trong T-90 đến T-30. Mỗi entry chỉ submit đúng một lần; gọi lại sẽ nhận code 1709.",
+      "item": [
+        {
+          "name": "Medical - Jockey inspection entry 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/medical/race-entries/{{entry1Id}}/jockey-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{medicalToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Jockey 1 is medically fit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Medical - Jockey inspection entry 2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/medical/race-entries/{{entry2Id}}/jockey-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{medicalToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Jockey 2 is medically fit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Medical - Jockey inspection entry 3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/medical/race-entries/{{entry3Id}}/jockey-inspection",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{medicalToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Jockey 3 is medically fit\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "11 - REFEREE - Start, Results, Sign Report",
+      "description": "",
+      "item": [
+        {
+          "name": "Referee - Start race",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/referee/races/{{raceId}}/start",
+            "description": "Chỉ chạy từ startTime đến startTime + startLateToleranceMinutes.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refereeToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Referee - Create all race results",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/referee/races/{{raceId}}/results",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refereeToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"raceId\": \"{{raceId}}\",\n    \"entryId\": \"{{entry1Id}}\",\n    \"finishTime\": 95.21,\n    \"rank\": 1,\n    \"status\": \"FINISHED\"\n  },\n  {\n    \"raceId\": \"{{raceId}}\",\n    \"entryId\": \"{{entry2Id}}\",\n    \"finishTime\": 96.1,\n    \"rank\": 2,\n    \"status\": \"FINISHED\"\n  },\n  {\n    \"raceId\": \"{{raceId}}\",\n    \"entryId\": \"{{entry3Id}}\",\n    \"finishTime\": 97.44,\n    \"rank\": 3,\n    \"status\": \"FINISHED\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Referee - Get or create draft report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/referee/races/{{raceId}}/report",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refereeToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP response received\", () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Business code = 200\", () => pm.expect(json.code).to.eql(200));",
+                  "if (json.result?.reportId) pm.collectionVariables.set(\"reportId\", json.result.reportId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Head referee - Sign report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/referee/races/{{raceId}}/report/sign",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refereeToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "\"{{headRefereeId}}\"",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "12 - ADMIN - Rating Preview & Publish",
+      "description": "Publish report chỉ chạy đúng một lần. Đây là bước scoring prediction, apply rating và payout nếu final hợp lệ.",
+      "item": [
+        {
+          "name": "Admin - Rating preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/rating-preview",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Get signed report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/report",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Publish report",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/report/publish",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "13 - VERIFY BY ROLE",
+      "description": "",
+      "item": [
+        {
+          "name": "Public - Published report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/races/{{raceId}}/report",
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Public - Race ranking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/races/{{raceId}}/ranking",
+            "description": ""
+          },
+          "response": []
+        },
+        {
+          "name": "Spectator - Prediction result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/spectator/predictions/{{predictionId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{spectatorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Rating changes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/rating-changes",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Round rating summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/rounds/{{roundId}}/rating-summary",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 1 - Horse rating history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/horses/{{horse1Id}}/rating-history",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner 1 - Wallet after payout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/wallets/my-wallet",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{owner1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Jockey 1 - Wallet after payout",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/wallets/my-wallet",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{jockey1Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - System transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/transactions/system",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "90 - NEGATIVE CASES - Run Separately",
+      "description": "Không chạy folder này trong happy-case Collection Runner.",
+      "item": [
+        {
+          "name": "Vet - Duplicate horse inspection (expect 1708)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/vet/race-entries/{{entry1Id}}/horse-inspection",
+            "description": "Request này phải lỗi 1708 nếu inspection trước đã thành công.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{vetToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Duplicate request\",\n  \"handicapConfirmed\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Medical - Duplicate jockey inspection (expect 1709)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/medical/race-entries/{{entry1Id}}/jockey-inspection",
+            "description": "Request này phải lỗi 1709 nếu inspection trước đã thành công.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{medicalToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"result\": \"PASS\",\n  \"note\": \"Duplicate request\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - Publish report again (must be blocked)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/races/{{raceId}}/report/publish",
+            "description": "Dùng để kiểm tra double publish/double payout bị chặn.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
