@@ -19,15 +19,15 @@ public class CloudinaryService {
     Cloudinary cloudinary;
 
     public String uploadImage(MultipartFile file, String folderName) throws IOException {
-        // Cấu hình tùy chọn: đẩy vào thư mục cụ thể trên Cloudinary
+        return uploadFile(file, folderName, "image");
+    }
+
+    public String uploadFile(MultipartFile file, String folderName, String resourceType) throws IOException {
         Map options = ObjectUtils.asMap(
-                "folder", folderName
+                "folder", folderName,
+                "resource_type", resourceType
         );
-
-        // Thực hiện upload
         Map uploadResult = cloudinary.uploader().upload(file.getBytes(), options);
-
-        // Trả về URL an toàn (https)
         return uploadResult.get("secure_url").toString();
     }
 }

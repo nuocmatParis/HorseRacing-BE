@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.race_portal;
 
 import lombok.Builder;
 import lombok.Data;
+import com.swp391.horseracing.enums.ReportStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,5 +14,7 @@ public class RaceResultsResponse {
     private RaceSummaryResponse race;
     private UUID reportId;
     private LocalDateTime publishedAt;
+    private ReportStatus reportStatus;
+    private boolean provisional;
     private List<RaceResultItemResponse> myResults;
 }

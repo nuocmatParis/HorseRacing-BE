@@ -43,7 +43,39 @@ public class TransactionResponse {
 
     String note;
 
+    UUID performedByUserId;
+
+    String performedByName;
+
     WalletPurpose walletPurpose;
+
+    UUID tournamentId;
+
+    String tournamentName;
+
+    UUID roundId;
+
+    String roundName;
+
+    UUID raceId;
+
+    String raceName;
+
+    UUID horseId;
+
+    String horseName;
+
+    UUID jockeyId;
+
+    String jockeyName;
+
+    UUID ownerId;
+
+    String ownerName;
+
+    Integer finishPosition;
+
+    String prizeStatus;
 
     LocalDateTime createdAt;
 }

@@ -24,6 +24,8 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
     List<Race> findByRound_RoundIdAndRaceIdNotOrderBySequenceOrderAsc(UUID roundId, UUID raceId);
     List<Race> findByRound_Tournament_TournamentId(UUID tournamentId);
 
+    long countByStatus(RoundStatus status);
+
     long countByRound_Tournament_TournamentIdAndStartTimeBetweenAndStatusNot(
             UUID tournamentId,
             LocalDateTime startOfDay,
@@ -96,6 +98,38 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
             ORDER BY r.startTime DESC
             """)
     Page<Race> findPublishedResultsForJockey(@Param("userId") UUID userId, Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT r FROM Race r
+            WHERE EXISTS (
+                  SELECT result.resultId FROM RaceResult result
+                  WHERE result.race = r
+                    AND result.entry.contract.owner.user.userId = :userId
+              )
+              AND NOT EXISTS (
+                  SELECT report.reportId FROM RaceReport report
+                  WHERE report.race = r
+                    AND report.status = com.swp391.horseracing.enums.ReportStatus.Published
+              )
+            ORDER BY r.startTime DESC
+            """)
+    Page<Race> findProvisionalResultsForOwner(@Param("userId") UUID userId, Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT r FROM Race r
+            WHERE EXISTS (
+                  SELECT result.resultId FROM RaceResult result
+                  WHERE result.race = r
+                    AND result.entry.contract.jockey.user.userId = :userId
+              )
+              AND NOT EXISTS (
+                  SELECT report.reportId FROM RaceReport report
+                  WHERE report.race = r
+                    AND report.status = com.swp391.horseracing.enums.ReportStatus.Published
+              )
+            ORDER BY r.startTime DESC
+            """)
+    Page<Race> findProvisionalResultsForJockey(@Param("userId") UUID userId, Pageable pageable);
 
     @Query("""
             SELECT r FROM Race r

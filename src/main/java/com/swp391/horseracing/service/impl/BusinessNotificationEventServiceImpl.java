@@ -172,6 +172,19 @@ public class BusinessNotificationEventServiceImpl implements BusinessNotificatio
         publish(NotificationEventType.ROUND_TRANSITION_BLOCKED, "ROUND", round.getRoundId(), null, payload);
     }
 
+    @Override
+    public void appealSubmitted(Appeal appeal) {
+        publish(NotificationEventType.APPEAL_SUBMITTED, "APPEAL", appeal.getAppealId(), null, appealPayload(appeal));
+    }
+
+    @Override
+    public void appealReviewed(Appeal appeal) {
+        Map<String, Object> payload = appealPayload(appeal);
+        payload.put("status", String.valueOf(appeal.getStatus()));
+        payload.put("resolution", appeal.getResolution());
+        publish(NotificationEventType.APPEAL_REVIEWED, "APPEAL", appeal.getAppealId(), null, payload);
+    }
+
     private void publishRegistration(NotificationEventType type, String aggregateType, UUID registrationId,
                                      Tournament tournament, String reason) {
         Map<String, Object> payload = tournamentPayload(tournament);
@@ -207,6 +220,12 @@ public class BusinessNotificationEventServiceImpl implements BusinessNotificatio
         Map<String, Object> payload = racePayload(entry.getRace());
         payload.put("horseName", entry.getContract().getHorse().getName());
         payload.put("jockeyName", entry.getContract().getJockey().getUser().getFullName());
+        return payload;
+    }
+
+    private Map<String, Object> appealPayload(Appeal appeal) {
+        Map<String, Object> payload = entryPayload(appeal.getEntry());
+        payload.put("appealId", appeal.getAppealId());
         return payload;
     }
 

@@ -19,4 +19,5 @@ public interface WalletService {
     List<WalletResponse> getSystemWallets();
 
     DepositResponse deposit(DepositRequest request);
+
 }

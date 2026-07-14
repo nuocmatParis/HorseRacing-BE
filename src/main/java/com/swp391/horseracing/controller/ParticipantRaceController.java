@@ -58,4 +58,24 @@ public class ParticipantRaceController {
                 .result(racePortalService.getJockeyResults(page, size))
                 .build();
     }
+
+    @GetMapping("/api/owner/race-results/provisional")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    public ApiResponse<PageResponse<RaceResultsResponse>> getOwnerProvisionalResults(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<RaceResultsResponse>>builder()
+                .result(racePortalService.getOwnerProvisionalResults(page, size))
+                .build();
+    }
+
+    @GetMapping("/api/jockey/race-results/provisional")
+    @PreAuthorize("hasRole('JOCKEY')")
+    public ApiResponse<PageResponse<RaceResultsResponse>> getJockeyProvisionalResults(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<RaceResultsResponse>>builder()
+                .result(racePortalService.getJockeyProvisionalResults(page, size))
+                .build();
+    }
 }

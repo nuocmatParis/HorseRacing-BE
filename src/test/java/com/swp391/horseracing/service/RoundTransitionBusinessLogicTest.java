@@ -10,6 +10,7 @@ import com.swp391.horseracing.entity.RaceResult;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.dto.tournament.response.RoundQualifierResponse;
 import com.swp391.horseracing.enums.RaceResultStatus;
 import com.swp391.horseracing.enums.ReportStatus;
 import com.swp391.horseracing.enums.RoundStatus;
@@ -89,7 +90,9 @@ class RoundTransitionBusinessLogicTest {
 
         verify(raceEntryRepository, times(8)).save(any(RaceEntry.class));
         assertNotNull(fixture.currentRound.getAdvancedAt());
+        assertEquals(RoundStatus.COMPLETED, fixture.currentRound.getStatus());
         assertEquals(RoundTransitionStatus.COMPLETED, fixture.currentRound.getTransitionStatus());
+        assertEquals(RoundStatus.SCHEDULING, fixture.nextRound.getStatus());
         assertEquals(TournamentPhase.SCHEDULING, fixture.tournament.getPhase());
         assertEquals(fixture.nextRound.getRoundName(), fixture.tournament.getCurrentRoundName());
         verify(notificationEventService, never()).roundTransitionBlocked(any(Round.class));
@@ -129,6 +132,56 @@ class RoundTransitionBusinessLogicTest {
 
         verify(raceEntryRepository, never()).save(any(RaceEntry.class));
         verify(raceRepository, never()).findByRound_RoundIdOrderBySequenceOrderAsc(any(UUID.class));
+    }
+
+    @Test
+    void completedRoundReturnsOfficialTopFourWithNextRoundPlacement() {
+        TransitionFixture fixture = createFixture();
+        fixture.currentRound.setStatus(RoundStatus.COMPLETED);
+        fixture.currentRound.setTransitionStatus(RoundTransitionStatus.COMPLETED);
+
+        List<RaceResult> firstRaceResults = createResults(fixture.firstRace, 4, 0);
+        List<RaceResult> secondRaceResults = createResults(fixture.secondRace, 4, 0);
+        List<RaceEntry> nextRoundEntries = new ArrayList<>();
+
+        int laneNumber = 1;
+        for (RaceResult result : firstRaceResults) {
+            nextRoundEntries.add(nextRoundEntry(fixture.targetRace, result, laneNumber));
+            laneNumber++;
+        }
+        laneNumber = 5;
+        for (RaceResult result : secondRaceResults) {
+            nextRoundEntries.add(nextRoundEntry(fixture.targetRace, result, laneNumber));
+            laneNumber++;
+        }
+
+        when(roundRepository.findById(fixture.currentRound.getRoundId()))
+                .thenReturn(Optional.of(fixture.currentRound));
+        when(raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(fixture.currentRound.getRoundId()))
+                .thenReturn(List.of(fixture.firstRace, fixture.secondRace));
+        when(raceReportRepository.findByRace_RaceId(fixture.firstRace.getRaceId()))
+                .thenReturn(Optional.of(publishedReport(fixture.firstRace)));
+        when(raceReportRepository.findByRace_RaceId(fixture.secondRace.getRaceId()))
+                .thenReturn(Optional.of(publishedReport(fixture.secondRace)));
+        when(roundRepository.findByTournament_TournamentIdAndSequenceOrder(
+                fixture.tournament.getTournamentId(), 2)).thenReturn(Optional.of(fixture.nextRound));
+        when(raceEntryRepository.findByRace_Round_RoundId(fixture.nextRound.getRoundId()))
+                .thenReturn(nextRoundEntries);
+        when(raceResultRepository.findByRace_RaceIdOrderByRankAsc(fixture.firstRace.getRaceId()))
+                .thenReturn(firstRaceResults);
+        when(raceResultRepository.findByRace_RaceIdOrderByRankAsc(fixture.secondRace.getRaceId()))
+                .thenReturn(secondRaceResults);
+
+        List<RoundQualifierResponse> qualifiers = raceReportService
+                .getRoundQualifiers(fixture.currentRound.getRoundId());
+
+        assertEquals(8, qualifiers.size());
+        assertEquals(1, qualifiers.get(0).getRank());
+        assertEquals(1, qualifiers.get(0).getNextLaneNumber());
+        assertEquals(fixture.targetRace.getRaceId(), qualifiers.get(0).getNextRaceId());
+        assertNotNull(qualifiers.get(0).getHorseName());
+        assertNotNull(qualifiers.get(0).getJockeyName());
+        assertEquals(5, qualifiers.get(4).getNextLaneNumber());
     }
 
     private void mockCommonTransitionData(TransitionFixture fixture) {
@@ -172,8 +225,11 @@ class RoundTransitionBusinessLogicTest {
         nextRound.setTournament(tournament);
 
         Race firstRace = completedRace(currentRound, 1);
+        firstRace.setName("Round 1 - Race 1");
         Race secondRace = completedRace(currentRound, 2);
+        secondRace.setName("Round 1 - Race 2");
         Race targetRace = completedRace(nextRound, 1);
+        targetRace.setName("Round 2 - Final");
         targetRace.setStatus(RoundStatus.SCHEDULING);
         return new TransitionFixture(tournament, currentRound, nextRound,
                 firstRace, secondRace, targetRace);
@@ -200,8 +256,13 @@ class RoundTransitionBusinessLogicTest {
         for (int index = 0; index < count; index++) {
             Horse horse = new Horse();
             horse.setHorseId(UUID.randomUUID());
+            horse.setName("Horse " + identifierOffset + "-" + index);
             Jockey jockey = new Jockey();
             jockey.setJockeyId(UUID.randomUUID());
+            User jockeyUser = new User();
+            jockeyUser.setUserId(UUID.randomUUID());
+            jockeyUser.setFullName("Jockey " + identifierOffset + "-" + index);
+            jockey.setUser(jockeyUser);
             JockeyHorseContract contract = new JockeyHorseContract();
             contract.setContractId(UUID.randomUUID());
             contract.setHorse(horse);
@@ -221,6 +282,15 @@ class RoundTransitionBusinessLogicTest {
             results.add(result);
         }
         return results;
+    }
+
+    private RaceEntry nextRoundEntry(Race targetRace, RaceResult sourceResult, int laneNumber) {
+        RaceEntry entry = new RaceEntry();
+        entry.setEntryId(UUID.randomUUID());
+        entry.setRace(targetRace);
+        entry.setContract(sourceResult.getEntry().getContract());
+        entry.setLaneNumber(laneNumber);
+        return entry;
     }
 
     private void invokeAdvance(Round round) throws Exception {

@@ -1,7 +1,9 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.race_report.response.RaceReportResponse;
+import com.swp391.horseracing.dto.race_report.request.UpdateRaceReportRequest;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
+import com.swp391.horseracing.dto.tournament.response.RoundQualifierResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.*;
 import com.swp391.horseracing.service.*;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -67,7 +70,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
 
-        if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(raceId, referee.getRefereeId())) {
+        if (!isAssignedRefereeOrHead(race, referee)) {
             throw new AppException(ErrorCode.RACE_REFEREE_NOT_FOUND);
         }
 
@@ -91,6 +94,39 @@ public class RaceReportServiceImpl implements RaceReportService {
 
     @Override
     @Transactional
+    public RaceReportResponse updateRefereeReport(UUID raceId, UpdateRaceReportRequest request) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        User currentUser = userCurrentService.getCurrentUser();
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        if (!isHeadReferee(race, referee)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (!raceResultRepository.existsByRace_RaceId(raceId)) {
+            throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
+        }
+        RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
+                .orElseGet(() -> raceReportRepository.save(RaceReport.builder()
+                        .race(race)
+                        .referee(referee)
+                        .summary("")
+                        .status(ReportStatus.Draft)
+                        .build()));
+        if (report.getStatus() != ReportStatus.Draft) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_IN_DRAFT);
+        }
+        if (request.getSummary() != null) {
+            report.setSummary(request.getSummary().trim());
+        }
+        if (request.getAppealNote() != null) {
+            report.setAppealNote(request.getAppealNote().trim());
+        }
+        return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
+    }
+
+    @Override
+    @Transactional
     public RaceReportResponse signReport(UUID raceId, UUID refereeId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
@@ -102,6 +138,10 @@ public class RaceReportServiceImpl implements RaceReportService {
         User currentUser = userCurrentService.getCurrentUser();
         Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+
+        if (refereeId != null && !referee.getRefereeId().equals(refereeId)) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
 
         Round round = race.getRound();
         if (round.getHeadReferee() == null || !round.getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
@@ -131,8 +171,21 @@ public class RaceReportServiceImpl implements RaceReportService {
         race.setStatus(RoundStatus.FINISHED);
         race.setFinishedAt(LocalDateTime.now());
         raceRepository.save(race);
+        markRoundFinishedIfAllRacesFinished(round);
 
         return raceReportMapper.toRaceReportResponse(report);
+    }
+
+    private boolean isAssignedRefereeOrHead(Race race, Referee referee) {
+        return isHeadReferee(race, referee)
+                || raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                        race.getRaceId(), referee.getRefereeId());
+    }
+
+    private boolean isHeadReferee(Race race, Referee referee) {
+        return race.getRound() != null
+                && race.getRound().getHeadReferee() != null
+                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId());
     }
 
     private void validateRaceResultsBeforeSigning(UUID raceId) {
@@ -234,6 +287,7 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         notificationEventService.resultPublished(race);
 
+        completeFinalRoundIfPossible(race.getRound());
         advanceRoundIfPossible(race.getRound());
 
         return raceReportMapper.toRaceReportResponse(report);
@@ -318,6 +372,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                         Transaction debitTx = Transaction.builder()
                                 .wallet(systemPrizeWallet)
                                 .contractId(contract.getContractId())
+                                .raceResultId(result.getResultId())
                                 .type(TransactionType.PRIZE_OWNER_SHARE)
                                 .direction(TransactionDirection.DEBIT)
                                 .amount(totalPrizeAmount)
@@ -332,6 +387,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                         Transaction ownerTx = Transaction.builder()
                                 .wallet(ownerWallet)
                                 .contractId(contract.getContractId())
+                                .raceResultId(result.getResultId())
                                 .type(TransactionType.PRIZE_OWNER_SHARE)
                                 .direction(TransactionDirection.CREDIT)
                                 .amount(ownerAmount)
@@ -347,6 +403,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                         Transaction jockeyTx = Transaction.builder()
                                 .wallet(jockeyWallet)
                                 .contractId(contract.getContractId())
+                                .raceResultId(result.getResultId())
                                 .type(TransactionType.PRIZE_JOCKEY_SHARE)
                                 .direction(TransactionDirection.CREDIT)
                                 .amount(jockeyAmount)
@@ -448,6 +505,8 @@ public class RaceReportServiceImpl implements RaceReportService {
             }
         }
 
+        lockedRound.setStatus(RoundStatus.COMPLETED);
+
         Round nextRound = roundRepository.findByTournament_TournamentIdAndSequenceOrder(
                 lockedRound.getTournament().getTournamentId(), lockedRound.getSequenceOrder() + 1
         ).orElseThrow(() -> new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH));
@@ -523,6 +582,54 @@ public class RaceReportServiceImpl implements RaceReportService {
         return qualifiers;
     }
 
+    private void markRoundFinishedIfAllRacesFinished(Round round) {
+        if (round == null || round.getStatus() == RoundStatus.COMPLETED) {
+            return;
+        }
+
+        List<Race> races = raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(round.getRoundId());
+        if (races.isEmpty()) {
+            return;
+        }
+
+        for (Race race : races) {
+            if (race.getStatus() != RoundStatus.FINISHED
+                    && race.getStatus() != RoundStatus.COMPLETED) {
+                return;
+            }
+        }
+
+        round.setStatus(RoundStatus.FINISHED);
+        roundRepository.save(round);
+    }
+
+    private void completeFinalRoundIfPossible(Round round) {
+        if (round == null || !round.isFinal() || round.getStatus() == RoundStatus.COMPLETED) {
+            return;
+        }
+
+        Round lockedRound = roundRepository.findForUpdateByRoundId(round.getRoundId())
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        List<Race> races = raceRepository
+                .findByRound_RoundIdOrderBySequenceOrderAsc(lockedRound.getRoundId());
+        if (races.isEmpty()) {
+            return;
+        }
+
+        for (Race race : races) {
+            if (race.getStatus() != RoundStatus.COMPLETED) {
+                return;
+            }
+            RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
+            if (report == null || report.getStatus() != ReportStatus.Published) {
+                return;
+            }
+        }
+
+        lockedRound.setStatus(RoundStatus.COMPLETED);
+        roundRepository.save(lockedRound);
+    }
+
     private RaceEntry buildAdvancedEntry(Race race, JockeyHorseContract contract,
                                          int laneNumber, User assignedBy) {
         return RaceEntry.builder()
@@ -539,6 +646,92 @@ public class RaceReportServiceImpl implements RaceReportService {
         round.setTransitionStatus(RoundTransitionStatus.BLOCKED_NOT_ENOUGH_QUALIFIERS);
         roundRepository.save(round);
         notificationEventService.roundTransitionBlocked(round);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoundQualifierResponse> getRoundQualifiers(UUID roundId) {
+        Round round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+
+        List<RoundQualifierResponse> responses = new ArrayList<>();
+        if (round.isFinal()) {
+            return responses;
+        }
+        if (round.getTransitionStatus() == RoundTransitionStatus.BLOCKED_NOT_ENOUGH_QUALIFIERS) {
+            throw new AppException(ErrorCode.NEXT_ROUND_NOT_ENOUGH_QUALIFIERS);
+        }
+        if (round.getTransitionStatus() != RoundTransitionStatus.COMPLETED) {
+            throw new AppException(ErrorCode.ROUND_REPORTS_NOT_FULLY_PUBLISHED);
+        }
+
+        List<Race> sourceRaces = raceRepository
+                .findByRound_RoundIdOrderBySequenceOrderAsc(roundId);
+        validatePublishedRoundForQualifiers(sourceRaces);
+
+        Round nextRound = roundRepository.findByTournament_TournamentIdAndSequenceOrder(
+                        round.getTournament().getTournamentId(), round.getSequenceOrder() + 1)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH));
+
+        List<RaceEntry> nextRoundEntries = raceEntryRepository
+                .findByRace_Round_RoundId(nextRound.getRoundId());
+        Map<UUID, RaceEntry> nextEntryByContractId = new HashMap<>();
+        for (RaceEntry entry : nextRoundEntries) {
+            UUID contractId = entry.getContract().getContractId();
+            if (nextEntryByContractId.put(contractId, entry) != null) {
+                throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+            }
+        }
+
+        for (Race sourceRace : sourceRaces) {
+            List<RaceResult> qualifiers = getQualifiers(sourceRace);
+            if (qualifiers.size() != 4) {
+                throw new AppException(ErrorCode.NEXT_ROUND_NOT_ENOUGH_QUALIFIERS);
+            }
+
+            for (RaceResult qualifier : qualifiers) {
+                JockeyHorseContract contract = qualifier.getEntry().getContract();
+                RaceEntry nextEntry = nextEntryByContractId.get(contract.getContractId());
+                if (nextEntry == null) {
+                    throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+                }
+
+                responses.add(RoundQualifierResponse.builder()
+                        .sourceRoundId(round.getRoundId())
+                        .sourceRaceId(sourceRace.getRaceId())
+                        .sourceRaceName(sourceRace.getName())
+                        .sourceRaceSequence(sourceRace.getSequenceOrder())
+                        .sourceEntryId(qualifier.getEntry().getEntryId())
+                        .rank(qualifier.getRank())
+                        .contractId(contract.getContractId())
+                        .horseId(contract.getHorse().getHorseId())
+                        .horseName(contract.getHorse().getName())
+                        .jockeyId(contract.getJockey().getJockeyId())
+                        .jockeyName(contract.getJockey().getUser().getFullName())
+                        .nextRoundId(nextRound.getRoundId())
+                        .nextRaceId(nextEntry.getRace().getRaceId())
+                        .nextLaneNumber(nextEntry.getLaneNumber())
+                        .build());
+            }
+        }
+
+        return responses;
+    }
+
+    private void validatePublishedRoundForQualifiers(List<Race> races) {
+        if (races.isEmpty()) {
+            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+        }
+
+        for (Race race : races) {
+            if (race.getStatus() != RoundStatus.COMPLETED) {
+                throw new AppException(ErrorCode.ROUND_REPORTS_NOT_FULLY_PUBLISHED);
+            }
+            RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
+            if (report == null || report.getStatus() != ReportStatus.Published) {
+                throw new AppException(ErrorCode.ROUND_REPORTS_NOT_FULLY_PUBLISHED);
+            }
+        }
     }
 
     @Override

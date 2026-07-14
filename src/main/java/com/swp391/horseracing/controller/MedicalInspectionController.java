@@ -30,4 +30,11 @@ public class MedicalInspectionController {
                 .result(jockeyInspectionService.createInspection(entryId, request))
                 .build();
     }
+
+    @GetMapping("/{entryId}/jockey-inspection")
+    public ApiResponse<JockeyInspectionResponse> getJockeyInspection(@PathVariable UUID entryId) {
+        return ApiResponse.<JockeyInspectionResponse>builder()
+                .result(jockeyInspectionService.getInspection(entryId))
+                .build();
+    }
 }

@@ -10,9 +10,11 @@ import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.BracketPlanStatus;
+import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
+import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
@@ -43,6 +45,7 @@ public class RoundServiceImpl implements RoundService {
     @Override
     @Transactional
     public RoundResponse create(UUID tournamentId, CreateRoundRequest request) {
+        validatePredictionType(request.getPredictionType());
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new AppException(ErrorCode.INVALID_ROUND_DATES);
         }
@@ -74,7 +77,10 @@ public class RoundServiceImpl implements RoundService {
 
         if (!existingRounds.isEmpty()) {
             Round lastRound = existingRounds.get(existingRounds.size() - 1);
-            if (request.getStartDate().isBefore(lastRound.getEndDate().plusDays(tournament.getMinRoundGapDays()))) {
+            if (!RoundSchedulePolicy.hasMinimumCalendarDayGap(
+                    lastRound.getEndDate(),
+                    request.getStartDate(),
+                    tournament.getMinRoundGapDays())) {
                 throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
         }
@@ -110,6 +116,9 @@ public class RoundServiceImpl implements RoundService {
     @Override
     @Transactional
     public RoundResponse update(UUID roundId, UpdateRoundRequest request) {
+        if (request.getPredictionType() != null) {
+            validatePredictionType(request.getPredictionType());
+        }
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
 
@@ -160,11 +169,13 @@ public class RoundServiceImpl implements RoundService {
             if (r.getRoundId().equals(round.getRoundId())) continue;
             if (startDate == null || endDate == null || r.getStartDate() == null || r.getEndDate() == null) continue;
             if (r.getSequenceOrder() < round.getSequenceOrder()
-                    && startDate.isBefore(r.getEndDate().plusDays(gapDays))) {
+                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
+                    r.getEndDate(), startDate, gapDays)) {
                 throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
             if (r.getSequenceOrder() > round.getSequenceOrder()
-                    && r.getStartDate().isBefore(endDate.plusDays(gapDays))) {
+                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
+                    endDate, r.getStartDate(), gapDays)) {
                 throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
         }
@@ -244,6 +255,12 @@ public class RoundServiceImpl implements RoundService {
                 || request.getStatus() != null
                 || request.getHeadRefereeId() != null) {
             throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+        }
+    }
+
+    private void validatePredictionType(PredictionType predictionType) {
+        if (predictionType != PredictionType.TOP3) {
+            throw new AppException(ErrorCode.INVALID_PREDICTION_TYPE);
         }
     }
 }

@@ -14,6 +14,7 @@ import com.swp391.horseracing.mapper.AppealMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.AppealService;
 import com.swp391.horseracing.service.UserCurrentService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -41,6 +42,7 @@ public class AppealServiceImpl implements AppealService {
     AppealMapper appealMapper;
     ViolationRepository violationRepository;
     UserCurrentService userCurrentService;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -118,7 +120,9 @@ public class AppealServiceImpl implements AppealService {
             appeal.setRelatedViolation(violation);
         }
 
-        return appealMapper.toAppealResponse(appealRepository.save(appeal));
+        Appeal savedAppeal = appealRepository.save(appeal);
+        notificationEventService.appealSubmitted(savedAppeal);
+        return appealMapper.toAppealResponse(savedAppeal);
     }
 
     @Override
@@ -232,6 +236,8 @@ public class AppealServiceImpl implements AppealService {
         appeal.setReviewedBy(referee);
         appeal.setReviewedAt(LocalDateTime.now());
 
-        return appealMapper.toAppealResponse(appealRepository.save(appeal));
+        Appeal savedAppeal = appealRepository.save(appeal);
+        notificationEventService.appealReviewed(savedAppeal);
+        return appealMapper.toAppealResponse(savedAppeal);
     }
 }

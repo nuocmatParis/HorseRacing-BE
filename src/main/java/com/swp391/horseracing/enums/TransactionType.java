@@ -3,6 +3,8 @@ package com.swp391.horseracing.enums;
 public enum TransactionType {
     DEPOSIT,
 
+    SYSTEM_PRIZE_POOL_TOP_UP,
+
     OWNER_REGISTRATION_FEE,
 
     JOCKEY_HIRING_FEE,

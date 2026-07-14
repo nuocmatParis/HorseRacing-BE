@@ -4,11 +4,13 @@ import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.tournament.response.PrizeStructureResponse;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.dto.tournament.response.RoundResponse;
+import com.swp391.horseracing.dto.tournament.response.RoundQualifierResponse;
 import com.swp391.horseracing.dto.tournament.response.TournamentEligibilityResponse;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.service.PrizeStructureService;
 import com.swp391.horseracing.service.RaceService;
 import com.swp391.horseracing.service.RoundService;
+import com.swp391.horseracing.service.RaceReportService;
 import com.swp391.horseracing.service.TournamentEligibilityService;
 import com.swp391.horseracing.service.TournamentService;
 import lombok.AccessLevel;
@@ -31,6 +33,7 @@ public class TournamentController {
     TournamentEligibilityService tournamentEligibilityService;
     RoundService roundService;
     RaceService raceService;
+    RaceReportService raceReportService;
 
     @GetMapping
     public ApiResponse<List<TournamentResponse>> getAll() {
@@ -71,6 +74,13 @@ public class TournamentController {
     public ApiResponse<List<RaceResponse>> getRacesByRound(@PathVariable UUID roundId) {
         return ApiResponse.<List<RaceResponse>>builder()
                 .result(raceService.getRacesByRoundId(roundId))
+                .build();
+    }
+
+    @GetMapping("/rounds/{roundId}/qualifiers")
+    public ApiResponse<List<RoundQualifierResponse>> getRoundQualifiers(@PathVariable UUID roundId) {
+        return ApiResponse.<List<RoundQualifierResponse>>builder()
+                .result(raceReportService.getRoundQualifiers(roundId))
                 .build();
     }
 

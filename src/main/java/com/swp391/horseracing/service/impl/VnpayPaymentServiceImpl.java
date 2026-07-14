@@ -2,6 +2,7 @@ package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.config.VnpayProperties;
 import com.swp391.horseracing.dto.wallet.request.DepositRequest;
+import com.swp391.horseracing.dto.wallet.request.AdminPrizePoolTopUpRequest;
 import com.swp391.horseracing.dto.wallet.response.VnpayDepositResponse;
 import com.swp391.horseracing.entity.PaymentTransaction;
 import com.swp391.horseracing.entity.User;
@@ -10,6 +11,8 @@ import com.swp391.horseracing.enums.PaymentProvider;
 import com.swp391.horseracing.enums.PaymentPurpose;
 import com.swp391.horseracing.enums.PaymentTransactionStatus;
 import com.swp391.horseracing.enums.WalletPurpose;
+import com.swp391.horseracing.enums.WalletOwnerType;
+import com.swp391.horseracing.enums.WalletStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.PaymentTransactionRepository;
@@ -55,8 +58,66 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
                 WalletPurpose.USER_MAIN
         ).orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
-        BigDecimal amount = request.getAmount();
+        String orderInfo = request.getDescription();
+        if (orderInfo == null || orderInfo.isBlank()) {
+            orderInfo = "Nạp tiền vào ví HRTMS";
+        }
 
+        return createPayment(
+                currentUser,
+                wallet,
+                request.getAmount(),
+                orderInfo,
+                PaymentPurpose.WALLET_DEPOSIT,
+                "DEP_",
+                servletRequest);
+    }
+
+    @Override
+    @Transactional
+    public VnpayDepositResponse createPrizePoolTopUpPayment(
+            AdminPrizePoolTopUpRequest request,
+            HttpServletRequest servletRequest) {
+        validatePrizePoolRequest(request);
+
+        User currentAdmin = userCurrentService.getCurrentUser();
+        Wallet prizePoolWallet = walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+                        WalletOwnerType.SYSTEM,
+                        WalletPurpose.SYSTEM_PRIZE_POOL)
+                .orElseGet(() -> walletRepository.save(Wallet.builder()
+                        .ownerType(WalletOwnerType.SYSTEM)
+                        .walletPurpose(WalletPurpose.SYSTEM_PRIZE_POOL)
+                        .balance(BigDecimal.ZERO)
+                        .currency("VND")
+                        .status(WalletStatus.ACTIVE)
+                        .user(null)
+                        .build()));
+
+        validateWalletAvailable(prizePoolWallet);
+
+        String orderInfo = "Bổ sung Quỹ giải thưởng: " + request.getReason().trim();
+        if (orderInfo.length() > 250) {
+            orderInfo = orderInfo.substring(0, 250);
+        }
+
+        return createPayment(
+                currentAdmin,
+                prizePoolWallet,
+                request.getAmount(),
+                orderInfo,
+                PaymentPurpose.SYSTEM_PRIZE_POOL_TOP_UP,
+                "PRIZE_",
+                servletRequest);
+    }
+
+    private VnpayDepositResponse createPayment(
+            User user,
+            Wallet wallet,
+            BigDecimal amount,
+            String orderInfo,
+            PaymentPurpose purpose,
+            String transactionPrefix,
+            HttpServletRequest servletRequest) {
         if (amount == null || amount.compareTo(BigDecimal.valueOf(1000)) < 0) {
             throw new AppException(ErrorCode.INVALID_AMOUNT);
         }
@@ -64,21 +125,15 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expireAt = now.plusMinutes(15);
 
-        String vnpTxnRef = generateVnpTxnRef();
-
-        String orderInfo = request.getDescription();
-
-        if (orderInfo == null || orderInfo.isBlank()) {
-            orderInfo = "Deposit wallet via VNPAY";
-        }
+        String vnpTxnRef = generateVnpTxnRef(transactionPrefix);
 
         long vnpAmount = amount.multiply(BigDecimal.valueOf(100)).longValue();
 
         PaymentTransaction paymentTransaction = PaymentTransaction.builder()
-                .user(currentUser)
+                .user(user)
                 .wallet(wallet)
                 .provider(PaymentProvider.VNPAY)
-                .purpose(PaymentPurpose.WALLET_DEPOSIT)
+                .purpose(purpose)
                 .amount(amount)
                 .currency("VND")
                 .status(PaymentTransactionStatus.CREATED)
@@ -145,7 +200,28 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         return vnpayProperties.getPayUrl() + "?" + VnpayUtil.buildQueryUrl(params);
     }
 
-    private String generateVnpTxnRef() {
-        return "DEP_" + UUID.randomUUID().toString().replace("-", "");
+    private void validatePrizePoolRequest(AdminPrizePoolTopUpRequest request) {
+        if (request == null || request.getAmount() == null
+                || request.getAmount().compareTo(BigDecimal.valueOf(1000)) < 0
+                || request.getAmount().stripTrailingZeros().scale() > 0) {
+            throw new AppException(ErrorCode.INVALID_AMOUNT);
+        }
+        String reason = request.getReason();
+        if (reason == null || reason.trim().length() < 10 || reason.trim().length() > 500) {
+            throw new AppException(ErrorCode.VALIDATION_FAILED);
+        }
+    }
+
+    private void validateWalletAvailable(Wallet wallet) {
+        if (wallet.getStatus() == WalletStatus.FROZEN) {
+            throw new AppException(ErrorCode.WALLET_FROZEN);
+        }
+        if (wallet.getStatus() == WalletStatus.CLOSED) {
+            throw new AppException(ErrorCode.WALLET_CLOSED);
+        }
+    }
+
+    private String generateVnpTxnRef(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

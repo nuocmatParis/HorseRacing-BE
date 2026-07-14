@@ -30,4 +30,6 @@ public interface BusinessNotificationEventService {
     void prizeReceived(RaceResult result);
     void jockeyPayoutReleased(JockeyHorseContract contract);
     void roundTransitionBlocked(Round round);
+    void appealSubmitted(Appeal appeal);
+    void appealReviewed(Appeal appeal);
 }

@@ -29,6 +29,7 @@ import com.swp391.horseracing.enums.RoundTransitionStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
+import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.policy.TournamentTimelinePolicy;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
@@ -492,7 +493,8 @@ public class TournamentServiceImpl implements TournamentService {
             }
 
             if (lastRaceEnd != null && firstRaceStart != null
-                    && firstRaceStart.isBefore(lastRaceEnd.plusDays(gapDays))) {
+                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
+                    lastRaceEnd, firstRaceStart, gapDays)) {
                 throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
         }
@@ -516,6 +518,9 @@ public class TournamentServiceImpl implements TournamentService {
             race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
             raceRepository.save(race);
         }
+
+        activeRound.setStatus(RoundStatus.SCHEDULED);
+        roundRepository.save(activeRound);
 
         tournament.setCurrentRoundName(activeRound.getRoundName());
         setPhaseAndStatus(tournament, TournamentPhase.RACING);
@@ -1218,7 +1223,14 @@ public class TournamentServiceImpl implements TournamentService {
 
         for (int roundIndex = 0; roundIndex < raceCounts.size(); roundIndex++) {
             if (previousRoundEnd != null) {
-                cursor = previousRoundEnd.plusDays(tournament.getMinRoundGapDays());
+                LocalDate earliestNextRoundDate =
+                        RoundSchedulePolicy.earliestNextRoundDate(
+                                previousRoundEnd,
+                                tournament.getMinRoundGapDays()
+                        );
+                cursor = earliestNextRoundDate.atTime(
+                        tournament.getRaceDayStartTime()
+                );
             }
 
             List<LocalDateTime> raceStarts = new ArrayList<>();

@@ -15,6 +15,8 @@ public interface RacePortalService {
     PageResponse<RaceScheduleResponse> getJockeySchedule(int page, int size);
     PageResponse<RaceResultsResponse> getOwnerResults(int page, int size);
     PageResponse<RaceResultsResponse> getJockeyResults(int page, int size);
+    PageResponse<RaceResultsResponse> getOwnerProvisionalResults(int page, int size);
+    PageResponse<RaceResultsResponse> getJockeyProvisionalResults(int page, int size);
     PageResponse<RaceSummaryResponse> getUpcomingRaces(
             LocalDateTime from, LocalDateTime to, UUID tournamentId, int page, int size);
     SpectatorRaceDetailResponse getSpectatorRaceDetail(UUID raceId);

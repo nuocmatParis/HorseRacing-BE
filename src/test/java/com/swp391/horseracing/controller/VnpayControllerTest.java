@@ -103,6 +103,18 @@ class VnpayControllerTest {
         assertEquals("24", queryValue(location, "responseCode"));
     }
 
+    @Test
+    void prizePoolReturnIncludesAdminPaymentTarget() {
+        Map<String, String> params = successfulParams();
+        params.put("vnp_TxnRef", "PRIZE_test");
+
+        ResponseEntity<Void> response = controller.vnpayReturn(params);
+
+        URI location = response.getHeaders().getLocation();
+        assertNotNull(location);
+        assertEquals("SYSTEM_PRIZE_POOL", queryValue(location, "paymentTarget"));
+    }
+
     private Map<String, String> successfulParams() {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("vnp_Amount", "100000000");

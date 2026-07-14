@@ -88,6 +88,10 @@ public class Transaction {
     @Column(name = "note", columnDefinition = "TEXT")
     String note;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "performed_by_user_id")
+    User performedBy;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;
