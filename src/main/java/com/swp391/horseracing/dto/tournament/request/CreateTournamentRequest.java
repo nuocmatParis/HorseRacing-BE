@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.request;
 
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
+import com.swp391.horseracing.enums.RaceDistance;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -61,6 +62,9 @@ public class CreateTournamentRequest {
     @NotNull(message = "Race class is required")
     RaceClass raceClass;
 
+    @NotNull(message = "Distance is required")
+    RaceDistance distance;
+
     @NotNull(message = "Min horse age is required")
     @Min(value = 0, message = "Min horse age must be at least 0")
     Integer minHorseAge;
@@ -99,9 +103,6 @@ public class CreateTournamentRequest {
     @Min(value = 8, message = "Max approved entries must be at least 8")
     Integer maxApprovedEntries;
 
-    @NotNull(message = "Max approved jockeys is required")
-    @Min(value = 1, message = "Max approved jockeys must be at least 1")
-    Integer maxApprovedJockeys;
 
     @Min(value = 1, message = "Prediction open minutes must be at least 1")
     Integer predictionOpenMinutesBefore = 120;

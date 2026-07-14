@@ -172,7 +172,7 @@ public class BE2HorseRatingIntegrationTest {
     private void insertRace(UUID raceId, UUID roundId, RoundStatus status) {
         jdbcTemplate.update(
             "INSERT INTO races (race_id, round_id, name, start_time, end_time, track_condition, distance, sequence_order, status, prediction_open_at, prediction_close_at, schedule_published_at, created_by) " +
-            "VALUES (?, ?, ?, NOW(), NOW(), 'FIRM', 1200.0, 1, ?, NOW(), NOW(), NOW(), ?)",
+            "VALUES (?, ?, ?, NOW(), NOW(), 'FIRM', 'SPRINT_1200M', 1, ?, NOW(), NOW(), NOW(), ?)",
             raceId.toString(), roundId.toString(), "Race " + raceId.toString().substring(0, 8), status.name(), UUID.randomUUID().toString()
         );
     }

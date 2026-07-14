@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.jockey.request;
 
 
 import com.swp391.horseracing.enums.JockeyStatus;
+import com.swp391.horseracing.enums.Specialization;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -33,7 +34,7 @@ public class JockeyCreationRequest {
     )
     String licenseNumber;
 
-    @Size(max = 50,message = "Specialization must not exceed 50 character")
-    String specialization;
+    @NotNull(message = "Specialization is required")
+    Specialization specialization;
 
 }

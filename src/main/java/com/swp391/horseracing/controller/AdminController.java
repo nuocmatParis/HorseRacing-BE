@@ -148,20 +148,7 @@ public class AdminController {
                 .build();
     }
 
-    @PostMapping("/jockey-registrations/{id}/approve")
-    public ApiResponse<JockeyTournamentRegistrationResponse> approveJockeyRegistration(@PathVariable UUID id) {
-        return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
-                .result(tournamentRegistrationService.approveJockeyRegistration(id))
-                .build();
-    }
 
-    @PostMapping("/jockey-registrations/{id}/reject")
-    public ApiResponse<JockeyTournamentRegistrationResponse> rejectJockeyRegistration(@PathVariable UUID id,
-                                                                                      @RequestBody(required = false) String reason) {
-        return ApiResponse.<JockeyTournamentRegistrationResponse>builder()
-                .result(tournamentRegistrationService.rejectJockeyRegistration(id, reason))
-                .build();
-    }
 
 
     @PostMapping("/races/{raceId}/entries")

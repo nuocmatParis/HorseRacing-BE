@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.request;
 
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
+import com.swp391.horseracing.enums.RaceDistance;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -46,6 +47,8 @@ public class UpdateTournamentRequest {
 
     RaceClass raceClass;
 
+    RaceDistance distance;
+
     @Size(max = 50, message = "Weight class must not exceed 50 characters")
     String weightClass;
 
@@ -54,7 +57,6 @@ public class UpdateTournamentRequest {
 
     @Min(value = 0, message = "Max horse age must be at least 0")
     Integer maxHorseAge;
-
 
     @Min(value = 0, message = "Top weight must be at least 0")
     Integer topWeightLbs;
@@ -136,6 +138,4 @@ public class UpdateTournamentRequest {
     @Min(value = 8, message = "Max approved entries must be at least 8")
     Integer maxApprovedEntries;
 
-    @Min(value = 1, message = "Max approved jockeys must be at least 1")
-    Integer maxApprovedJockeys;
 }

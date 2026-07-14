@@ -62,6 +62,7 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request
                 -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/public/home").permitAll()
                 .requestMatchers(
                         "/api/payments/vnpay/return",
                         "/api/payments/vnpay/ipn",

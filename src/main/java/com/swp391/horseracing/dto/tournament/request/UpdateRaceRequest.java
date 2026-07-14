@@ -1,8 +1,8 @@
 package com.swp391.horseracing.dto.tournament.request;
 
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -24,8 +24,7 @@ public class UpdateRaceRequest {
     @Size(max = 100, message = "Track condition must not exceed 100 characters")
     String trackCondition;
 
-    @Positive(message = "Distance must be positive")
-    Float distance;
+    RaceDistance distance;
 
     @Min(value = 1, message = "Sequence order must be at least 1")
     Integer sequenceOrder;

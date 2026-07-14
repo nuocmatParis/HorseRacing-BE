@@ -2,6 +2,7 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import jakarta.persistence.*;
@@ -188,6 +189,10 @@ public class Tournament {
     @Enumerated(EnumType.STRING)
     @Column(name = "race_class", length = 50)
     RaceClass raceClass;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "distance", nullable = false, length = 50)
+    RaceDistance distance;
 
     @Builder.Default
     @Column(name = "top_weight_lbs")

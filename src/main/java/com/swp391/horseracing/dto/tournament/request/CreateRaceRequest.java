@@ -1,11 +1,11 @@
 package com.swp391.horseracing.dto.tournament.request;
 
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -32,8 +32,7 @@ public class CreateRaceRequest {
     String trackCondition;
 
     @NotNull(message = "Distance is required")
-    @Positive(message = "Distance must be positive")
-    Float distance;
+    RaceDistance distance;
 
     @NotNull(message = "Sequence order is required")
     @Min(value = 1, message = "Sequence order must be at least 1")

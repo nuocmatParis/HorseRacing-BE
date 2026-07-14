@@ -71,7 +71,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
 
         int numberOfCompetitors = entries.size();
         TrackCondition trackCondition = mapTrackCondition(race.getTrackCondition());
-        int raceDistance = race.getDistance() != null ? race.getDistance().intValue() : 0;
+        int raceDistance = race.getDistance() != null ? race.getDistance().getMeters() : 0;
 
         Map<String, Map<String, Object>> resultMap = new HashMap<>();
         for (Map<String, Object> result : aiResults) {
@@ -215,7 +215,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         StringBuilder sb = new StringBuilder();
         sb.append("You are a professional horse racing analyst. Predict the outcome of the following race.\n\n");
         sb.append("Race: ").append(race.getName()).append("\n");
-        sb.append("Distance: ").append(race.getDistance() != null ? race.getDistance().intValue() : 0).append("m\n");
+        sb.append("Distance: ").append(race.getDistance() != null ? race.getDistance().getMeters() : 0).append("m\n");
         sb.append("Track Condition: ").append(race.getTrackCondition()).append("\n");
         sb.append("Number of competitors: ").append(entryDataList.size()).append("\n\n");
 
