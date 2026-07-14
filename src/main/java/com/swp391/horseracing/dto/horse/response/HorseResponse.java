@@ -34,4 +34,5 @@ public class HorseResponse {
     LocalDateTime lastRaceAt;
     LocalDateTime createdAt;
     UUID ownerId;
+    String imageUrl;
 }

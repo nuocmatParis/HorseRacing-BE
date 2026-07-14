@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.response;
 
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.RoundTransitionStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -33,4 +34,10 @@ public class RoundResponse {
     UUID createdById;
     UUID headRefereeId;
     LocalDateTime headRefereeAssignedAt;
+    Integer expectedEntries;
+    Integer plannedRaceCount;
+    Integer qualifiersPerRace;
+    Integer bracketPlanVersion;
+    LocalDateTime advancedAt;
+    RoundTransitionStatus transitionStatus;
 }

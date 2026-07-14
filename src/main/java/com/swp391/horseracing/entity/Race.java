@@ -29,10 +29,10 @@ public class Race {
     @Column(name = "name", nullable = false, length = 150, unique = true)
     String name;
 
-    @Column(name = "start_time", nullable = false)
+    @Column(name = "start_time")
     LocalDateTime startTime;
 
-    @Column(name = "end_time", nullable = false)
+    @Column(name = "end_time")
     LocalDateTime endTime;
 
     @Column(name = "track_condition", nullable = false, length = 100)
@@ -57,10 +57,10 @@ public class Race {
     @Column(name = "schedule_published_at")
     LocalDateTime schedulePublishedAt;
 
-    @Column(name = "prediction_open_at", nullable = false)
+    @Column(name = "prediction_open_at")
     LocalDateTime predictionOpenAt;
 
-    @Column(name = "prediction_close_at", nullable = false)
+    @Column(name = "prediction_close_at")
     LocalDateTime predictionCloseAt;
 
     // ---- Relationships ----

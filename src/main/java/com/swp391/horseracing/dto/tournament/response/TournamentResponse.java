@@ -58,8 +58,12 @@ public class TournamentResponse {
     LocalTime breakStartTime;
     LocalTime breakEndTime;
     Integer maxRounds;
-    Integer maxApprovedHorses;
     Integer maxApprovedJockeys;
+    Integer maxApprovedEntries;
+    Integer plannedRoundCount;
+    Integer plannedRaceCount;
+    String bracketPlanStatus;
+    Integer bracketPlanVersion;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;
@@ -69,6 +73,8 @@ public class TournamentResponse {
     LocalDateTime reviewDeadlineAt;
     LocalDateTime jockeyMatchingDeadlineAt;
     LocalDateTime schedulingDeadlineAt;
+    String currentRoundName;
+    int minRoundGapDays;
     UUID createdById;
     String createdByName;
     boolean overdue;

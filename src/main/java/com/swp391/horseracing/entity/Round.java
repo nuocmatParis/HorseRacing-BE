@@ -2,6 +2,7 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.RoundTransitionStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -45,10 +46,10 @@ public class Round {
     @Column(name = "advancement_rule", columnDefinition = "TEXT", nullable = false)
     String advancementRule;
 
-    @Column(name = "start_date", nullable = false)
+    @Column(name = "start_date")
     LocalDateTime startDate;
 
-    @Column(name = "end_date", nullable = false)
+    @Column(name = "end_date")
     LocalDateTime endDate;
 
     @Column(name = "description", columnDefinition = "TEXT", nullable = false)
@@ -74,6 +75,26 @@ public class Round {
 
     @Column(name = "head_referee_assigned_at")
     LocalDateTime headRefereeAssignedAt;
+
+    @Column(name = "expected_entries")
+    Integer expectedEntries;
+
+    @Column(name = "planned_race_count")
+    Integer plannedRaceCount;
+
+    @Column(name = "qualifiers_per_race")
+    Integer qualifiersPerRace;
+
+    @Column(name = "bracket_plan_version")
+    Integer bracketPlanVersion;
+
+    @Column(name = "advanced_at")
+    LocalDateTime advancedAt;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transition_status", nullable = false, length = 50)
+    RoundTransitionStatus transitionStatus = RoundTransitionStatus.NOT_READY;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

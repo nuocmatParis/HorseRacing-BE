@@ -66,6 +66,8 @@ public class NotificationRecipientResolverImpl implements NotificationRecipientR
         } else if (type == NotificationEventType.JOCKEY_PAYOUT_RELEASED) {
             JockeyHorseContract contract = findContract(event.getAggregateId());
             addIfActive(recipients, contract.getJockey().getUser());
+        } else if (type == NotificationEventType.ROUND_TRANSITION_BLOCKED) {
+            addActiveRoleUsers(recipients, Arrays.asList(RoleName.ADMIN));
         }
         return recipients;
     }

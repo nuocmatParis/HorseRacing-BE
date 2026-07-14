@@ -19,4 +19,5 @@ public interface RaceService {
     RaceResponse rescheduleRace(UUID raceId, com.swp391.horseracing.dto.tournament.request.RescheduleRaceRequest request);
     void cancelRace(UUID raceId, com.swp391.horseracing.dto.tournament.request.CancelRaceRequest request);
     List<java.time.LocalDateTime> getRescheduleProposals(UUID raceId);
+    void validateRoundScheduleForPublication(UUID roundId);
 }

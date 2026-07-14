@@ -38,8 +38,8 @@ public class RaceEntry {
     @JoinColumn(name = "contract_id", nullable = false)
     JockeyHorseContract contract;
 
-    @Column(name = "lane_number", nullable = false)
-    int laneNumber;
+    @Column(name = "lane_number")
+    Integer laneNumber;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

@@ -3,6 +3,10 @@ package com.swp391.horseracing.service;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
+import com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse;
+import com.swp391.horseracing.dto.tournament.response.RoundPreviewDto;
+import com.swp391.horseracing.dto.tournament.request.ConfirmBracketRequest;
+import com.swp391.horseracing.enums.BracketPlanStatus;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.HorseTournamentRegistration;
 import com.swp391.horseracing.entity.Invoice;
@@ -21,6 +25,9 @@ import com.swp391.horseracing.enums.InvoiceType;
 import com.swp391.horseracing.enums.RegistrationStatus;
 import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
+import com.swp391.horseracing.enums.TournamentStatus;
+import com.swp391.horseracing.exception.AppException;
+import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.ContractMapper;
 import com.swp391.horseracing.mapper.HorseTournamentRegistrationMapper;
 import com.swp391.horseracing.mapper.JockeyTournamentRegistrationMapper;
@@ -59,6 +66,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -66,6 +74,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class AdditionalApiBusinessLogicTest {
@@ -81,6 +91,7 @@ class AdditionalApiBusinessLogicTest {
     @Mock WalletTransactionRepository walletTransactionRepository;
     @Mock TournamentRepository tournamentRepository;
     @Mock RaceEntryRepository raceEntryRepository;
+    @Mock BusinessNotificationEventService notificationEventService;
 
     @Mock HorseRepository horseRepository;
     @Mock HorseOwnerRepository horseOwnerRepository;
@@ -95,6 +106,7 @@ class AdditionalApiBusinessLogicTest {
     @Mock RoundRepository roundRepository;
     @Mock RaceRepository raceRepository;
     @Mock RaceRefereeRepository raceRefereeRepository;
+    @Mock RaceService raceService;
 
     @InjectMocks ContractServiceImpl contractService;
     @InjectMocks TournamentRegistrationServiceImpl registrationService;
@@ -188,6 +200,8 @@ class AdditionalApiBusinessLogicTest {
                 registrationId, ContractStatus.PENDING_JOCKEY)).thenReturn(List.of(invitation));
         when(invoiceRepository.findByHorseTournamentRegistration_HorseRegistrationId(registrationId))
                 .thenReturn(Optional.of(invoice));
+        when(contractRepository.save(org.mockito.ArgumentMatchers.any(JockeyHorseContract.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(horseRegistrationRepository.save(registration)).thenReturn(registration);
         when(horseRegistrationMapper.toHorseTournamentRegistrationResponse(registration))
                 .thenReturn(new HorseTournamentRegistrationResponse());
@@ -292,5 +306,149 @@ class AdditionalApiBusinessLogicTest {
         assertEquals(TournamentPhase.REGISTRATION_REVIEW, tournament.getPhase());
         assertEquals(RegistrationStatus.REJECTED, unpaid.getStatus());
         verify(invoiceService).cancelInvoice(invoiceId);
+    }
+
+    @Test
+    void getBracketPreviewDraftPhaseValidatesPowerOf2AndCalculatesRounds() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(64);
+        tournament.setStartDate(java.time.LocalDate.now());
+        tournament.setEndDate(java.time.LocalDate.now().plusDays(30));
+
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(tournamentId, ContractStatus.APPROVED)).thenReturn(0L);
+
+        BracketPreviewResponse response = tournamentService.getBracketPreview(tournamentId);
+
+        assertNotNull(response);
+        assertEquals(64, response.getMaxApprovedEntries());
+        assertEquals(0, response.getActualApprovedEntries());
+        assertEquals(3, response.getRounds().size());
+        assertEquals(4, response.getRounds().get(0).getRaceCount());
+        assertEquals(List.of(16, 16, 16, 16), response.getRounds().get(0).getEntriesPerRace());
+        assertEquals(2, response.getRounds().get(1).getRaceCount());
+        assertEquals(List.of(8, 8), response.getRounds().get(1).getEntriesPerRace());
+        assertEquals(1, response.getRounds().get(2).getRaceCount());
+        assertEquals(List.of(8), response.getRounds().get(2).getEntriesPerRace());
+        assertEquals(7, response.getTotalRaceCount());
+        assertEquals(true, response.isValid());
+    }
+
+    @Test
+    void getBracketPreviewStaleIfActualApprovedEntriesLessThanMinimum() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(64);
+        tournament.setStartDate(java.time.LocalDate.now());
+        tournament.setEndDate(java.time.LocalDate.now().plusDays(30));
+
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(tournamentId, ContractStatus.APPROVED)).thenReturn(30L);
+
+        BracketPreviewResponse response = tournamentService.getBracketPreview(tournamentId);
+
+        assertNotNull(response);
+        assertEquals(false, response.isValid());
+        assertEquals(32, response.getRecommendedMaxApprovedEntries());
+    }
+
+    @Test
+    void getBracketPreviewDistributesFiftyEntriesAsThirteenThirteenTwelveTwelve() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(64);
+        tournament.setStartDate(LocalDate.now());
+        tournament.setEndDate(LocalDate.now().plusDays(30));
+
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(
+                tournamentId, ContractStatus.APPROVED)).thenReturn(50L);
+
+        BracketPreviewResponse response = tournamentService.getBracketPreview(tournamentId);
+
+        assertEquals(true, response.isValid());
+        assertEquals(List.of(13, 13, 12, 12), response.getRounds().get(0).getEntriesPerRace());
+    }
+
+    @Test
+    void getBracketPreviewRejectsNonPowerOfTwo() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(24);
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> tournamentService.getBracketPreview(tournamentId));
+
+        assertEquals(ErrorCode.INVALID_MAX_APPROVED_ENTRIES, exception.getErrorCode());
+    }
+
+    @Test
+    void confirmBracketCreatesOnlyRoundAndRaceSkeletons() {
+        UUID tournamentId = UUID.randomUUID();
+        User admin = new User();
+        admin.setUserId(UUID.randomUUID());
+        admin.setUsername("admin");
+
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setName("Skeleton Cup");
+        tournament.setStatus(TournamentStatus.DRAFT);
+        tournament.setPhase(TournamentPhase.DRAFT);
+        tournament.setStartDate(LocalDate.now());
+        tournament.setEndDate(LocalDate.now().plusDays(30));
+        tournament.setMaxApprovedEntries(64);
+        tournament.setMaxApprovedHorses(64);
+        tournament.setMaxApprovedJockeys(80);
+        tournament.setBracketPlanStatus(BracketPlanStatus.NOT_GENERATED);
+        tournament.setBracketPlanVersion(1);
+        tournament.setCreatedBy(admin);
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("admin", "password"));
+        when(tournamentRepository.findForUpdateByTournamentId(tournamentId)).thenReturn(Optional.of(tournament));
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(
+                tournamentId, ContractStatus.APPROVED)).thenReturn(0L);
+        when(roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId))
+                .thenReturn(Collections.emptyList());
+        when(roundRepository.save(any(com.swp391.horseracing.entity.Round.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(raceRepository.save(any(Race.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(admin));
+        when(tournamentRepository.save(tournament)).thenReturn(tournament);
+        when(tournamentMapper.toTournamentResponse(tournament)).thenReturn(new TournamentResponse());
+
+        tournamentService.confirmBracket(tournamentId, new ConfirmBracketRequest(64, 1));
+
+        assertEquals(BracketPlanStatus.CONFIRMED, tournament.getBracketPlanStatus());
+        assertEquals(2, tournament.getBracketPlanVersion());
+        assertEquals(3, tournament.getPlannedRoundCount());
+        assertEquals(7, tournament.getPlannedRaceCount());
+        verify(roundRepository, times(3)).save(any(com.swp391.horseracing.entity.Round.class));
+        verify(raceRepository, times(7)).save(any(Race.class));
+    }
+
+    @Test
+    void confirmBracketRejectsOutdatedPlanVersionBeforeChangingStructure() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setStatus(TournamentStatus.DRAFT);
+        tournament.setBracketPlanStatus(BracketPlanStatus.NOT_GENERATED);
+        tournament.setBracketPlanVersion(3);
+        when(tournamentRepository.findForUpdateByTournamentId(tournamentId)).thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> tournamentService.confirmBracket(
+                        tournamentId, new ConfirmBracketRequest(64, 2)));
+
+        assertEquals(ErrorCode.BRACKET_PLAN_VERSION_CONFLICT, exception.getErrorCode());
+        verify(roundRepository, never()).deleteAll(any());
     }
 }

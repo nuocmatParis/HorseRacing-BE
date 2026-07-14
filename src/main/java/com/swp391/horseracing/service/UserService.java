@@ -4,6 +4,7 @@ import com.swp391.horseracing.dto.auth.request.ResendOtp;
 import com.swp391.horseracing.dto.auth.request.VerifyEmail;
 import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -14,4 +15,6 @@ public interface UserService {
     UserResponse verifyRegisterOtp(VerifyEmail request);
 
     void resendOtp(ResendOtp request);
+
+    UserResponse uploadAvatar(MultipartFile file);
 }

@@ -46,6 +46,10 @@ public interface JockeyHorseContractRepository extends JpaRepository<JockeyHorse
     List<JockeyHorseContract> findByHorseTournamentRegistration_HorseRegistrationIdAndStatusIn(
             UUID registrationId, Collection<ContractStatus> statuses);
 
+    List<JockeyHorseContract> findByTournament_TournamentIdAndStatus(UUID tournamentId, ContractStatus status);
+
+    long countByTournament_TournamentIdAndStatus(UUID tournamentId, ContractStatus status);
+
     List<JockeyHorseContract> findByTournament_TournamentIdAndStatusAndEscrowStatus(
             UUID tournamentId,
             com.swp391.horseracing.enums.ContractStatus status,

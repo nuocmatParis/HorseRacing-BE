@@ -114,6 +114,11 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
                 title = "Khoản thanh toán Jockey đã được giải ngân";
                 content = "Khoản thanh toán còn lại của hợp đồng đã được chuyển vào ví Jockey.";
             }
+            case ROUND_TRANSITION_BLOCKED -> {
+                title = "Round transition is blocked";
+                content = "Round " + value(payload, "roundName")
+                        + " cannot advance because at least one race has fewer than four eligible finishers.";
+            }
             default -> throw new AppException(ErrorCode.NOTIFICATION_EVENT_INVALID);
         }
         return new NotificationMessage(title, content, policyService.showToast(event.getEventType()));

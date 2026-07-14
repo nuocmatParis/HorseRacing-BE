@@ -1,6 +1,7 @@
 package com.swp391.horseracing.repository;
 
 import com.swp391.horseracing.entity.Race;
+import com.swp391.horseracing.enums.RoundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
@@ -8,7 +9,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.swp391.horseracing.enums.RoundStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +17,7 @@ import java.util.UUID;
 public interface RaceRepository extends JpaRepository<Race, UUID> {
 
     List<Race> findByRound_RoundId(UUID roundId);
+    List<Race> findByRound_RoundIdOrderBySequenceOrderAsc(UUID roundId);
     List<Race> findByRound_RoundIdOrderByStartTimeDesc(UUID roundId);
     boolean existsByRound_RoundIdAndName(UUID roundId, String name);
     boolean existsByRound_RoundIdAndSequenceOrder(UUID roundId, int sequenceOrder);

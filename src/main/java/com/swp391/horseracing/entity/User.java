@@ -54,6 +54,9 @@ public class User {
     @Column(name = "phone_number", length = 20, unique = true)
     String phoneNumber;
 
+    @Column(name = "image_url", length = 500)
+    String imageUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     AccountStatus status;

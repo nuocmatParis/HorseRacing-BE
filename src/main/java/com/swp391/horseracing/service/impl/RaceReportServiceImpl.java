@@ -25,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -43,6 +46,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     RaceReportMapper raceReportMapper;
     RaceResultMapper raceResultMapper;
     UserCurrentService userCurrentService;
+    RoundRepository roundRepository;
     BusinessNotificationEventService notificationEventService;
     ScoringService scoringService;
     PrizeStructureRepository prizeStructureRepository;
@@ -51,6 +55,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     ContractService contractService;
     JockeyHorseContractRepository jockeyHorseContractRepository;
     HorseRatingService horseRatingService;
+    TournamentRepository tournamentRepository;
 
     @Override
     @Transactional
@@ -124,6 +129,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         raceReportRepository.save(report);
 
         race.setStatus(RoundStatus.FINISHED);
+        race.setFinishedAt(LocalDateTime.now());
         raceRepository.save(race);
 
         return raceReportMapper.toRaceReportResponse(report);
@@ -228,6 +234,8 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         notificationEventService.resultPublished(race);
 
+        advanceRoundIfPossible(race.getRound());
+
         return raceReportMapper.toRaceReportResponse(report);
     }
 
@@ -247,7 +255,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         List<RaceResult> results = raceResultRepository.findForUpdateByRace_RaceId(race.getRaceId());
 
         for (RaceResult result : results) {
-            if (result.getStatus() == RaceResultStatus.FINISHED && result.getRank() != null && !result.isPrizePaid()) {
+            if (result.getStatus() == RaceResultStatus.FINISHED && result.getRank() != null && result.getRank() <= 3 && !result.isPrizePaid()) {
                 Optional<PrizeStructure> prizeOpt = Optional.empty();
                 for (PrizeStructure candidate : prizes) {
                     if (candidate.getRank() == result.getRank()) {
@@ -399,10 +407,138 @@ public class RaceReportServiceImpl implements RaceReportService {
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
 
         if (report.getStatus() != ReportStatus.Published) {
-            throw new AppException(ErrorCode.RACE_REPORT_NOT_FOUND);
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_PUBLISHED);
         }
 
         return raceReportMapper.toRaceReportResponse(report);
+    }
+
+    private void advanceRoundIfPossible(Round round) {
+        if (round == null || round.isFinal()) {
+            return;
+        }
+
+        Round lockedRound = roundRepository.findForUpdateByRoundId(round.getRoundId())
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        if (lockedRound.getAdvancedAt() != null
+                || lockedRound.getTransitionStatus() == RoundTransitionStatus.COMPLETED) {
+            return;
+        }
+
+        List<Race> roundRaces = raceRepository
+                .findByRound_RoundIdOrderBySequenceOrderAsc(lockedRound.getRoundId());
+        if (roundRaces.isEmpty()) {
+            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+        }
+        for (Race race : roundRaces) {
+            if (race.getStatus() == RoundStatus.CANCELLED) {
+                blockRoundTransition(lockedRound);
+                return;
+            }
+            if (race.getStatus() != RoundStatus.COMPLETED) {
+                lockedRound.setTransitionStatus(RoundTransitionStatus.NOT_READY);
+                roundRepository.save(lockedRound);
+                return;
+            }
+            RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
+            if (report == null || report.getStatus() != ReportStatus.Published) {
+                lockedRound.setTransitionStatus(RoundTransitionStatus.NOT_READY);
+                roundRepository.save(lockedRound);
+                return;
+            }
+        }
+
+        Round nextRound = roundRepository.findByTournament_TournamentIdAndSequenceOrder(
+                lockedRound.getTournament().getTournamentId(), lockedRound.getSequenceOrder() + 1
+        ).orElseThrow(() -> new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH));
+        List<Race> nextRoundRaces = raceRepository
+                .findByRound_RoundIdOrderBySequenceOrderAsc(nextRound.getRoundId());
+        if (roundRaces.size() % 2 != 0 || nextRoundRaces.size() != roundRaces.size() / 2) {
+            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+        }
+        if (raceEntryRepository.countByRace_Round_RoundId(nextRound.getRoundId()) != 0) {
+            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+        }
+
+        List<List<JockeyHorseContract>> qualifiersByRace = new ArrayList<>();
+        Set<UUID> contractIds = new HashSet<>();
+        Set<UUID> horseIds = new HashSet<>();
+        Set<UUID> jockeyIds = new HashSet<>();
+        for (Race race : roundRaces) {
+            List<RaceResult> qualifiers = getQualifiers(race);
+            if (qualifiers.size() < 4) {
+                blockRoundTransition(lockedRound);
+                return;
+            }
+            List<JockeyHorseContract> contracts = new ArrayList<>();
+            for (int index = 0; index < 4; index++) {
+                JockeyHorseContract contract = qualifiers.get(index).getEntry().getContract();
+                if (!contractIds.add(contract.getContractId())
+                        || !horseIds.add(contract.getHorse().getHorseId())
+                        || !jockeyIds.add(contract.getJockey().getJockeyId())) {
+                    throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+                }
+                contracts.add(contract);
+            }
+            qualifiersByRace.add(contracts);
+        }
+
+        lockedRound.setTransitionStatus(RoundTransitionStatus.READY);
+        User admin = lockedRound.getCreatedBy();
+        for (int targetIndex = 0; targetIndex < nextRoundRaces.size(); targetIndex++) {
+            Race targetRace = nextRoundRaces.get(targetIndex);
+            List<JockeyHorseContract> leftQualifiers = qualifiersByRace.get(targetIndex * 2);
+            List<JockeyHorseContract> rightQualifiers = qualifiersByRace.get(targetIndex * 2 + 1);
+            for (int qualifierIndex = 0; qualifierIndex < 4; qualifierIndex++) {
+                raceEntryRepository.save(buildAdvancedEntry(
+                        targetRace, leftQualifiers.get(qualifierIndex), qualifierIndex + 1, admin));
+                raceEntryRepository.save(buildAdvancedEntry(
+                        targetRace, rightQualifiers.get(qualifierIndex), qualifierIndex + 5, admin));
+            }
+        }
+
+        lockedRound.setAdvancedAt(LocalDateTime.now());
+        lockedRound.setTransitionStatus(RoundTransitionStatus.COMPLETED);
+        roundRepository.save(lockedRound);
+        nextRound.setStatus(RoundStatus.SCHEDULING);
+        roundRepository.save(nextRound);
+
+        Tournament tournament = lockedRound.getTournament();
+        tournament.setPhase(TournamentPhase.SCHEDULING);
+        tournament.setStatus(TournamentStatus.ONGOING);
+        tournament.setCurrentRoundName(nextRound.getRoundName());
+        tournamentRepository.save(tournament);
+    }
+
+    private List<RaceResult> getQualifiers(Race race) {
+        List<RaceResult> qualifiers = new ArrayList<>();
+        for (RaceResult result : raceResultRepository.findByRace_RaceIdOrderByRankAsc(race.getRaceId())) {
+            if (result.getStatus() == RaceResultStatus.FINISHED && result.getRank() != null) {
+                qualifiers.add(result);
+                if (qualifiers.size() == 4) {
+                    break;
+                }
+            }
+        }
+        return qualifiers;
+    }
+
+    private RaceEntry buildAdvancedEntry(Race race, JockeyHorseContract contract,
+                                         int laneNumber, User assignedBy) {
+        return RaceEntry.builder()
+                .race(race)
+                .contract(contract)
+                .laneNumber(laneNumber)
+                .status(RaceEntryStatus.CONFIRMED)
+                .assignedBy(assignedBy)
+                .assignedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private void blockRoundTransition(Round round) {
+        round.setTransitionStatus(RoundTransitionStatus.BLOCKED_NOT_ENOUGH_QUALIFIERS);
+        roundRepository.save(round);
+        notificationEventService.roundTransitionBlocked(round);
     }
 
     @Override

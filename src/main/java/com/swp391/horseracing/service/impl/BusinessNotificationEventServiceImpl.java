@@ -165,6 +165,13 @@ public class BusinessNotificationEventServiceImpl implements BusinessNotificatio
         publishContract(NotificationEventType.JOCKEY_PAYOUT_RELEASED, contract, null, String.valueOf(contract.getFinalPayoutAt()));
     }
 
+    @Override
+    public void roundTransitionBlocked(Round round) {
+        Map<String, Object> payload = tournamentPayload(round.getTournament());
+        payload.put("roundName", round.getRoundName());
+        publish(NotificationEventType.ROUND_TRANSITION_BLOCKED, "ROUND", round.getRoundId(), null, payload);
+    }
+
     private void publishRegistration(NotificationEventType type, String aggregateType, UUID registrationId,
                                      Tournament tournament, String reason) {
         Map<String, Object> payload = tournamentPayload(tournament);
