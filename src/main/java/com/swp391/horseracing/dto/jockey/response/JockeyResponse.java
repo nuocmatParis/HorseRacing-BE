@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.jockey.response;
 
 import com.swp391.horseracing.enums.JockeyStatus;
 import com.swp391.horseracing.enums.JockeyTier;
+import com.swp391.horseracing.enums.Specialization;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import java.math.BigDecimal;
@@ -21,7 +22,7 @@ public class JockeyResponse {
     float weight;
     int experienceYears ;
     String licenseNumber;
-    String specialization;
+    Specialization specialization;
     JockeyStatus status ;
     LocalDateTime createdAt;
     int totalRaces;

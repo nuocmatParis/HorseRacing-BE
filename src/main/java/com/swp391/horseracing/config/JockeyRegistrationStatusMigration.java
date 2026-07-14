@@ -17,10 +17,16 @@ public class JockeyRegistrationStatusMigration implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        jockeyTournamentRegistrationRepository.findByStatus(RegistrationStatus.PENDING_PAYMENT)
-                .forEach(registration -> {
-                    registration.setStatus(RegistrationStatus.PENDING_REVIEW);
-                    jockeyTournamentRegistrationRepository.save(registration);
-                });
+        java.util.List<RegistrationStatus> statusesToMigrate = java.util.List.of(
+                RegistrationStatus.PENDING_PAYMENT,
+                RegistrationStatus.PENDING_REVIEW
+        );
+        for (RegistrationStatus status : statusesToMigrate) {
+            jockeyTournamentRegistrationRepository.findByStatus(status)
+                    .forEach(registration -> {
+                        registration.setStatus(RegistrationStatus.APPROVED);
+                        jockeyTournamentRegistrationRepository.save(registration);
+                    });
+        }
     }
 }

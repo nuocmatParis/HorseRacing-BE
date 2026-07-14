@@ -1,5 +1,6 @@
 package com.swp391.horseracing.entity;
 
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -38,8 +39,9 @@ public class Race {
     @Column(name = "track_condition", nullable = false, length = 100)
     String trackCondition;
 
-    @Column(name = "distance", nullable = false)
-    Float distance;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "distance", nullable = false, length = 50)
+    RaceDistance distance;
 
     @Column(name = "sequence_order", nullable = false)
     int sequenceOrder;

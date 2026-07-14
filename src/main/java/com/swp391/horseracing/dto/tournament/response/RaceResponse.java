@@ -1,5 +1,6 @@
 package com.swp391.horseracing.dto.tournament.response;
 
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -19,7 +20,7 @@ public class RaceResponse {
     LocalDateTime startTime;
     LocalDateTime endTime;
     String trackCondition;
-    Float distance;
+    RaceDistance distance;
     int sequenceOrder;
     RoundStatus status;
     LocalDateTime startedAt;

@@ -2,6 +2,7 @@ package com.swp391.horseracing.dto.tournament.response;
 
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
+import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import lombok.*;
@@ -32,6 +33,7 @@ public class TournamentResponse {
     BigDecimal totalPrizePool;
     HorseBreed allowedBreed;
     RaceClass raceClass;
+    RaceDistance distance;
     int minHorseAge;
     int maxHorseAge;
     int topWeightLbs;

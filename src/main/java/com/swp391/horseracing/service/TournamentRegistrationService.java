@@ -25,10 +25,6 @@ public interface TournamentRegistrationService {
 
     HorseTournamentRegistrationResponse rejectHorseRegistration(UUID registrationId, String reason);
 
-    JockeyTournamentRegistrationResponse approveJockeyRegistration(UUID registrationId);
-
-    JockeyTournamentRegistrationResponse rejectJockeyRegistration(UUID registrationId, String reason);
-
     List<JockeyTournamentRegistrationResponse> getApprovedJockeysByTournament(UUID tournamentId);
 
     List<HorseTournamentRegistrationResponse> getApprovedHorsesByTournament(UUID tournamentId);

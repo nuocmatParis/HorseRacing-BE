@@ -2,6 +2,7 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.JockeyStatus;
 import com.swp391.horseracing.enums.JockeyTier;
+import com.swp391.horseracing.enums.Specialization;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -47,8 +48,9 @@ public class Jockey {
     @Column(name = "license_number", nullable = false, unique = true, length = 50)
     String licenseNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "specialization", nullable = false, length = 100)
-    String specialization;
+    Specialization specialization;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

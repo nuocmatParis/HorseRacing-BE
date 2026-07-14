@@ -138,13 +138,16 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         validateJockeyEligibility(jockey, tournament);
 
+
+
         JockeyTournamentRegistration registration = JockeyTournamentRegistration.builder()
                 .tournament(tournament)
                 .jockey(jockey)
                 .hireFee(request.getHireFee())
-                .status(RegistrationStatus.PENDING_REVIEW)
+                .status(RegistrationStatus.APPROVED)
                 .build();
         registration = jockeyRegistrationRepository.save(registration);
+        notificationEventService.jockeyRegistrationApproved(registration);
 
         return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(registration);
     }
@@ -216,49 +219,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
 
-    @Override
-    @Transactional
-    public JockeyTournamentRegistrationResponse approveJockeyRegistration(UUID registrationId) {
-        JockeyTournamentRegistration registration = jockeyRegistrationRepository.findById(registrationId)
-                .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND));
 
-        validatePendingStatus(registration.getStatus());
-
-        Tournament tournament = registration.getTournament();
-        long approvedCount = jockeyRegistrationRepository.countByTournament_TournamentIdAndStatus(
-                tournament.getTournamentId(), RegistrationStatus.APPROVED);
-        if (tournament.getMaxApprovedJockeys() != null && approvedCount >= tournament.getMaxApprovedJockeys()) {
-            throw new AppException(ErrorCode.JOCKEY_REGISTRATION_LIMIT_EXCEEDED);
-        }
-
-        User currentUser = userCurrentService.getCurrentUser();
-        registration.setStatus(RegistrationStatus.APPROVED);
-        registration.setReviewedBy(currentUser);
-        registration.setReviewedAt(LocalDateTime.now());
-
-        JockeyTournamentRegistration savedRegistration = jockeyRegistrationRepository.save(registration);
-        notificationEventService.jockeyRegistrationApproved(savedRegistration);
-        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(savedRegistration);
-    }
-
-    @Override
-    @Transactional
-    public JockeyTournamentRegistrationResponse rejectJockeyRegistration(UUID registrationId, String reason) {
-        JockeyTournamentRegistration registration = jockeyRegistrationRepository.findById(registrationId)
-                .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_TOURNAMENT_REGISTRATION_NOT_FOUND));
-
-        validatePendingStatus(registration.getStatus());
-
-        User currentUser = userCurrentService.getCurrentUser();
-        registration.setStatus(RegistrationStatus.REJECTED);
-        registration.setReviewedBy(currentUser);
-        registration.setReviewedAt(LocalDateTime.now());
-        registration.setRejectedReason(reason);
-
-        JockeyTournamentRegistration savedRegistration = jockeyRegistrationRepository.save(registration);
-        notificationEventService.jockeyRegistrationRejected(savedRegistration, reason);
-        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(savedRegistration);
-    }
 
     private void validateJockeyEligibility(Jockey jockey, Tournament tournament) {
         if (jockey.getStatus() != JockeyStatus.AVAILABLE) {

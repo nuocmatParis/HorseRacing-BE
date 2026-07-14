@@ -93,7 +93,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer maxEntries = request.getMaxApprovedEntries();
         validateMaxApprovedEntries(maxEntries);
-        validateJockeyCapacity(maxEntries, request.getMaxApprovedJockeys());
         if (request.getMinRoundGapDays() == null || request.getMinRoundGapDays() < 7) {
             throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
         }
@@ -147,6 +146,7 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setPhase(TournamentPhase.DRAFT);
         tournament.setMaxApprovedEntries(maxEntries);
         tournament.setMaxApprovedHorses(maxEntries);
+        tournament.setMaxApprovedJockeys(999999);
         tournament.setBracketPlanStatus(BracketPlanStatus.NOT_GENERATED);
         tournament.setBracketPlanVersion(1);
         tournament.setCreatedBy(currentUser);
@@ -257,9 +257,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer effectiveMaxEntries = request.getMaxApprovedEntries() != null
                 ? request.getMaxApprovedEntries() : tournament.getMaxApprovedEntries();
-        Integer effectiveMaxJockeys = request.getMaxApprovedJockeys() != null
-                ? request.getMaxApprovedJockeys() : tournament.getMaxApprovedJockeys();
-        validateJockeyCapacity(effectiveMaxEntries, effectiveMaxJockeys);
         if (request.getMinRoundGapDays() != null && request.getMinRoundGapDays() < 7) {
             throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
         }
@@ -847,7 +844,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer selectedMax = request.getMaxApprovedEntries();
         validateMaxApprovedEntries(selectedMax);
-        validateJockeyCapacity(selectedMax, tournament.getMaxApprovedJockeys());
         if (previousStatus == BracketPlanStatus.NOT_GENERATED
                 && !selectedMax.equals(tournament.getMaxApprovedEntries())) {
             throw new AppException(ErrorCode.INVALID_MAX_APPROVED_ENTRIES);
@@ -919,7 +915,7 @@ public class TournamentServiceImpl implements TournamentService {
                         .startTime(null)
                         .endTime(null)
                         .trackCondition("TBD")
-                        .distance(1000.0f)
+                        .distance(tournament.getDistance())
                         .sequenceOrder(j)
                         .status(com.swp391.horseracing.enums.RoundStatus.SCHEDULING)
                         .predictionOpenAt(null)

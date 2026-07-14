@@ -1,6 +1,7 @@
 package com.swp391.horseracing.dto.registration.response;
 
 import com.swp391.horseracing.enums.RegistrationStatus;
+import com.swp391.horseracing.enums.Specialization;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -24,7 +25,7 @@ public class JockeyTournamentRegistrationResponse {
     float weight;
     int experienceYears;
     String licenseNumber;
-    String specialization;
+    Specialization specialization;
     BigDecimal hireFee;
     String jockeyStatus;
     String email;
