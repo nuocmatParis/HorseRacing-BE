@@ -745,8 +745,9 @@ public class RaceServiceImpl implements RaceService {
         List<LocalDateTime> proposals = new ArrayList<>();
         
         LocalDate searchDate = LocalDate.now();
-        if (searchDate.isBefore(tournament.getStartDate())) {
-            searchDate = tournament.getStartDate();
+        LocalDate competitionStartDate = tournament.getCompetitionStartAt().toLocalDate();
+        if (searchDate.isBefore(competitionStartDate)) {
+            searchDate = competitionStartDate;
         }
         
         LocalDate endDate = tournament.getEndDate();

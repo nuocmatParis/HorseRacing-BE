@@ -530,8 +530,15 @@ public enum ErrorCode {
     PRIZE_PAYOUT_ALREADY_COMPLETED(2116, HttpStatus.CONFLICT, "Prize payout has already been completed for this tournament"),
     BRACKET_PLAN_VERSION_CONFLICT(2117, HttpStatus.CONFLICT, "Bracket plan version has changed, please preview again"),
     INVALID_JOCKEY_CAPACITY(2118, HttpStatus.BAD_REQUEST, "Max approved jockeys must be at least 125 percent of max approved entries"),
-    TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET(2119, HttpStatus.BAD_REQUEST, "Tournament date range is too short for the selected bracket"),
+    TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET(2119, HttpStatus.BAD_REQUEST, "The final race cannot finish within the tournament date range for the selected bracket"),
     RACE_SCHEDULE_INCOMPLETE(2120, HttpStatus.BAD_REQUEST, "All races in the active round must have a valid schedule before publication"),
+    TOURNAMENT_START_DATE_MUST_BE_TODAY(2121, HttpStatus.BAD_REQUEST, "Tournament start date must be the creation date"),
+    REGISTRATION_OPEN_TIME_IN_PAST(2122, HttpStatus.BAD_REQUEST, "Registration open time cannot be in the past"),
+    REGISTRATION_PERIOD_TOO_SHORT(2123, HttpStatus.BAD_REQUEST, "Registration period is shorter than the minimum required for the selected capacity"),
+    REVIEW_PERIOD_TOO_SHORT(2124, HttpStatus.BAD_REQUEST, "Registration review period must be at least 4 calendar days"),
+    JOCKEY_MATCHING_PERIOD_TOO_SHORT(2125, HttpStatus.BAD_REQUEST, "Jockey matching period is shorter than the minimum required for the selected capacity"),
+    SCHEDULING_PERIOD_TOO_SHORT(2126, HttpStatus.BAD_REQUEST, "Scheduling period must be at least 4 calendar days"),
+    TOURNAMENT_START_DATE_IMMUTABLE(2127, HttpStatus.BAD_REQUEST, "Tournament start date cannot be changed after creation"),
     ;
 
 

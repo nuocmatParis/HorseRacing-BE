@@ -84,7 +84,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         );
 
         if (horseRegistrationRepository.existsHorseWithConflictingTournament(
-                horseId, tournament.getStartDate(), tournament.getEndDate(), activeStatuses)) {
+                horseId,
+                tournament.getCompetitionStartAt().toLocalDate(),
+                tournament.getEndDate().atTime(tournament.getRaceDayEndTime()),
+                activeStatuses)) {
             throw new AppException(ErrorCode.HORSE_TOURNAMENT_TIME_CONFLICT);
         }
 
@@ -132,7 +135,10 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         );
 
         if (jockeyRegistrationRepository.existsJockeyWithConflictingTournament(
-                jockey.getJockeyId(), tournament.getStartDate(), tournament.getEndDate(), activeStatuses)) {
+                jockey.getJockeyId(),
+                tournament.getCompetitionStartAt().toLocalDate(),
+                tournament.getEndDate().atTime(tournament.getRaceDayEndTime()),
+                activeStatuses)) {
             throw new AppException(ErrorCode.JOCKEY_TOURNAMENT_TIME_CONFLICT);
         }
 

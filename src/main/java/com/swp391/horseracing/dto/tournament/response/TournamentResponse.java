@@ -75,6 +75,7 @@ public class TournamentResponse {
     LocalDateTime reviewDeadlineAt;
     LocalDateTime jockeyMatchingDeadlineAt;
     LocalDateTime schedulingDeadlineAt;
+    LocalDateTime competitionStartAt;
     String currentRoundName;
     int minRoundGapDays;
     UUID createdById;

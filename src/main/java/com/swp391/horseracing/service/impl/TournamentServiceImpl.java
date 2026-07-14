@@ -6,6 +6,9 @@ import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse;
 import com.swp391.horseracing.dto.tournament.response.RoundPreviewDto;
+import com.swp391.horseracing.dto.tournament.response.RaceScheduleProposalDto;
+import com.swp391.horseracing.dto.tournament.response.RoundScheduleProposalDto;
+import com.swp391.horseracing.dto.tournament.response.TournamentScheduleProposalResponse;
 import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
@@ -26,6 +29,7 @@ import com.swp391.horseracing.enums.RoundTransitionStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
+import com.swp391.horseracing.policy.TournamentTimelinePolicy;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RaceEntryRepository;
@@ -51,10 +55,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -87,6 +95,10 @@ public class TournamentServiceImpl implements TournamentService {
     @Override
     @Transactional
     public TournamentResponse createTournament(CreateTournamentRequest request) {
+        LocalDate today = LocalDate.now();
+        if (!today.equals(request.getStartDate())) {
+            throw new AppException(ErrorCode.TOURNAMENT_START_DATE_MUST_BE_TODAY);
+        }
         if (request.getEndDate().isBefore(request.getStartDate())) {
             throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
         }
@@ -129,6 +141,16 @@ public class TournamentServiceImpl implements TournamentService {
                 request.getJockeyMatchingDeadlineAt(),
                 request.getSchedulingDeadlineAt()
         );
+        validateTournamentTimeline(
+                request.getStartDate(),
+                request.getRegistrationOpenAt(),
+                request.getRegistrationCloseAt(),
+                request.getReviewDeadlineAt(),
+                request.getJockeyMatchingDeadlineAt(),
+                request.getSchedulingDeadlineAt(),
+                maxEntries,
+                true
+        );
 
         validateHandicapSettings(request.getHandicapEnabled(), request.getTopWeightLbs(), request.getMinWeightLbs(), request.getEquipmentWeightKg());
 
@@ -151,6 +173,10 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setBracketPlanVersion(1);
         tournament.setCreatedBy(currentUser);
         tournament.setCreatedAt(LocalDateTime.now());
+        tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
+                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime()));
+
+        validateTournamentScheduleCapacity(tournament, maxEntries);
 
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -170,15 +196,11 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.TOURNAMENT_NAME_EXISTS);
         }
 
-        if (request.getStartDate() != null && request.getEndDate() != null
-                && request.getEndDate().isBefore(request.getStartDate())) {
-            throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
+        if (request.getStartDate() != null
+                && !request.getStartDate().equals(tournament.getStartDate())) {
+            throw new AppException(ErrorCode.TOURNAMENT_START_DATE_IMMUTABLE);
         }
-        if (request.getStartDate() != null && request.getEndDate() == null
-                && tournament.getEndDate().isBefore(request.getStartDate())) {
-            throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
-        }
-        if (request.getStartDate() == null && request.getEndDate() != null
+        if (request.getEndDate() != null
                 && request.getEndDate().isBefore(tournament.getStartDate())) {
             throw new AppException(ErrorCode.INVALID_TOURNAMENT_DATES);
         }
@@ -257,18 +279,32 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer effectiveMaxEntries = request.getMaxApprovedEntries() != null
                 ? request.getMaxApprovedEntries() : tournament.getMaxApprovedEntries();
+        validateTournamentTimeline(
+                tournament.getStartDate(),
+                regOpen,
+                regClose,
+                reviewAt,
+                matchAt,
+                schedAt,
+                effectiveMaxEntries,
+                false
+        );
         if (request.getMinRoundGapDays() != null && request.getMinRoundGapDays() < 7) {
             throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
         }
 
         tournamentMapper.updateTournament(request, tournament);
         tournament.setMaxApprovedHorses(tournament.getMaxApprovedEntries());
+        tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
+                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime()));
 
         if (!tournament.isHandicapEnabled()) {
             tournament.setTopWeightLbs(0);
             tournament.setMinWeightLbs(0);
             tournament.setEquipmentWeightKg(0.0);
         }
+
+        validateTournamentScheduleCapacity(tournament, effectiveMaxEntries);
 
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -418,6 +454,7 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
         }
         raceService.validateRoundScheduleForPublication(activeRound.getRoundId());
+        validateFinalRoundEndsInsideTournament(tournament, activeRound, racesToPublish);
 
         for (Race race : racesToPublish) {
             if (race.getStatus() != RoundStatus.SCHEDULING && race.getStatus() != RoundStatus.SCHEDULED) {
@@ -490,6 +527,30 @@ public class TournamentServiceImpl implements TournamentService {
         Tournament savedTournament = tournamentRepository.save(tournament);
         notificationEventService.schedulePublished(savedTournament);
         return toResponse(savedTournament);
+    }
+
+    private void validateFinalRoundEndsInsideTournament(Tournament tournament,
+                                                        Round activeRound,
+                                                        List<Race> racesToPublish) {
+        if (!activeRound.isFinal()) {
+            return;
+        }
+
+        LocalDateTime finalRaceEnd = null;
+        for (Race race : racesToPublish) {
+            if (race.getEndTime() == null) {
+                throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
+            }
+            if (finalRaceEnd == null || race.getEndTime().isAfter(finalRaceEnd)) {
+                finalRaceEnd = race.getEndTime();
+            }
+        }
+
+        LocalDateTime tournamentEnd = tournament.getEndDate()
+                .atTime(tournament.getRaceDayEndTime());
+        if (finalRaceEnd == null || finalRaceEnd.isAfter(tournamentEnd)) {
+            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
+        }
     }
 
     @Override
@@ -568,6 +629,44 @@ public class TournamentServiceImpl implements TournamentService {
                 && reviewAt.isBefore(matchingAt)
                 && matchingAt.isBefore(schedulingAt))) {
             throw new AppException(ErrorCode.INVALID_TIMING_ORDER);
+        }
+    }
+
+    private void validateTournamentTimeline(LocalDate startDate,
+                                            LocalDateTime registrationOpenAt,
+                                            LocalDateTime registrationCloseAt,
+                                            LocalDateTime reviewDeadlineAt,
+                                            LocalDateTime jockeyMatchingDeadlineAt,
+                                            LocalDateTime schedulingDeadlineAt,
+                                            int maxApprovedEntries,
+                                            boolean validateOpenTimeAgainstNow) {
+        if (registrationOpenAt.toLocalDate().isBefore(startDate)) {
+            throw new AppException(ErrorCode.REGISTRATION_OPEN_TIME_IN_PAST);
+        }
+        if (validateOpenTimeAgainstNow) {
+            LocalDateTime currentMinute = LocalDateTime.now().withSecond(0).withNano(0);
+            if (registrationOpenAt.isBefore(currentMinute)) {
+                throw new AppException(ErrorCode.REGISTRATION_OPEN_TIME_IN_PAST);
+            }
+        }
+        if (registrationCloseAt.isBefore(
+                TournamentTimelinePolicy.minimumRegistrationCloseAt(
+                        registrationOpenAt, maxApprovedEntries))) {
+            throw new AppException(ErrorCode.REGISTRATION_PERIOD_TOO_SHORT);
+        }
+        if (reviewDeadlineAt.isBefore(
+                TournamentTimelinePolicy.minimumReviewDeadlineAt(registrationCloseAt))) {
+            throw new AppException(ErrorCode.REVIEW_PERIOD_TOO_SHORT);
+        }
+        if (jockeyMatchingDeadlineAt.isBefore(
+                TournamentTimelinePolicy.minimumJockeyMatchingDeadlineAt(
+                        reviewDeadlineAt, maxApprovedEntries))) {
+            throw new AppException(ErrorCode.JOCKEY_MATCHING_PERIOD_TOO_SHORT);
+        }
+        if (schedulingDeadlineAt.isBefore(
+                TournamentTimelinePolicy.minimumSchedulingDeadlineAt(
+                        jockeyMatchingDeadlineAt))) {
+            throw new AppException(ErrorCode.SCHEDULING_PERIOD_TOO_SHORT);
         }
     }
 
@@ -773,17 +872,15 @@ public class TournamentServiceImpl implements TournamentService {
             totalRaceCount += round.getRaceCount();
         }
 
-        int racesPerDay = calculateMaximumRacesPerDay(tournament);
-        int minimumRacingDays = 0;
+        List<Integer> plannedRaceCounts = new ArrayList<>();
         for (com.swp391.horseracing.dto.tournament.response.RoundPreviewDto round : rounds) {
-            minimumRacingDays += divideRoundUp(round.getRaceCount(), racesPerDay);
+            plannedRaceCounts.add(round.getRaceCount());
         }
-        int idleDaysBetweenRounds = Math.max(0, tournament.getMinRoundGapDays() - 1);
-        int minimumCalendarDays = minimumRacingDays
-                + Math.max(0, rounds.size() - 1) * idleDaysBetweenRounds;
-        LocalDate earliestEndDate = tournament.getStartDate()
-                .plusDays(Math.max(0, minimumCalendarDays - 1));
-        boolean scheduleFeasible = !earliestEndDate.isAfter(tournament.getEndDate());
+        ScheduleCalculation schedule = calculateSchedule(tournament, plannedRaceCounts);
+        int minimumRacingDays = schedule.racingDays;
+        int minimumCalendarDays = schedule.calendarDays;
+        LocalDate earliestEndDate = schedule.proposedFinalEndAt.toLocalDate();
+        boolean scheduleFeasible = schedule.fitsTournament;
         if (!scheduleFeasible) {
             valid = false;
             if (errorMessage == null) {
@@ -809,6 +906,77 @@ public class TournamentServiceImpl implements TournamentService {
                 .minimumTournamentCalendarDays(minimumCalendarDays)
                 .earliestPossibleEndDate(earliestEndDate)
                 .scheduleFeasible(scheduleFeasible)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TournamentScheduleProposalResponse getScheduleProposal(UUID tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        if (tournament.getBracketPlanStatus() == BracketPlanStatus.STALE) {
+            throw new AppException(ErrorCode.BRACKET_PLAN_STALE);
+        }
+        validateBracketStructure(tournament);
+
+        List<Round> rounds = roundRepository
+                .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId);
+        List<Integer> raceCounts = new ArrayList<>();
+        for (Round round : rounds) {
+            raceCounts.add(round.getPlannedRaceCount());
+        }
+
+        ScheduleCalculation calculation = calculateSchedule(tournament, raceCounts);
+        if (!calculation.fitsTournament) {
+            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
+        }
+
+        List<RoundScheduleProposalDto> roundProposals = new ArrayList<>();
+        int durationMinutes = tournament.getDefaultRaceOperationalMinutes();
+        for (int roundIndex = 0; roundIndex < rounds.size(); roundIndex++) {
+            Round round = rounds.get(roundIndex);
+            List<Race> races = raceRepository
+                    .findByRound_RoundIdOrderBySequenceOrderAsc(round.getRoundId());
+            List<LocalDateTime> proposedStarts = calculation.roundRaceStartTimes.get(roundIndex);
+            if (races.size() != proposedStarts.size()) {
+                throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
+            }
+
+            List<RaceScheduleProposalDto> raceProposals = new ArrayList<>();
+            for (int raceIndex = 0; raceIndex < races.size(); raceIndex++) {
+                Race race = races.get(raceIndex);
+                LocalDateTime proposedStart = proposedStarts.get(raceIndex);
+                raceProposals.add(RaceScheduleProposalDto.builder()
+                        .raceId(race.getRaceId())
+                        .raceName(race.getName())
+                        .sequenceOrder(race.getSequenceOrder())
+                        .suggestedStartTime(proposedStart)
+                        .suggestedEndTime(proposedStart.plusMinutes(durationMinutes))
+                        .build());
+            }
+
+            LocalDateTime roundStart = proposedStarts.get(0);
+            LocalDateTime roundEnd = proposedStarts.get(proposedStarts.size() - 1)
+                    .plusMinutes(durationMinutes);
+            roundProposals.add(RoundScheduleProposalDto.builder()
+                    .roundId(round.getRoundId())
+                    .roundName(round.getRoundName())
+                    .sequenceOrder(round.getSequenceOrder())
+                    .suggestedStartDate(roundStart)
+                    .suggestedEndDate(roundEnd)
+                    .races(raceProposals)
+                    .build());
+        }
+
+        return TournamentScheduleProposalResponse.builder()
+                .tournamentId(tournamentId)
+                .bracketPlanVersion(tournament.getBracketPlanVersion())
+                .proposedStartAt(calculation.proposedStartAt)
+                .proposedFinalEndAt(calculation.proposedFinalEndAt)
+                .racingDays(calculation.racingDays)
+                .calendarDays(calculation.calendarDays)
+                .fitsTournament(calculation.fitsTournament)
+                .rounds(roundProposals)
                 .build();
     }
 
@@ -1010,6 +1178,162 @@ public class TournamentServiceImpl implements TournamentService {
         return total;
     }
 
+    private void validateTournamentScheduleCapacity(Tournament tournament, Integer maxEntries) {
+        ScheduleCalculation calculation = calculateSchedule(
+                tournament, buildPlannedRaceCounts(maxEntries));
+        if (!calculation.fitsTournament) {
+            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
+        }
+    }
+
+    private List<Integer> buildPlannedRaceCounts(Integer maxEntries) {
+        validateMaxApprovedEntries(maxEntries);
+        List<Integer> raceCounts = new ArrayList<>();
+        int currentRaceCount = calculateFirstRoundRaceCount(maxEntries);
+        while (true) {
+            raceCounts.add(currentRaceCount);
+            if (currentRaceCount == 1) {
+                break;
+            }
+            currentRaceCount /= 2;
+        }
+        return raceCounts;
+    }
+
+    private ScheduleCalculation calculateSchedule(Tournament tournament, List<Integer> raceCounts) {
+        if (raceCounts == null || raceCounts.isEmpty()) {
+            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
+        }
+        calculateMaximumRacesPerDay(tournament);
+
+        LocalDateTime competitionStart = resolveCompetitionStartAt(tournament);
+        LocalDateTime cursor = competitionStart;
+
+        Map<LocalDate, Integer> raceCountByDay = new HashMap<>();
+        Set<LocalDate> racingDates = new LinkedHashSet<>();
+        List<List<LocalDateTime>> roundRaceStartTimes = new ArrayList<>();
+        LocalDateTime proposedStartAt = null;
+        LocalDateTime previousRoundEnd = null;
+        int durationMinutes = tournament.getDefaultRaceOperationalMinutes();
+
+        for (int roundIndex = 0; roundIndex < raceCounts.size(); roundIndex++) {
+            if (previousRoundEnd != null) {
+                cursor = previousRoundEnd.plusDays(tournament.getMinRoundGapDays());
+            }
+
+            List<LocalDateTime> raceStarts = new ArrayList<>();
+            int raceCount = raceCounts.get(roundIndex);
+            for (int raceIndex = 0; raceIndex < raceCount; raceIndex++) {
+                LocalDateTime raceStart = findNextRaceSlot(tournament, cursor, raceCountByDay);
+                LocalDateTime raceEnd = raceStart.plusMinutes(durationMinutes);
+                raceStarts.add(raceStart);
+                racingDates.add(raceStart.toLocalDate());
+                raceCountByDay.put(raceStart.toLocalDate(),
+                        raceCountByDay.getOrDefault(raceStart.toLocalDate(), 0) + 1);
+                if (proposedStartAt == null) {
+                    proposedStartAt = raceStart;
+                }
+                previousRoundEnd = raceEnd;
+                cursor = raceEnd.plusMinutes(tournament.getMinRaceIntervalMinutes());
+            }
+            roundRaceStartTimes.add(raceStarts);
+        }
+
+        LocalDateTime tournamentEnd = tournament.getEndDate()
+                .atTime(tournament.getRaceDayEndTime());
+        boolean fitsTournament = previousRoundEnd != null
+                && !previousRoundEnd.isAfter(tournamentEnd);
+        int calendarDays = previousRoundEnd == null || proposedStartAt == null ? 0
+                : (int) ChronoUnit.DAYS.between(
+                proposedStartAt.toLocalDate(), previousRoundEnd.toLocalDate()) + 1;
+        return new ScheduleCalculation(
+                roundRaceStartTimes,
+                proposedStartAt,
+                previousRoundEnd,
+                racingDates.size(),
+                calendarDays,
+                fitsTournament);
+    }
+
+    private LocalDateTime findNextRaceSlot(Tournament tournament,
+                                           LocalDateTime earliest,
+                                           Map<LocalDate, Integer> raceCountByDay) {
+        LocalDateTime candidate = earliest;
+        LocalDateTime competitionStart = resolveCompetitionStartAt(tournament);
+        if (candidate.isBefore(competitionStart)) {
+            candidate = competitionStart;
+        }
+
+        while (true) {
+            LocalDate date = candidate.toLocalDate();
+            LocalTime dayStart = tournament.getRaceDayStartTime();
+            LocalTime dayEnd = tournament.getRaceDayEndTime();
+            if (candidate.toLocalTime().isBefore(dayStart)) {
+                candidate = date.atTime(dayStart);
+            }
+
+            int racesOnDate = raceCountByDay.getOrDefault(candidate.toLocalDate(), 0);
+            if (racesOnDate >= tournament.getMaxRacesPerDay()) {
+                candidate = nextOperatingDay(candidate.toLocalDate(), dayStart);
+                continue;
+            }
+
+            LocalDateTime candidateEnd = candidate
+                    .plusMinutes(tournament.getDefaultRaceOperationalMinutes());
+            if (!candidateEnd.toLocalDate().equals(candidate.toLocalDate())
+                    || candidateEnd.toLocalTime().isAfter(dayEnd)) {
+                candidate = nextOperatingDay(candidate.toLocalDate(), dayStart);
+                continue;
+            }
+
+            if (Boolean.TRUE.equals(tournament.getApplyBreakTime())
+                    && overlaps(candidate.toLocalTime(), candidateEnd.toLocalTime(),
+                    tournament.getBreakStartTime(), tournament.getBreakEndTime())) {
+                candidate = candidate.toLocalDate().atTime(tournament.getBreakEndTime());
+                continue;
+            }
+            return candidate;
+        }
+    }
+
+    private LocalDateTime nextOperatingDay(LocalDate currentDate, LocalTime dayStart) {
+        return currentDate.plusDays(1).atTime(dayStart);
+    }
+
+    private LocalDateTime resolveCompetitionStartAt(Tournament tournament) {
+        if (tournament.getCompetitionStartAt() != null) {
+            return tournament.getCompetitionStartAt();
+        }
+        if (tournament.getSchedulingDeadlineAt() == null) {
+            return tournament.getStartDate().atTime(tournament.getRaceDayStartTime());
+        }
+        return TournamentTimelinePolicy.competitionStartAt(
+                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime());
+    }
+
+    private static class ScheduleCalculation {
+        final List<List<LocalDateTime>> roundRaceStartTimes;
+        final LocalDateTime proposedStartAt;
+        final LocalDateTime proposedFinalEndAt;
+        final int racingDays;
+        final int calendarDays;
+        final boolean fitsTournament;
+
+        ScheduleCalculation(List<List<LocalDateTime>> roundRaceStartTimes,
+                            LocalDateTime proposedStartAt,
+                            LocalDateTime proposedFinalEndAt,
+                            int racingDays,
+                            int calendarDays,
+                            boolean fitsTournament) {
+            this.roundRaceStartTimes = roundRaceStartTimes;
+            this.proposedStartAt = proposedStartAt;
+            this.proposedFinalEndAt = proposedFinalEndAt;
+            this.racingDays = racingDays;
+            this.calendarDays = calendarDays;
+            this.fitsTournament = fitsTournament;
+        }
+    }
+
     private int calculateMaximumRacesPerDay(Tournament tournament) {
         int operationalMinutes = tournament.getDefaultRaceOperationalMinutes();
         int intervalMinutes = tournament.getMinRaceIntervalMinutes();
@@ -1041,10 +1365,6 @@ public class TournamentServiceImpl implements TournamentService {
             return false;
         }
         return start.isBefore(breakEnd) && end.isAfter(breakStart);
-    }
-
-    private int divideRoundUp(int value, int divisor) {
-        return (value + divisor - 1) / divisor;
     }
 
     private int calculateFirstRoundRaceCount(Integer maxEntries) {

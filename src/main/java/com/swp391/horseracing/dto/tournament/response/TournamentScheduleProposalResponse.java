@@ -1,0 +1,25 @@
+package com.swp391.horseracing.dto.tournament.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TournamentScheduleProposalResponse {
+    UUID tournamentId;
+    Integer bracketPlanVersion;
+    LocalDateTime proposedStartAt;
+    LocalDateTime proposedFinalEndAt;
+    int racingDays;
+    int calendarDays;
+    boolean fitsTournament;
+    List<RoundScheduleProposalDto> rounds;
+}

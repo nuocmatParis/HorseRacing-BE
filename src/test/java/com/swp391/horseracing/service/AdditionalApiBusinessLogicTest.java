@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrat
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse;
 import com.swp391.horseracing.dto.tournament.response.RoundPreviewDto;
+import com.swp391.horseracing.dto.tournament.response.TournamentScheduleProposalResponse;
 import com.swp391.horseracing.dto.tournament.request.ConfirmBracketRequest;
 import com.swp391.horseracing.enums.BracketPlanStatus;
 import com.swp391.horseracing.entity.HorseOwner;
@@ -450,5 +451,131 @@ class AdditionalApiBusinessLogicTest {
 
         assertEquals(ErrorCode.BRACKET_PLAN_VERSION_CONFLICT, exception.getErrorCode());
         verify(roundRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void bracketOneHundredTwentyEightMustFitFinalInsideTournament() {
+        UUID tournamentId = UUID.randomUUID();
+        LocalDate startDate = LocalDate.of(2026, 8, 1);
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(128);
+        tournament.setStartDate(startDate);
+        tournament.setEndDate(startDate.plusDays(20));
+        tournament.setSchedulingDeadlineAt(startDate.minusDays(1).atTime(18, 0));
+
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(
+                tournamentId, ContractStatus.APPROVED)).thenReturn(0L);
+
+        BracketPreviewResponse tooShort = tournamentService.getBracketPreview(tournamentId);
+        assertEquals(false, tooShort.isScheduleFeasible());
+        assertEquals(false, tooShort.isValid());
+
+        tournament.setEndDate(startDate.plusDays(30));
+        BracketPreviewResponse enoughTime = tournamentService.getBracketPreview(tournamentId);
+        assertEquals(true, enoughTime.isScheduleFeasible());
+        assertEquals(true, enoughTime.isValid());
+        assertEquals(LocalDate.of(2026, 8, 24), enoughTime.getEarliestPossibleEndDate());
+    }
+
+    @Test
+    void confirmBracketOneHundredTwentyEightRejectsShortTournament() {
+        UUID tournamentId = UUID.randomUUID();
+        LocalDate startDate = LocalDate.of(2026, 8, 1);
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setName("Short 128 Cup");
+        tournament.setStatus(TournamentStatus.DRAFT);
+        tournament.setPhase(TournamentPhase.DRAFT);
+        tournament.setStartDate(startDate);
+        tournament.setEndDate(startDate.plusDays(20));
+        tournament.setSchedulingDeadlineAt(startDate.minusDays(1).atTime(18, 0));
+        tournament.setMaxApprovedEntries(128);
+        tournament.setMaxApprovedHorses(128);
+        tournament.setMaxApprovedJockeys(999999);
+        tournament.setBracketPlanStatus(BracketPlanStatus.NOT_GENERATED);
+        tournament.setBracketPlanVersion(1);
+
+        when(tournamentRepository.findForUpdateByTournamentId(tournamentId))
+                .thenReturn(Optional.of(tournament));
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(contractRepository.countByTournament_TournamentIdAndStatus(
+                tournamentId, ContractStatus.APPROVED)).thenReturn(0L);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> tournamentService.confirmBracket(
+                        tournamentId, new ConfirmBracketRequest(128, 1)));
+
+        assertEquals(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET,
+                exception.getErrorCode());
+        verify(roundRepository, never()).save(any(com.swp391.horseracing.entity.Round.class));
+        verify(raceRepository, never()).save(any(Race.class));
+    }
+
+    @Test
+    void scheduleProposalReturnsTimesForEveryRoundAndRace() {
+        UUID tournamentId = UUID.randomUUID();
+        LocalDate startDate = LocalDate.of(2026, 8, 1);
+        Tournament tournament = new Tournament();
+        tournament.setTournamentId(tournamentId);
+        tournament.setMaxApprovedEntries(32);
+        tournament.setStartDate(startDate);
+        tournament.setEndDate(startDate.plusDays(20));
+        tournament.setSchedulingDeadlineAt(startDate.minusDays(1).atTime(18, 0));
+        tournament.setBracketPlanStatus(BracketPlanStatus.CONFIRMED);
+        tournament.setBracketPlanVersion(2);
+        tournament.setPlannedRoundCount(2);
+        tournament.setPlannedRaceCount(3);
+
+        com.swp391.horseracing.entity.Round firstRound = bracketRound(
+                tournament, 1, false, 2, 4);
+        com.swp391.horseracing.entity.Round finalRound = bracketRound(
+                tournament, 2, true, 1, 0);
+        Race firstRace = bracketRace(firstRound, 1);
+        Race secondRace = bracketRace(firstRound, 2);
+        Race finalRace = bracketRace(finalRound, 1);
+
+        when(tournamentRepository.findById(tournamentId)).thenReturn(Optional.of(tournament));
+        when(roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId))
+                .thenReturn(List.of(firstRound, finalRound));
+        when(raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(firstRound.getRoundId()))
+                .thenReturn(List.of(firstRace, secondRace));
+        when(raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(finalRound.getRoundId()))
+                .thenReturn(List.of(finalRace));
+
+        TournamentScheduleProposalResponse response = tournamentService.getScheduleProposal(tournamentId);
+
+        assertEquals(true, response.isFitsTournament());
+        assertEquals(2, response.getRounds().size());
+        assertEquals(2, response.getRounds().get(0).getRaces().size());
+        assertEquals(1, response.getRounds().get(1).getRaces().size());
+        assertEquals(response.getProposedFinalEndAt(),
+                response.getRounds().get(1).getRaces().get(0).getSuggestedEndTime());
+    }
+
+    private com.swp391.horseracing.entity.Round bracketRound(
+            Tournament tournament, int sequence, boolean isFinal, int raceCount, int qualifiers) {
+        com.swp391.horseracing.entity.Round round = new com.swp391.horseracing.entity.Round();
+        round.setRoundId(UUID.randomUUID());
+        round.setRoundName(isFinal ? "Final" : "Round " + sequence);
+        round.setTournament(tournament);
+        round.setSequenceOrder(sequence);
+        round.setFinal(isFinal);
+        round.setMinEntries(8);
+        round.setMaxEntries(16);
+        round.setPlannedRaceCount(raceCount);
+        round.setQualifiersPerRace(qualifiers);
+        round.setBracketPlanVersion(2);
+        return round;
+    }
+
+    private Race bracketRace(com.swp391.horseracing.entity.Round round, int sequence) {
+        Race race = new Race();
+        race.setRaceId(UUID.randomUUID());
+        race.setName(round.getRoundName() + " Race " + sequence);
+        race.setRound(round);
+        race.setSequenceOrder(sequence);
+        return race;
     }
 }

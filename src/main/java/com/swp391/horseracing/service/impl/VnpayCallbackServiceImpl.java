@@ -72,7 +72,7 @@ public class VnpayCallbackServiceImpl implements VnpayCallbackService {
         String responseCode = params.get("vnp_ResponseCode");
         String transactionStatus = params.get("vnp_TransactionStatus");
 
-        if ("00".equals(responseCode) && "00".equals(transactionStatus)) {
+        if ("00".equals(responseCode) && ("00".equals(transactionStatus) || transactionStatus == null || transactionStatus.isEmpty())) {
             completeDeposit(paymentTransaction);
             return;
         }

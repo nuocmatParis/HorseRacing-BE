@@ -42,12 +42,14 @@ public class Transaction {
      * RaceResult entity làm sau.
      */
     @Column(name = "race_result_id", columnDefinition = "CHAR(36)")
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID raceResultId;
 
     /**
      * JockeyHorseContract entity làm sau.
      */
     @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = true)
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID contractId;
 
     @Enumerated(EnumType.STRING)

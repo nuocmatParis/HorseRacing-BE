@@ -368,6 +368,13 @@ public class AdminController {
                 .build();
     }
 
+    @GetMapping("/tournaments/{id}/schedule-proposal")
+    public ApiResponse<TournamentScheduleProposalResponse> getScheduleProposal(@PathVariable UUID id) {
+        return ApiResponse.<TournamentScheduleProposalResponse>builder()
+                .result(tournamentService.getScheduleProposal(id))
+                .build();
+    }
+
     @PostMapping("/tournaments/{id}/bracket-confirm")
     public ApiResponse<TournamentResponse> confirmBracket(@PathVariable UUID id,
                                                            @Valid @RequestBody ConfirmBracketRequest request) {

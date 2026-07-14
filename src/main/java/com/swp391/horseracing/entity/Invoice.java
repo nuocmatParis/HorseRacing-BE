@@ -44,6 +44,7 @@ public class Invoice {
      * Jockey_Horse_Contract ch lamf.
      */
     @Column(name = "contract_id", columnDefinition = "CHAR(36)", nullable = true)
+    @JdbcTypeCode(SqlTypes.CHAR)
     UUID contractId;
 
     @Enumerated(EnumType.STRING)
