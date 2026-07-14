@@ -1,4 +1,6 @@
 package com.swp391.horseracing.controller;
+
+import com.swp391.horseracing.config.VnpayProperties;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.wallet.request.DepositRequest;
 import com.swp391.horseracing.dto.wallet.response.VnpayDepositResponse;
@@ -6,28 +8,33 @@ import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.service.VnpayCallbackService;
 import com.swp391.horseracing.service.VnpayPaymentService;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse; // <-- Thêm import này
 import jakarta.validation.Valid;
-import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.NonFinal; // <-- Thêm import này nếu dùng @Value với @RequiredArgsConstructor
-import org.springframework.beans.factory.annotation.Value; // <-- Thêm import này
-import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.io.IOException;
+import java.net.URI;
 import java.util.Map;
-import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/payments/vnpay")
 @RequiredArgsConstructor
 public class VnpayController {
+    private static final String DEFAULT_FRONTEND_RETURN_URL =
+            "http://localhost:5173/vnpay/return";
+
     private final VnpayPaymentService vnpayPaymentService;
     private final VnpayCallbackService vnpayCallbackService;
-
-    @Value("${vnpay.frontend-url:http://localhost:5173/vnpay/return}")
-    @NonFinal
-    private String frontendUrl;
+    private final VnpayProperties vnpayProperties;
 
     @PostMapping("/deposit")
     public ApiResponse<VnpayDepositResponse> createDepositPayment(
@@ -38,26 +45,39 @@ public class VnpayController {
                 .build();
     }
 
-    // Thay đổi API này để redirect thay vì trả JSON trống
     @GetMapping("/return")
-    public void vnpayReturn(@RequestParam Map<String, String> params, HttpServletResponse response) throws IOException {
+    public ResponseEntity<Void> vnpayReturn(
+            @RequestParam Map<String, String> params) {
+        boolean callbackProcessed = true;
+
         try {
             vnpayCallbackService.handleReturn(params);
-        } catch (Exception e) {
-            // Log lỗi nếu cần thiết
+        } catch (AppException exception) {
+            callbackProcessed = false;
+            log.warn(
+                    "Cannot process VNPay return for transaction {}: {}",
+                    params.get("vnp_TxnRef"),
+                    exception.getMessage()
+            );
+        } catch (Exception exception) {
+            callbackProcessed = false;
+            log.error(
+                    "Unexpected error while processing VNPay return for transaction {}",
+                    params.get("vnp_TxnRef"),
+                    exception
+            );
         }
 
-        // Chuyển query parameters gốc từ VNPay sang URL frontend
-        String queryString = params.entrySet().stream()
-                .map(entry -> entry.getKey() + "=" + entry.getValue())
-                .collect(Collectors.joining("&"));
+        URI frontendReturnUri = buildFrontendReturnUri(params, callbackProcessed);
 
-        // Redirect thẳng về Frontend
-        response.sendRedirect(frontendUrl + "?" + queryString);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(frontendReturnUri)
+                .build();
     }
 
     @GetMapping("/ipn")
-    public Map<String, String> vnpayIpn(@RequestParam Map<String, String> params) {
+    public Map<String, String> vnpayIpn(
+            @RequestParam Map<String, String> params) {
         try {
             vnpayCallbackService.handleIpn(params);
 
@@ -65,18 +85,75 @@ public class VnpayController {
                     "RspCode", "00",
                     "Message", "Confirm Success"
             );
-
         } catch (AppException exception) {
             return Map.of(
                     "RspCode", "99",
                     "Message", exception.getMessage()
             );
-
         } catch (Exception exception) {
             return Map.of(
                     "RspCode", "99",
                     "Message", "Unknown error"
             );
+        }
+    }
+
+    private URI buildFrontendReturnUri(
+            Map<String, String> params,
+            boolean callbackProcessed) {
+        String responseCode = params.get("vnp_ResponseCode");
+        String transactionStatus = params.get("vnp_TransactionStatus");
+        boolean vnpaySuccessful = "00".equals(responseCode)
+                && (transactionStatus == null
+                || transactionStatus.isBlank()
+                || "00".equals(transactionStatus));
+        boolean paymentSuccessful = callbackProcessed && vnpaySuccessful;
+
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder
+                .fromUriString(resolveFrontendReturnUrl())
+                .queryParam(
+                        "paymentStatus",
+                        paymentSuccessful ? "success" : "failed"
+                );
+
+        addQueryParamIfPresent(uriBuilder, "responseCode", responseCode);
+        addQueryParamIfPresent(
+                uriBuilder,
+                "transactionStatus",
+                transactionStatus
+        );
+        addQueryParamIfPresent(
+                uriBuilder,
+                "transactionRef",
+                params.get("vnp_TxnRef")
+        );
+        addQueryParamIfPresent(
+                uriBuilder,
+                "amount",
+                params.get("vnp_Amount")
+        );
+
+        return uriBuilder.build()
+                .encode()
+                .toUri();
+    }
+
+    private String resolveFrontendReturnUrl() {
+        String configuredUrl = vnpayProperties.getFrontendReturnUrl();
+
+        if (configuredUrl == null || configuredUrl.isBlank()) {
+            return DEFAULT_FRONTEND_RETURN_URL;
+        }
+
+        return configuredUrl.trim();
+    }
+
+    private void addQueryParamIfPresent(
+            UriComponentsBuilder uriBuilder,
+            String name,
+            String value) {
+        if (value != null && !value.isBlank()) {
+            uriBuilder.queryParam(name, value);
         }
     }
 }

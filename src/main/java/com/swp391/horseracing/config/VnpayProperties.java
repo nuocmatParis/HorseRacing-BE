@@ -20,4 +20,6 @@ public class VnpayProperties {
     private String returnUrl;
 
     private String ipnUrl;
+
+    private String frontendReturnUrl;
 }

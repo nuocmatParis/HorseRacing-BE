@@ -179,6 +179,9 @@ public class Tournament {
     @Column(name = "scheduling_deadline_at", nullable = false)
     LocalDateTime schedulingDeadlineAt;
 
+    @Column(name = "competition_start_at", nullable = false)
+    LocalDateTime competitionStartAt;
+
     @Column(name = "current_round_name", length = 100)
     String currentRoundName;
 

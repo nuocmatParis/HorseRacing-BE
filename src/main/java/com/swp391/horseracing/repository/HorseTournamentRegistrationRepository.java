@@ -33,12 +33,12 @@ public interface HorseTournamentRegistrationRepository extends JpaRepository<Hor
     @Query("SELECT COUNT(r) > 0 FROM HorseTournamentRegistration r " +
             "WHERE r.horse.horseId = :horseId " +
             "AND r.status IN :statuses " +
-            "AND r.tournament.startDate <= :endDate " +
+            "AND r.tournament.competitionStartAt <= :endDateTime " +
             "AND r.tournament.endDate >= :startDate")
     boolean existsHorseWithConflictingTournament(
             @Param("horseId") UUID horseId,
             @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate,
+            @Param("endDateTime") java.time.LocalDateTime endDateTime,
             @Param("statuses") List<RegistrationStatus> statuses);
 
     long countByTournament_TournamentIdAndStatus(UUID tournamentId, RegistrationStatus status);

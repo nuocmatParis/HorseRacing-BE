@@ -79,7 +79,7 @@ public class RoundServiceImpl implements RoundService {
             }
         }
 
-        if (request.getStartDate().toLocalDate().isBefore(tournament.getStartDate())
+        if (request.getStartDate().isBefore(tournament.getCompetitionStartAt())
                 || request.getEndDate().toLocalDate().isAfter(tournament.getEndDate())) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
         }
@@ -148,7 +148,7 @@ public class RoundServiceImpl implements RoundService {
         }
 
         if (startDate != null && endDate != null
-                && (startDate.toLocalDate().isBefore(tournament.getStartDate())
+                && (startDate.isBefore(tournament.getCompetitionStartAt())
                 || endDate.toLocalDate().isAfter(tournament.getEndDate()))) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
         }

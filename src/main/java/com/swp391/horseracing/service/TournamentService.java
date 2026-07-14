@@ -35,4 +35,7 @@ public interface TournamentService {
     com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse getBracketPreview(UUID tournamentId);
 
     TournamentResponse confirmBracket(UUID tournamentId, ConfirmBracketRequest request);
+
+    com.swp391.horseracing.dto.tournament.response.TournamentScheduleProposalResponse
+    getScheduleProposal(UUID tournamentId);
 }
