@@ -1,6 +1,5 @@
 package com.swp391.horseracing.entity;
 
-import com.swp391.horseracing.enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -11,35 +10,35 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table(name = "notifications")
 @Entity
+@Table(name = "notifications", uniqueConstraints =
+        @UniqueConstraint(name = "uk_notification_event_recipient", columnNames = {"event_id", "recipient_user_id"}))
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class Notification {
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "noti_id", columnDefinition = "CHAR(36)")
+    @Column(name = "notification_id", columnDefinition = "CHAR(36)")
     @JdbcTypeCode(SqlTypes.CHAR)
-    UUID notiId;
+    UUID notificationId;
 
-    @Column(name = "user_id", nullable = false, columnDefinition = "CHAR(36)")
-    @JdbcTypeCode(SqlTypes.CHAR)
-    UUID userId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "event_id", nullable = false)
+    NotificationEvent event;
 
-    @Column(name = "title", nullable = false, length = 200)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "recipient_user_id", nullable = false)
+    User recipient;
+
+    @Column(nullable = false, length = 200)
     String title;
 
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     String content;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "notification_type", nullable = false, length = 50)
-    NotificationType notificationType;
 
     @Column(name = "related_type", length = 50)
     String relatedType;
@@ -48,14 +47,25 @@ public class Notification {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID relatedId;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    LocalDateTime createdAt;
+    @Builder.Default
+    @Column(name = "visible_in_app", nullable = false)
+    boolean visibleInApp = true;
+
+    @Builder.Default
+    @Column(name = "show_toast", nullable = false)
+    boolean showToast = true;
 
     @Builder.Default
     @Column(name = "is_read", nullable = false)
-    Boolean isRead = false;
+    boolean read = false;
 
     @Column(name = "read_at")
     LocalDateTime readAt;
+
+    @Column(name = "archived_at")
+    LocalDateTime archivedAt;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    LocalDateTime createdAt;
 }

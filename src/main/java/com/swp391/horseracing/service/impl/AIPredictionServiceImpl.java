@@ -1,8 +1,8 @@
 package com.swp391.horseracing.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.swp391.horseracing.dto.prediction.response.AIPredictionResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.TrackCondition;
@@ -295,7 +295,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
             }
 
             return results;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to parse AI response: {}", aiResponse, e);
             throw new AppException(ErrorCode.AI_PREDICTION_INVALID_RESPONSE);
         }

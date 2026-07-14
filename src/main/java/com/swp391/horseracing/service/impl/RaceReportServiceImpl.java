@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import com.swp391.horseracing.mapper.RaceReportMapper;
 import com.swp391.horseracing.mapper.RaceResultMapper;
 import com.swp391.horseracing.repository.*;
-import com.swp391.horseracing.service.NotificationService;
 import com.swp391.horseracing.service.RaceReportService;
 import com.swp391.horseracing.service.ScoringService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -44,7 +43,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     RaceReportMapper raceReportMapper;
     RaceResultMapper raceResultMapper;
     UserCurrentService userCurrentService;
-    NotificationService notificationService;
+    BusinessNotificationEventService notificationEventService;
     ScoringService scoringService;
     PrizeStructureRepository prizeStructureRepository;
     WalletRepository walletRepository;
@@ -227,7 +226,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         // 4. Giải ngân 70% hire fee cho toàn bộ Jockey (nếu là final round)
         releaseJockeyFinalPayoutIfTournamentFinished(race);
 
-        sendNotificationsForPublishedReport(race);
+        notificationEventService.resultPublished(race);
 
         return raceReportMapper.toRaceReportResponse(report);
     }
@@ -249,9 +248,13 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         for (RaceResult result : results) {
             if (result.getStatus() == RaceResultStatus.FINISHED && result.getRank() != null && !result.isPrizePaid()) {
-                Optional<PrizeStructure> prizeOpt = prizes.stream()
-                        .filter(p -> p.getRank() == result.getRank())
-                        .findFirst();
+                Optional<PrizeStructure> prizeOpt = Optional.empty();
+                for (PrizeStructure candidate : prizes) {
+                    if (candidate.getRank() == result.getRank()) {
+                        prizeOpt = Optional.of(candidate);
+                        break;
+                    }
+                }
 
                 if (prizeOpt.isPresent()) {
                     PrizeStructure prize = prizeOpt.get();
@@ -358,7 +361,8 @@ public class RaceReportServiceImpl implements RaceReportService {
                         result.setPrizeStatus(PrizeStatus.Paid);
                         result.setPrizePaid(true);
                         result.setPrizePaidAt(LocalDateTime.now());
-                        raceResultRepository.save(result);
+                        RaceResult savedResult = raceResultRepository.save(result);
+                        notificationEventService.prizeReceived(savedResult);
                     }
                 }
             }
@@ -412,31 +416,4 @@ public class RaceReportServiceImpl implements RaceReportService {
                 .toList();
     }
 
-    private void sendNotificationsForPublishedReport(Race race) {
-        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(
-                race.getRaceId());
-
-        for (RaceEntry entry : entries) {
-            UUID ownerUserId = entry.getContract().getOwner().getUser().getUserId();
-            UUID jockeyUserId = entry.getContract().getJockey().getUser().getUserId();
-
-            notificationService.sendNotification(
-                    ownerUserId,
-                    "Race Result Published",
-                    "Race \"" + race.getName() + "\" results have been published.",
-                    NotificationType.ResultPublished,
-                    "Race",
-                    race.getRaceId()
-            );
-
-            notificationService.sendNotification(
-                    jockeyUserId,
-                    "Race Result Published",
-                    "Race \"" + race.getName() + "\" results have been published.",
-                    NotificationType.ResultPublished,
-                    "Race",
-                    race.getRaceId()
-            );
-        }
-    }
 }

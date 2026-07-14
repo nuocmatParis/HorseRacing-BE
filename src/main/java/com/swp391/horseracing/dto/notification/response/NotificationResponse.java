@@ -1,27 +1,25 @@
 package com.swp391.horseracing.dto.notification.response;
 
-import com.swp391.horseracing.enums.NotificationType;
-import lombok.*;
-import lombok.experimental.FieldDefaults;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.swp391.horseracing.enums.NotificationEventType;
+import lombok.Builder;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
-@FieldDefaults(level = AccessLevel.PRIVATE)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class NotificationResponse {
-
-    UUID notiId;
-    UUID userId;
-    String title;
-    String content;
-    NotificationType notificationType;
-    String relatedType;
-    UUID relatedId;
-    LocalDateTime createdAt;
-    boolean isRead;
-    LocalDateTime readAt;
+    private UUID notificationId;
+    private NotificationEventType eventType;
+    private String title;
+    private String content;
+    private String relatedType;
+    private UUID relatedId;
+    private boolean showToast;
+    private boolean read;
+    private LocalDateTime readAt;
+    private LocalDateTime createdAt;
 }

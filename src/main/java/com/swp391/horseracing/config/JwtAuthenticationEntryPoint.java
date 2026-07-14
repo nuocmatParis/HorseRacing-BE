@@ -1,6 +1,6 @@
 package com.swp391.horseracing.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.exception.ErrorCode;
 import jakarta.servlet.ServletException;

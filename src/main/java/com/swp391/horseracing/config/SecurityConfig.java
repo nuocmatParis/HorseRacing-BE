@@ -64,7 +64,8 @@ public class SecurityConfig {
                 .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                 .requestMatchers(
                         "/api/payments/vnpay/return",
-                        "/api/payments/vnpay/ipn").permitAll()
+                        "/api/payments/vnpay/ipn",
+                        "/ws/**").permitAll()
                 .anyRequest().authenticated());
 
         httpSecurity.oauth2ResourceServer(oath2

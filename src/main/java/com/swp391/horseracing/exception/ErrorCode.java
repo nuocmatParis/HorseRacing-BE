@@ -502,6 +502,11 @@ public enum ErrorCode {
     HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
     RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
     PREDICTION_RESULT_NOT_AVAILABLE(1818, HttpStatus.CONFLICT, "Prediction result is not available yet"),
+
+    // NOTIFICATION
+    NOTIFICATION_NOT_FOUND(1901, HttpStatus.NOT_FOUND, "Notification not found"),
+    NOTIFICATION_EVENT_INVALID(1902, HttpStatus.BAD_REQUEST, "Notification event is invalid"),
+    NOTIFICATION_PAYLOAD_INVALID(1903, HttpStatus.BAD_REQUEST, "Notification event payload is invalid"),
     ;
 
 

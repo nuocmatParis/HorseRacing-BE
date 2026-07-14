@@ -11,6 +11,7 @@ import com.swp391.horseracing.mapper.HorseTournamentRegistrationMapper;
 import com.swp391.horseracing.mapper.JockeyTournamentRegistrationMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.InvoiceService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import com.swp391.horseracing.service.PaymentService;
 import com.swp391.horseracing.service.TournamentRegistrationService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -45,6 +46,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
     PaymentService paymentService;
     InvoiceRepository invoiceRepository;
     JockeyHorseContractRepository contractRepository;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -183,7 +185,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
 
-        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(horseRegistrationRepository.save(registration));
+        HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
+        notificationEventService.horseRegistrationApproved(savedRegistration);
+        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
 
     @Override
@@ -207,7 +211,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
 
-        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(horseRegistrationRepository.save(registration));
+        HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
+        notificationEventService.horseRegistrationRejected(savedRegistration, reason);
+        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
 
     @Override
@@ -230,7 +236,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setReviewedBy(currentUser);
         registration.setReviewedAt(LocalDateTime.now());
 
-        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(jockeyRegistrationRepository.save(registration));
+        JockeyTournamentRegistration savedRegistration = jockeyRegistrationRepository.save(registration);
+        notificationEventService.jockeyRegistrationApproved(savedRegistration);
+        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(savedRegistration);
     }
 
     @Override
@@ -247,7 +255,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setReviewedAt(LocalDateTime.now());
         registration.setRejectedReason(reason);
 
-        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(jockeyRegistrationRepository.save(registration));
+        JockeyTournamentRegistration savedRegistration = jockeyRegistrationRepository.save(registration);
+        notificationEventService.jockeyRegistrationRejected(savedRegistration, reason);
+        return jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(savedRegistration);
     }
 
     private void validateJockeyEligibility(Jockey jockey, Tournament tournament) {
@@ -490,7 +500,8 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
             invitation.setCancelReason("Owner withdrew the horse registration: " + reason.trim());
             invitation.setAdvancePayoutStatus(AdvancePayoutStatus.CANCELLED);
             invitation.setFinalPayoutStatus(FinalPayoutStatus.CANCELLED);
-            contractRepository.save(invitation);
+            JockeyHorseContract savedInvitation = contractRepository.save(invitation);
+            notificationEventService.contractCancelled(savedInvitation, savedInvitation.getCancelReason());
         }
 
         java.util.Optional<Invoice> invoice = invoiceRepository
@@ -502,8 +513,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         registration.setStatus(RegistrationStatus.WITHDRAWN);
         registration.setWithdrawnAt(now);
         registration.setWithdrawReason(reason.trim());
-        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(
-                horseRegistrationRepository.save(registration));
+        HorseTournamentRegistration savedRegistration = horseRegistrationRepository.save(registration);
+        notificationEventService.horseRegistrationWithdrawn(savedRegistration, reason.trim());
+        return horseRegistrationMapper.toHorseTournamentRegistrationResponse(savedRegistration);
     }
 
     private boolean isWithdrawableStatus(RegistrationStatus status) {

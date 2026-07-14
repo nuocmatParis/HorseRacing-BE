@@ -1,464 +1,510 @@
-# PLAN — Multi-round Lifecycle và các phần còn thiếu sau review
+# PLAN — Tự động đề xuất cây giải Round/Race
 
-File này chỉ ghi các đầu việc còn thiếu sau lần review code mới nhất. Không đưa lại những phần đã hoàn thành và đang chạy đúng nếu không cần sửa.
+## 1. Mục tiêu
 
----
+Khi Admin tạo Tournament, Admin chỉ cấu hình giới hạn hồ sơ được duyệt và policy tổ chức race. Hệ thống phải tự tính các cây giải Round/Race hợp lệ để Admin lựa chọn.
 
-## 1. Kết luận hiện trạng
+Hệ thống cần bảo đảm:
 
-### 1.1. Prediction scoring — đã đúng rule hiện tại
-
-Không cần viết lại công thức chấm điểm:
-
-- TOP3 đúng vị trí: 30 điểm/selection.
-- Đúng horse trong TOP3 nhưng sai vị trí: 10 điểm/selection.
-- Đúng cả ba horse và đúng cả ba vị trí: cộng perfect bonus 50 điểm.
-- Điểm tối đa TOP3: `3 × 30 + 50 = 140`.
-- DNF hoặc DISQUALIFIED: selection đó nhận 0 điểm, prediction vẫn chuyển `SCORED`.
-- Perfect bonus hiện đã kiểm tra trực tiếp predicted rank với official rank.
-- Prediction được chấm khi admin publish RaceReport.
-
-### 1.2. Horse rating — công thức chính đã đúng
-
-Không cần viết lại toàn bộ rating policy:
-
-| Kết quả | Rating change hiện tại |
-|---|---:|
-| Hạng 1 | +6 đến +12 |
-| Hạng 2 | +2 đến +5 |
-| Hạng 3 | +1 đến +4 |
-| Hạng 4–5 | 0 đến +2 |
-| Hạng 6+ | 0 hoặc âm |
-| DID_NOT_FINISH | -4 |
-| DISQUALIFIED | -6 |
-
-Đã có:
-
-- Bonus theo sức mạnh đối thủ.
-- Bonus theo khoảng cách về đích.
-- Penalty khi horse có rating cao nhưng thi đấu kém.
-- Clamp rating không nhỏ hơn 0.
-- Tự động cập nhật `RaceClass` từ rating mới.
-- Rating preview khi RaceReport là `Signed`.
-- Lưu `HorseRatingHistory` khi publish.
-- Chặn apply rating lần hai cho cùng RaceResult.
-
-### 1.3. Multi-round lifecycle — chưa được triển khai
-
-Hiện tại chưa có flow tự động:
-
-```text
-Round 1 hoàn thành
-→ chọn horse đi tiếp
-→ tạo entry cho Round 2
-→ Round 2 chuyển sang SCHEDULING
-→ admin hoàn thiện và publish lịch Round 2
-```
-
-Các vấn đề trong code hiện tại:
-
-1. `advancementRule` mới chỉ được lưu dưới dạng chuỗi, chưa có service thực thi.
-2. Không có `RoundAdvancementService`, `RoundLifecycleService` hoặc scheduler xử lý round kế tiếp.
-3. Sau khi tạo round, hầu như không có logic cập nhật `Round.status` theo kết quả các race.
-4. `publishSchedule(tournamentId)` lấy toàn bộ race của tất cả round, yêu cầu tất cả race đã có entry/referee, rồi chuyển toàn bộ race sang `SCHEDULED` cùng lúc.
-5. Round 2 cần kết quả Round 1 mới biết horse đi tiếp, nên không thể bắt tạo entry Round 2 trước khi Round 1 chạy.
-6. `RoundStatus` hiện đang được dùng chung cho cả `Round` và `Race`, làm lifecycle của hai entity bị lẫn nhau.
+1. Không cho Admin nhập số round tùy ý.
+2. Không tạo cây giải mà round sau thiếu entry.
+3. Admin xem được số race, số entry và số người đi tiếp ở từng round trước khi xác nhận.
+4. Cấu hình bracket được lưu riêng theo từng Tournament, không hard-code trong `application.properties`.
+5. Số hồ sơ APPROVED thực tế được kiểm tra lại trước khi đóng đăng ký.
+6. Sau khi round hoàn tất, hệ thống chọn đúng qualifier và tạo entry cho round tiếp theo.
 
 ---
 
-## 2. P0 — Chuẩn hóa trạng thái Round và Race
+## 2. Vấn đề hiện tại
 
-### Mục tiêu
-
-Phân biệt lifecycle của round với lifecycle của từng race.
-
-### Công việc
-
-Khuyến nghị tách enum:
-
-```java
-enum RoundStatus {
-    PENDING,
-    SCHEDULING,
-    SCHEDULED,
-    ONGOING,
-    COMPLETED,
-    CANCELLED
-}
-```
-
-```java
-enum RaceStatus {
-    SCHEDULING,
-    SCHEDULED,
-    ONGOING,
-    FINISHED,
-    COMPLETED,
-    CANCELLED
-}
-```
-
-Nếu chưa muốn migration tách enum ngay, tối thiểu phải bổ sung `PENDING` và không dùng cùng một đoạn logic để chuyển trạng thái Round và Race.
-
-### Trạng thái ban đầu
-
-Khi tạo tournament có nhiều round:
-
-```text
-Round có sequenceOrder = 1 → SCHEDULING
-Round có sequenceOrder > 1 → PENDING
-```
-
-Admin được phép tạo trước skeleton của Round 2 và các race thuộc Round 2, nhưng chưa cần tạo `RaceEntry` cho đến khi Round 1 có kết quả chính thức.
-
-### Tiêu chí hoàn thành
-
-- Round 2 không ở `SCHEDULING` khi Round 1 chưa hoàn thành.
-- Chỉ có một round không-final đang hoạt động tại một thời điểm, trừ khi business sau này cho phép chạy song song.
-- Race status thay đổi không làm Round status thay đổi sai.
-- Có migration cho dữ liệu status cũ nếu tách enum.
-
----
-
-## 3. P0 — Publish schedule theo từng Round
-
-### Vấn đề hiện tại
-
-API publish schedule cấp tournament đang validate và schedule toàn bộ race của mọi round. Cách này chỉ phù hợp khi toàn bộ entry đã biết từ đầu; không phù hợp với tournament có vòng loại.
-
-### Hướng sửa
-
-Thêm API:
-
-```http
-POST /api/admin/rounds/{roundId}/publish-schedule
-```
-
-Điều kiện:
-
-1. Round đang `SCHEDULING`.
-2. Round trước đó đã `COMPLETED`, trừ Round 1.
-3. Mỗi race trong round đủ `minEntries`.
-4. Mỗi race có referee.
-5. Mỗi race có thời gian hợp lệ và không conflict.
-6. Các RaceEntry đã được xác định từ registration hoặc advancement.
-
-Khi publish thành công:
-
-```text
-Race trong round: SCHEDULING → SCHEDULED
-Round: SCHEDULING → SCHEDULED
-```
-
-API cũ:
-
-```http
-POST /api/admin/tournaments/{tournamentId}/publish-schedule
-```
-
-có thể giữ lại cho tournament chỉ có một round, hoặc đổi thành API điều phối gọi publish Round 1. Không được tiếp tục schedule toàn bộ future round chưa xác định entry.
-
-### Prediction window
-
-- Prediction chỉ mở cho các race thuộc round đã publish schedule.
-- Mốc mở chung được tính từ race sớm nhất của round/race card hiện tại.
-- Không mở prediction cho Round 2 khi entry Round 2 chưa được xác định.
-- Race của Round 1 bắt đầu không ảnh hưởng prediction của các race khác trong chính race card đã publish.
-
-### Tiêu chí hoàn thành
-
-- Publish Round 1 không yêu cầu Round 2 có entry.
-- Race Round 2 vẫn chưa nhận prediction khi Round 2 còn `PENDING`.
-- Không thể publish Round 2 trước khi Round 1 hoàn thành.
-
----
-
-## 4. P0 — Tự động hoàn thành Round hiện tại
-
-### Điều kiện hoàn thành Round
-
-Một round được coi là hoàn thành khi tất cả race thuộc round đều ở trạng thái terminal:
-
-```text
-COMPLETED hoặc CANCELLED
-```
-
-`FINISHED` chưa phải terminal cuối vì RaceReport mới chỉ được ký, admin vẫn chưa publish.
-
-### Thời điểm kiểm tra
-
-Gọi kiểm tra ngay sau:
-
-```text
-Admin publish RaceReport
-hoặc
-Admin cancel race
-```
-
-Không nhất thiết phải đợi scheduler nếu có thể xử lý đồng bộ sau transaction nghiệp vụ.
-
-Pseudo flow:
-
-```java
-publishRaceReport(raceId)
-    → publish report
-    → score prediction
-    → apply horse rating
-    → payout nếu final
-    → checkAndCompleteRound(roundId)
-```
-
-```java
-checkAndCompleteRound(roundId)
-    → nếu mọi race COMPLETED/CANCELLED
-    → round.status = COMPLETED
-    → nếu không phải final: prepareNextRound(roundId)
-```
-
-### Idempotency
-
-- Gọi kiểm tra nhiều lần không được tạo entry Round 2 trùng.
-- Hai race cuối của cùng round publish gần như đồng thời không được cùng tạo advancement hai lần.
-- Nên lock Round hiện tại và Round kế tiếp khi chuyển trạng thái.
-
-### Tiêu chí hoàn thành
-
-- Một race còn `SCHEDULED`, `ONGOING` hoặc `FINISHED` thì round chưa được `COMPLETED`.
-- Tất cả race `COMPLETED/CANCELLED` thì round chuyển `COMPLETED` đúng một lần.
-
----
-
-## 5. P0 — Advancement từ Round 1 sang Round 2
-
-### Vấn đề
-
-`advancementRule` dạng text tự do không đủ an toàn để backend tự chọn horse đi tiếp.
-
-### Hướng dữ liệu đề xuất
-
-Thay vì chỉ dùng text, bổ sung cấu hình có cấu trúc, ví dụ:
-
-```java
-AdvancementType advancementType; // TOP_N_PER_RACE hoặc TOP_N_OVERALL
-Integer qualifiersPerRace;
-Integer totalQualifiers;
-```
-
-`advancementRule` có thể giữ lại làm mô tả cho người dùng.
-
-### Luật advancement tối thiểu
-
-Phiên bản đầu nên hỗ trợ:
-
-```text
-TOP_N_PER_RACE
-```
+Tournament đang cho Admin cấu hình `maxApprovedHorses` và `maxRounds` độc lập. Hai giá trị có thể tạo ra một cây giải không khả thi.
 
 Ví dụ:
 
 ```text
-Round 1 có 4 race
-qualifiersPerRace = 2
-→ lấy hạng 1 và 2 của mỗi race
-→ tổng cộng 8 entry vào Round 2
+maxApprovedHorses = 30
+Round 1 có 3 race
+Mỗi race lấy Top 3
+
+Số entry đi tiếp = 3 × 3 = 9
 ```
 
-Chỉ lấy kết quả:
+Nếu Round 2 có hai race và mỗi race cần tối thiểu năm entry:
 
-- RaceReport đã `Published`.
-- RaceResult có status `FINISHED`.
-- `rank` khác null.
-- Entry không DNF hoặc DISQUALIFIED.
+```text
+Round 2 cần tối thiểu = 2 × 5 = 10 entry
+Round 1 chỉ tạo ra = 9 entry
+```
 
-### Tạo RaceEntry Round kế tiếp
+Cấu hình này phải bị chặn.
 
-Khi Round 1 hoàn thành:
+Các hạn chế trong code hiện tại:
 
-1. Xác định danh sách qualifier.
-2. Kiểm tra không trùng horse, jockey hoặc contract.
-3. Phân qualifier vào các race Round 2 theo rule đã cấu hình.
-4. Tạo RaceEntry ở trạng thái `CONFIRMED`.
-5. Chưa cần assign lane nếu muốn admin quyết định sau; nếu lane bắt buộc, hệ thống gán tạm rồi admin được chỉnh.
-6. Chuyển Round 2 từ `PENDING` sang `SCHEDULING`.
-7. Gửi notification cho owner, jockey và admin.
-
-### Trường hợp không đủ qualifier
-
-Nếu số qualifier nhỏ hơn `minEntries` của Round 2:
-
-- Không tự publish Round 2.
-- Round 2 vẫn ở `SCHEDULING` hoặc chuyển trạng thái lỗi cần xử lý.
-- Thông báo admin chọn phương án: giảm số race, thay đổi seeding hoặc cancel round.
-
-Không tự ý lấy horse đã bị loại để bù vào nếu chưa có rule tie-break/alternate rõ ràng.
-
-### Tiêu chí hoàn thành
-
-- Kết quả Round 1 xác định đúng entry Round 2.
-- Không tạo entry từ DNF, DISQUALIFIED, SCRATCHED hoặc withdrawn.
-- Retry không tạo duplicate.
-- Round 2 chỉ chuyển `SCHEDULING` sau khi Round 1 thực sự `COMPLETED`.
+- `maxRounds` do Admin nhập thủ công.
+- `advancementRule` là text nên backend không thể dùng để tính người đi tiếp.
+- `minEntries` và `maxEntries` của Round đang được dùng như giới hạn entry trên từng race.
+- Chưa kiểm tra khả năng phân bổ entry giữa hai round liên tiếp.
+- Chưa tự động tạo entry và chuyển round tiếp theo sang `SCHEDULING`.
 
 ---
 
-## 6. P0 — Sửa `finishedAt` và Tournament `RESULT_PENDING`
+## 3. Quyết định nghiệp vụ
 
-### Vấn đề hiện tại
+- Bỏ `maxRounds` khỏi request tạo và cập nhật Tournament.
+- Admin không được nhập trực tiếp số round tối đa.
+- Số round được suy ra từ bracket plan do hệ thống tính.
+- Admin chọn một plan hợp lệ, không tự nhập `plannedRoundCount`.
+- Nếu cần lưu số round trong database thì dùng `plannedRoundCount`, chỉ backend được cập nhật.
+- Không cho tạo round có `sequenceOrder` vượt quá `plannedRoundCount`.
+- Không cho publish Tournament nếu cấu trúc Round/Race không khớp plan đã chọn.
+- Sau khi Tournament được publish, cấu trúc bracket bị khóa.
 
-`TournamentPhaseScheduler` kiểm tra:
+---
 
-```text
-Race.finishedAt != null
-```
+## 4. TournamentBracketPolicy
 
-nhưng flow ký/publish RaceReport hiện chưa thấy gán `race.finishedAt`. Tournament có thể không bao giờ tự chuyển:
+Cấu hình có thể thay đổi theo từng giải phải được lưu trong database, không đặt trong `application.properties`.
 
-```text
-RACING → RESULT_PENDING
-```
-
-### Hướng sửa
-
-Theo nghiệp vụ hiện tại, RaceReport được head referee ký là lúc kết quả race được xác nhận và race chuyển `FINISHED`:
+Tạo entity one-to-one với Tournament:
 
 ```java
-signRaceReport()
-    → race.status = FINISHED
-    → race.finishedAt = now
+TournamentBracketPolicy {
+    UUID policyId;
+    Tournament tournament;
+
+    int minEntriesPerRace;
+    int maxEntriesPerRace;
+    int defaultQualifiersPerRace;
+    int finalMinEntries;
+    int finalMaxEntries;
+}
 ```
 
-Tuy nhiên điều kiện kết thúc toàn tournament nên dựa vào trạng thái cuối:
+Tournament bổ sung:
 
-```text
-Mọi round COMPLETED/CANCELLED
-và mọi race COMPLETED/CANCELLED
+```java
+Integer plannedRoundCount;
+BracketPlanStatus bracketPlanStatus;
+Integer bracketPlanVersion;
 ```
 
-Không chỉ dựa vào `finishedAt`, vì race cancel có thể không có thời điểm finish.
+Enum đề xuất:
 
-Sau khi final round hoàn thành:
-
-```text
-Tournament.phase = RESULT_PENDING
-Tournament.status = ONGOING
+```java
+public enum BracketPlanStatus {
+    NOT_GENERATED,
+    GENERATED,
+    SELECTED,
+    STALE,
+    LOCKED
+}
 ```
 
-Admin sau đó gọi publish result cấp tournament nếu nghiệp vụ vẫn cần bước này.
+Ý nghĩa:
 
-### Tiêu chí hoàn thành
-
-- Ký report gán `finishedAt` đúng một lần.
-- Race cancelled không chặn tournament kết thúc.
-- Tournament chỉ vào `RESULT_PENDING` sau khi final round hoàn thành.
+- `NOT_GENERATED`: Chưa tính bracket.
+- `GENERATED`: Đã có đề xuất nhưng Admin chưa chọn.
+- `SELECTED`: Admin đã chọn một plan hợp lệ.
+- `STALE`: Cấu hình đã thay đổi, plan cũ không còn hiệu lực.
+- `LOCKED`: Tournament đã publish, không được thay cấu trúc bracket.
 
 ---
 
-## 7. P1 — Cập nhật performance statistics của Horse
+## 5. Cấu hình trên Round
 
-### Vấn đề hiện tại
+Policy của Tournament được dùng để sinh đề xuất. Khi chọn plan, từng Round lưu snapshot:
 
-Horse rating và RaceClass đã được cập nhật, nhưng chưa thấy flow cập nhật đầy đủ:
-
-```text
-totalRaces
-totalWins
-totalTop3Finishes
-winRate
-lastRaceAt
+```java
+int expectedEntries;
+int minEntries;
+int maxEntries;
+int qualifiersPerRace;
+int wildcardSlots;
 ```
 
-Nếu các field này dùng cho profile hoặc eligibility, dữ liệu sẽ bị cũ dù rating đã thay đổi.
+`advancementRule` có thể giữ lại để hiển thị mô tả, nhưng không được dùng làm nguồn dữ liệu chính. Backend phải dùng `qualifiersPerRace` và `wildcardSlots` dạng số.
 
-### Hướng sửa
+Nếu Admin được phép sửa policy của một Round khi Tournament còn `DRAFT`, backend phải:
 
-Khi publish RaceReport, cùng transaction với rating:
-
-- Mọi horse thực sự xuất phát: `totalRaces + 1`.
-- FINISHED rank 1: `totalWins + 1`.
-- FINISHED rank 1–3: `totalTop3Finishes + 1`.
-- DNF/DISQUALIFIED vẫn tính là đã xuất phát nên tăng `totalRaces`.
-- SCRATCHED/withdrawn không tăng `totalRaces`.
-- Tính lại `winRate = totalWins / totalRaces × 100`.
-- Cập nhật `lastRaceAt` theo thời điểm race thực sự chạy.
-
-Phải có idempotency để publish/retry không tăng statistic hai lần. Có thể dùng chính `HorseRatingHistory` hoặc bảng processing marker để xác định race đã apply.
-
-### Tiêu chí hoàn thành
-
-- Thống kê chỉ tăng đúng một lần.
-- DNF/DISQUALIFIED tăng số lần xuất phát nhưng không tăng win/top3.
-- Horse SCRATCHED không bị tính đã chạy.
+1. Đánh dấu bracket plan hiện tại thành `STALE`.
+2. Tính lại Round đang sửa và toàn bộ Round phía sau.
+3. Yêu cầu Admin chọn và xác nhận lại plan.
 
 ---
 
-## 8. Test cases bắt buộc cho multi-round
+## 6. Thuật toán tìm bracket plan
 
-### 8.1. Round transition
+Đầu vào:
 
-- [ ] Round 1 có một race chưa publish report → Round 1 chưa completed.
-- [ ] Mọi race Round 1 đã completed/cancelled → Round 1 completed.
-- [ ] Round 2 chuyển `PENDING → SCHEDULING` đúng một lần.
-- [ ] Không có Round 2 → final round hoàn thành và tournament vào `RESULT_PENDING`.
+```text
+N = số entry dự kiến
+min = minEntriesPerRace
+max = maxEntriesPerRace
+k = qualifiersPerRace
+wildcards = wildcardSlots
+```
 
-### 8.2. Advancement
+Số race hợp lệ của một round:
 
-- [ ] TOP 2 mỗi race được đưa vào Round 2.
-- [ ] DNF không đi tiếp.
-- [ ] DISQUALIFIED không đi tiếp.
-- [ ] SCRATCHED/withdrawn không đi tiếp.
-- [ ] Retry không tạo duplicate RaceEntry.
-- [ ] Hai publish đồng thời không advancement hai lần.
+```text
+minimumRaceCount = ceil(N / max)
+maximumRaceCount = floor(N / min)
+```
 
-### 8.3. Scheduling
+Nếu:
 
-- [ ] Publish Round 1 không yêu cầu entry Round 2.
-- [ ] Không publish được Round 2 trước khi Round 1 completed.
-- [ ] Sau advancement, admin có thể assign lane/referee/staff cho Round 2.
-- [ ] Prediction Round 2 chưa mở khi Round 2 còn pending/scheduling.
+```text
+minimumRaceCount > maximumRaceCount
+```
 
-### 8.4. Existing scoring/rating regression
+thì không thể phân bổ `N` entry theo policy hiện tại.
 
-- [ ] TOP3 perfect vẫn là 140 điểm với config mặc định.
-- [ ] DNF/DISQUALIFIED selection nhận 0 nhưng prediction là `SCORED`.
-- [ ] Rating chỉ apply khi publish report.
-- [ ] Advancement dùng official result đã publish, không dùng rating preview hoặc draft result.
+Với mỗi số race hợp lệ `r`:
+
+```text
+qualifiedCount = min(N, r × k + wildcards)
+```
+
+Điều kiện bắt buộc:
+
+- Entry được chia cân bằng, chênh lệch giữa hai race không quá một.
+- Mỗi race có số entry nằm trong `[min, max]`.
+- `k` phải nhỏ hơn số entry của từng race.
+- `qualifiedCount` phải nhỏ hơn `N`, trừ Final.
+- Nếu `qualifiedCount` nằm trong `[finalMinEntries, finalMaxEntries]`, round tiếp theo có thể là Final với đúng một race.
+- Nếu chưa tạo được Final thì tiếp tục tính với `N = qualifiedCount`.
+
+Backend nên dùng DFS hoặc backtracking để thử các `raceCount` hợp lệ. Không chỉ chọn phương án đầu tiên vì một số race hợp lệ ở round hiện tại có thể làm round sau không thể chia.
+
+Không sử dụng Java Stream trong logic calculator mới.
 
 ---
 
-## 9. Thứ tự triển khai đề xuất
+## 7. Các phương án đề xuất
+
+Một Tournament có thể có nhiều bracket hợp lệ. Backend nên trả tối thiểu:
+
+- `COMPACT`: Ít round và ít race nhất.
+- `BALANCED`: Chia entry cân bằng và có thể nhiều round hơn.
+
+Ví dụ policy:
 
 ```text
-1. Tách hoặc chuẩn hóa RoundStatus/RaceStatus
-2. Sửa finishedAt và terminal-state check
-3. Publish schedule theo từng round
-4. Tự complete round
-5. Thiết kế advancement config có cấu trúc
-6. Tạo entry và mở Round kế tiếp
-7. Điều chỉnh prediction window theo round
-8. Cập nhật Horse performance statistics
-9. Viết unit + integration test multi-round
-10. Cập nhật Postman collection cho tournament nhiều round
+maxApprovedHorses = 30
+minEntriesPerRace = 5
+maxEntriesPerRace = 10
+defaultQualifiersPerRace = 3
+Final cho phép 6–10 entry
+```
+
+### 7.1. COMPACT
+
+```text
+Round 1:
+3 race: 10, 10, 10
+Top 3 mỗi race → 9
+
+Final:
+1 race: 9
+
+plannedRoundCount = 2
+```
+
+### 7.2. BALANCED
+
+```text
+Round 1:
+4 race: 8, 8, 7, 7
+Top 3 mỗi race → 12
+
+Round 2:
+2 race: 6, 6
+Top 3 mỗi race → 6
+
+Final:
+1 race: 6
+
+plannedRoundCount = 3
+```
+
+Admin chỉ được chọn một phương án hợp lệ. Nếu muốn thay đổi số round, Admin phải thay policy và để hệ thống tính lại.
+
+---
+
+## 8. API đề xuất
+
+### 8.1. Lấy bracket suggestion
+
+```http
+GET /api/admin/tournaments/{tournamentId}/bracket-suggestions
+```
+
+Response:
+
+```json
+{
+  "maxApprovedHorses": 30,
+  "policy": {
+    "minEntriesPerRace": 5,
+    "maxEntriesPerRace": 10,
+    "defaultQualifiersPerRace": 3,
+    "finalMinEntries": 6,
+    "finalMaxEntries": 10
+  },
+  "suggestions": [
+    {
+      "planCode": "COMPACT",
+      "roundCount": 2,
+      "rounds": [
+        {
+          "sequenceOrder": 1,
+          "expectedEntries": 30,
+          "raceCount": 3,
+          "entriesPerRace": [10, 10, 10],
+          "qualifiersPerRace": 3,
+          "qualifiedEntries": 9,
+          "final": false
+        },
+        {
+          "sequenceOrder": 2,
+          "expectedEntries": 9,
+          "raceCount": 1,
+          "entriesPerRace": [9],
+          "final": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+### 8.2. Chọn bracket plan
+
+```http
+POST /api/admin/tournaments/{tournamentId}/bracket-plans/select
+```
+
+```json
+{
+  "planCode": "BALANCED",
+  "planVersion": 1
+}
+```
+
+Backend nên tạo skeleton Round/Race từ plan đã chọn. Admin chỉ bổ sung:
+
+- Ngày giờ.
+- Tên Round/Race.
+- Referee và staff.
+- Các thông tin vận hành khác.
+
+Cách này an toàn hơn việc để Admin tự tạo toàn bộ Round/Race rồi mới kiểm tra.
+
+---
+
+## 9. Quy tắc tạo và sửa Round
+
+Khi tạo Round:
+
+1. Tournament phải còn `DRAFT`.
+2. Tournament phải có bracket plan `SELECTED`.
+3. `sequenceOrder` không vượt `plannedRoundCount`.
+4. Round cuối bắt buộc `isFinal = true`.
+5. Round chưa cuối không được `isFinal = true`.
+6. Số race và expected entry phải khớp plan.
+7. Không tạo thêm Round khi đã đủ `plannedRoundCount`.
+
+Nếu thay đổi một trong các giá trị sau thì plan thành `STALE`:
+
+- `maxApprovedHorses`.
+- `minEntriesPerRace` hoặc `maxEntriesPerRace`.
+- `qualifiersPerRace` hoặc `wildcardSlots`.
+- Số race.
+- Cấu trúc Final.
+
+Admin phải sinh và chọn lại plan trước khi tiếp tục.
+
+---
+
+## 10. Validation khi publish Tournament
+
+Chỉ cho publish khi:
+
+- Bracket plan đang `SELECTED`.
+- Số Round thực tế bằng `plannedRoundCount`.
+- Từng Round/Race khớp plan version hiện tại.
+- Round cuối là Final.
+- Final có đúng một race.
+- Số entry đi tiếp từ mỗi round đủ cho round sau.
+- Không tồn tại Round/Race dư ngoài plan.
+
+Sau khi publish:
+
+```text
+bracketPlanStatus = LOCKED
+```
+
+Không cho sửa:
+
+- `maxApprovedHorses`.
+- Bracket policy.
+- Số Round/Race.
+- Quy tắc đi tiếp.
+- Cấu trúc Final.
+
+Reschedule chỉ thay đổi lịch thi đấu, không làm thay đổi bracket.
+
+---
+
+## 11. Kiểm tra lại khi đóng đăng ký
+
+Plan ban đầu được tính theo `maxApprovedHorses`, nhưng số hồ sơ `APPROVED` thực tế có thể thấp hơn.
+
+Khi đóng đăng ký:
+
+1. Đếm chính xác Horse registration `APPROVED`.
+2. Thử phân bổ số entry thực tế vào Round 1.
+3. Mỗi race phải nằm trong `[minEntries, maxEntries]`.
+4. Nếu plan vẫn hợp lệ thì phân bổ cân bằng và tiếp tục.
+5. Nếu không hợp lệ thì không tự ý thay bracket.
+6. Sinh bracket suggestion mới theo số APPROVED thực tế.
+7. Admin xác nhận plan mới rồi mới được đóng đăng ký.
+
+Ví dụ:
+
+```text
+Round 1 theo plan có 4 race
+minEntriesPerRace = 5
+Số entry tối thiểu = 4 × 5 = 20
+
+APPROVED thực tế = 18
+→ Không đủ để giữ plan bốn race
+→ Sinh đề xuất mới và chờ Admin xác nhận
 ```
 
 ---
 
-## 10. Definition of Done
+## 12. Phân bổ entry cân bằng
 
-Multi-round chỉ được xem là hoàn thành khi chạy được flow:
+Với `N` entry và `r` race:
 
 ```text
-Round 1 SCHEDULING
-→ publish Round 1
-→ Round 1 SCHEDULED
-→ chạy và publish toàn bộ RaceReport
-→ Round 1 COMPLETED
-→ chọn qualifier
-→ tạo entry Round 2
-→ Round 2 SCHEDULING
-→ admin publish Round 2
-→ lặp lại đến final
-→ final COMPLETED
-→ Tournament RESULT_PENDING
+baseSize = N / r
+remainder = N % r
 ```
 
-Prediction scoring và Horse Rating không được tính lại hoặc cộng hai lần trong quá trình chuyển round.
+- `remainder` race đầu nhận `baseSize + 1` entry.
+- Các race còn lại nhận `baseSize` entry.
+- Chênh lệch giữa các race không quá một.
+- Có thể shuffle bằng seed hoặc bốc thăm để tránh ưu tiên theo thứ tự đăng ký.
+- Một horse, jockey hoặc contract không được xuất hiện hai lần trong cùng round.
+
+Ví dụ:
+
+```text
+N = 30
+r = 4
+baseSize = 7
+remainder = 2
+
+Kết quả: 8, 8, 7, 7
+```
+
+---
+
+## 13. Chuyển entry sang Round tiếp theo
+
+Chỉ xử lý khi toàn bộ Race Report của round hiện tại đã `Published`.
+
+Flow:
+
+1. Kiểm tra tất cả race trong round đã `COMPLETED` và report đã `Published`.
+2. Với mỗi race, lấy `qualifiersPerRace` entry có official rank cao nhất và trạng thái `FINISHED`.
+3. `DID_NOT_FINISH` và `DISQUALIFIED` không được lấy trực tiếp.
+4. Nếu có `wildcardSlots`, chọn entry FINISHED tốt nhất chưa được chọn trong toàn round.
+5. Nếu thiếu slot vì DNF/DQ, tiếp tục lấy best non-qualified FINISHED làm reserve.
+6. Nếu vẫn không đủ số entry tối thiểu, không tự động bắt đầu round tiếp theo.
+7. Cảnh báo Admin và yêu cầu xác nhận phương án gộp hoặc giảm race nếu được phép.
+8. Tạo `RaceEntry` cho round tiếp theo theo cách phân bổ cân bằng.
+9. Chuyển round tiếp theo và các race sang `SCHEDULING`.
+
+Phải chống chạy transition hai lần khi report hoặc request được gọi lại.
+
+---
+
+## 14. Error code đề xuất
+
+```text
+BRACKET_POLICY_INVALID
+BRACKET_PLAN_NOT_GENERATED
+BRACKET_PLAN_NOT_SELECTED
+BRACKET_PLAN_STALE
+BRACKET_PLAN_LOCKED
+BRACKET_PLAN_NOT_FEASIBLE
+ROUND_COUNT_EXCEEDS_PLANNED
+ROUND_STRUCTURE_MISMATCH
+RACE_STRUCTURE_MISMATCH
+APPROVED_ENTRIES_NOT_FIT_BRACKET
+NEXT_ROUND_NOT_ENOUGH_QUALIFIERS
+ROUND_TRANSITION_ALREADY_COMPLETED
+```
+
+---
+
+## 15. Phase triển khai
+
+### Phase 1 — Chuẩn hóa dữ liệu
+
+- Bỏ `maxRounds` khỏi `CreateTournamentRequest` và `UpdateTournamentRequest`.
+- Không cho Admin cập nhật trực tiếp số round.
+- Tạo `TournamentBracketPolicy`.
+- Thêm `plannedRoundCount`, `bracketPlanStatus`, `bracketPlanVersion` vào Tournament.
+- Thêm `expectedEntries`, `qualifiersPerRace`, `wildcardSlots` vào Round.
+- Giữ `advancementRule` làm mô tả hoặc xóa sau khi FE đã chuyển sang field có cấu trúc.
+
+### Phase 2 — Bracket calculator
+
+- Tạo `BracketPlanningService`.
+- Sinh các race count hợp lệ tại từng round.
+- Dùng DFS/backtracking tìm cây giải hoàn chỉnh.
+- Trả các plan `COMPACT` và `BALANCED`.
+- Viết unit test cho các số entry biên.
+
+### Phase 3 — Chọn và áp dụng plan
+
+- Thêm API lấy suggestion.
+- Thêm API chọn plan kèm `planVersion`.
+- Tạo skeleton Round/Race từ plan.
+- Chặn Round/Race vượt cấu trúc.
+
+### Phase 4 — Publish và đóng đăng ký
+
+- Validate toàn bộ bracket khi publish Tournament.
+- Khóa policy sau publish.
+- Khi đóng đăng ký, kiểm tra số APPROVED thực tế.
+- Nếu không phù hợp thì sinh plan mới và chờ Admin xác nhận.
+
+### Phase 5 — Tự động chuyển Round
+
+- Chỉ chuyển khi tất cả report của round hiện tại đã Published.
+- Chọn qualifier và wildcard theo official result.
+- Tạo entry cho round tiếp theo.
+- Chuyển round tiếp theo sang `SCHEDULING`.
+- Chống transition trùng lặp.
+
+---
+
+## 16. Tiêu chí hoàn thành
+
+1. Admin không còn nhập `maxRounds` khi tạo Tournament.
+2. Hệ thống trả được plan hợp lệ hoặc lỗi rõ ràng từ `maxApprovedHorses` và bracket policy.
+3. Admin xem được số entry, số race và số người đi tiếp ở từng round.
+4. Không tạo được round vượt `plannedRoundCount`.
+5. Không publish được Tournament có cây giải không khả thi.
+6. Thay đổi policy làm plan cũ thành `STALE`.
+7. Tournament đã publish không thể thay đổi cấu trúc bracket.
+8. Số APPROVED thực tế được kiểm tra lại khi đóng đăng ký.
+9. Entry được chia cân bằng, chênh lệch không quá một.
+10. Chỉ official result đã Published được dùng để chọn người đi tiếp.
+11. DNF/DQ không tự động chiếm suất đi tiếp.
+12. Round tiếp theo chỉ chuyển sang `SCHEDULING` đúng một lần.
