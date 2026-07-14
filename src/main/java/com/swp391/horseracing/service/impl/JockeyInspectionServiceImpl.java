@@ -14,6 +14,7 @@ import com.swp391.horseracing.repository.RaceInspectionStaffAssignmentRepository
 import com.swp391.horseracing.service.JockeyInspectionService;
 import com.swp391.horseracing.service.UserCurrentService;
 import com.swp391.horseracing.service.PredictionService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -35,6 +36,7 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
     UserCurrentService userCurrentService;
     JockeyInspectionMapper jockeyInspectionMapper;
     PredictionService predictionService;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -103,6 +105,9 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
         }
 
         JockeyInspection savedInspection = jockeyInspectionRepository.save(inspection);
+        if (request.getResult() == InspectionResult.FAIL) {
+            notificationEventService.jockeyInspectionFailed(raceEntry);
+        }
         return jockeyInspectionMapper.toResponse(savedInspection);
     }
 }

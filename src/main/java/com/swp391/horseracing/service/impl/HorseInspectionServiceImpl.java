@@ -16,6 +16,7 @@ import com.swp391.horseracing.service.HandicapService;
 import com.swp391.horseracing.service.HorseInspectionService;
 import com.swp391.horseracing.service.UserCurrentService;
 import com.swp391.horseracing.service.PredictionService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -39,6 +40,7 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
     HandicapService handicapService;
     HorseInspectionMapper horseInspectionMapper;
     PredictionService predictionService;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -139,6 +141,9 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
         }
 
         HorseInspection savedInspection = horseInspectionRepository.save(inspection);
+        if (request.getResult() == InspectionResult.FAIL) {
+            notificationEventService.horseInspectionFailed(raceEntry);
+        }
         return horseInspectionMapper.toResponse(savedInspection);
     }
 }

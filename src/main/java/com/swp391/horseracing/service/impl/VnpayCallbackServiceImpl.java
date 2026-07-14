@@ -4,7 +4,7 @@ import com.swp391.horseracing.entity.Transaction;
 import com.swp391.horseracing.repository.WalletTransactionRepository;
 import com.swp391.horseracing.service.VnpayCallbackService;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.swp391.horseracing.config.VnpayProperties;
 import com.swp391.horseracing.entity.PaymentTransaction;
 import com.swp391.horseracing.entity.Wallet;

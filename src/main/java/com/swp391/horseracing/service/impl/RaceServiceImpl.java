@@ -30,18 +30,14 @@ import com.swp391.horseracing.repository.VeterinarianRepository;
 import com.swp391.horseracing.repository.MedicalStaffRepository;
 import com.swp391.horseracing.service.RaceService;
 import com.swp391.horseracing.service.PredictionService;
-import com.swp391.horseracing.service.NotificationService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.swp391.horseracing.repository.PredictionRepository;
-import com.swp391.horseracing.entity.Prediction;
 import com.swp391.horseracing.entity.RaceReferee;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -70,8 +66,7 @@ public class RaceServiceImpl implements RaceService {
     VeterinarianRepository veterinarianRepository;
     MedicalStaffRepository medicalStaffRepository;
     PredictionService predictionService;
-    NotificationService notificationService;
-    PredictionRepository predictionRepository;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -348,7 +343,9 @@ public class RaceServiceImpl implements RaceService {
         // Let's search for assignment / AVAILABLE to see what entities are updated.
         releaseStaffForRace(race.getRaceId());
 
-        return raceMapper.toRaceResponse(raceRepository.save(race));
+        Race savedRace = raceRepository.save(race);
+        notificationEventService.raceStarted(savedRace);
+        return raceMapper.toRaceResponse(savedRace);
     }
 
     private User getCurrentUser() {
@@ -453,11 +450,13 @@ public class RaceServiceImpl implements RaceService {
             if (!hasHorsePass) {
                 entry.setStatus(RaceEntryStatus.SCRATCHED);
                 entry.setScratchedReason("Missing or failed horse inspection at deadline");
-                raceEntryRepository.save(entry);
+                RaceEntry savedEntry = raceEntryRepository.save(entry);
+                notificationEventService.entryScratched(savedEntry);
             } else if (!hasJockeyPass) {
                 entry.setStatus(RaceEntryStatus.SCRATCHED);
                 entry.setScratchedReason("Missing or failed jockey inspection at deadline");
-                raceEntryRepository.save(entry);
+                RaceEntry savedEntry = raceEntryRepository.save(entry);
+                notificationEventService.entryScratched(savedEntry);
             }
         }
 
@@ -509,6 +508,7 @@ public class RaceServiceImpl implements RaceService {
         validateRaceScheduleConstraints(round, request.getNewStartTime(), newEndTime, raceId);
         validateRescheduleConflictsInternal(race, request.getNewStartTime(), newEndTime);
 
+        LocalDateTime oldStartTime = race.getStartTime();
         race.setStartTime(request.getNewStartTime());
         race.setEndTime(newEndTime);
         race.setRescheduledAt(LocalDateTime.now());
@@ -534,43 +534,9 @@ public class RaceServiceImpl implements RaceService {
             raceEntryRepository.save(entry);
         }
 
-        // Notify spectators, owners, jockeys about rescheduling
-        for (RaceEntry entry : entries) {
-            User ownerUser = entry.getContract().getOwner().getUser();
-            User jockeyUser = entry.getContract().getJockey().getUser();
-
-            notificationService.sendNotification(
-                    ownerUser.getUserId(),
-                    "Race Rescheduled",
-                    "Race " + race.getName() + " has been rescheduled to start at " + request.getNewStartTime() + ". Reason: " + request.getReason(),
-                    NotificationType.RaceScheduled,
-                    "Race",
-                    raceId
-            );
-            notificationService.sendNotification(
-                    jockeyUser.getUserId(),
-                    "Race Rescheduled",
-                    "Race " + race.getName() + " has been rescheduled to start at " + request.getNewStartTime() + ". Reason: " + request.getReason(),
-                    NotificationType.RaceScheduled,
-                    "Race",
-                    raceId
-            );
-        }
-
-        // Notify spectators who predicted this race
-        List<Prediction> predictions = predictionRepository.findByRace_RaceIdAndStatus(raceId, PredictionStatus.PENDING);
-        for (Prediction pred : predictions) {
-            notificationService.sendNotification(
-                    pred.getSpectator().getUser().getUserId(),
-                    "Race Rescheduled",
-                    "Race " + race.getName() + " has been rescheduled to start at " + request.getNewStartTime() + ". Your prediction is still active!",
-                    NotificationType.RaceScheduled,
-                    "Race",
-                    raceId
-            );
-        }
-
-        return raceMapper.toRaceResponse(raceRepository.save(race));
+        Race savedRace = raceRepository.save(race);
+        notificationEventService.raceRescheduled(savedRace, oldStartTime, request.getReason());
+        return raceMapper.toRaceResponse(savedRace);
     }
 
     @Override
@@ -597,30 +563,7 @@ public class RaceServiceImpl implements RaceService {
 
         // Void all predictions for this race
         predictionService.voidAllPredictionsForRace(raceId, request.getReason());
-
-        // Notify owners & jockeys
-        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
-        for (RaceEntry entry : entries) {
-            User ownerUser = entry.getContract().getOwner().getUser();
-            User jockeyUser = entry.getContract().getJockey().getUser();
-
-            notificationService.sendNotification(
-                    ownerUser.getUserId(),
-                    "Race Cancelled",
-                    "Race " + race.getName() + " has been cancelled. Reason: " + request.getReason(),
-                    NotificationType.RaceScheduled,
-                    "Race",
-                    raceId
-            );
-            notificationService.sendNotification(
-                    jockeyUser.getUserId(),
-                    "Race Cancelled",
-                    "Race " + race.getName() + " has been cancelled. Reason: " + request.getReason(),
-                    NotificationType.RaceScheduled,
-                    "Race",
-                    raceId
-            );
-        }
+        notificationEventService.raceCancelled(race, request.getReason());
     }
 
     private void validateRescheduleConflictsInternal(Race race, LocalDateTime newStartTime, LocalDateTime newEndTime) {

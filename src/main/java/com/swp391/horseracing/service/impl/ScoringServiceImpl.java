@@ -1,13 +1,12 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.entity.*;
-import com.swp391.horseracing.enums.NotificationType;
 import com.swp391.horseracing.enums.PredictionDetailStatus;
 import com.swp391.horseracing.enums.PredictionStatus;
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RaceResultStatus;
 import com.swp391.horseracing.repository.*;
-import com.swp391.horseracing.service.NotificationService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import com.swp391.horseracing.service.ScoringService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -29,7 +28,7 @@ public class ScoringServiceImpl implements ScoringService {
     PredictionRepository predictionRepository;
     RaceResultRepository raceResultRepository;
     SpectatorRepository spectatorRepository;
-    NotificationService notificationService;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -42,14 +41,19 @@ public class ScoringServiceImpl implements ScoringService {
         Tournament tournament = predictions.get(0).getRace().getRound().getTournament();
 
         List<RaceResult> results = raceResultRepository.findByRace_RaceId(raceId);
-        Map<UUID, RaceResult> resultMap = results.stream()
-                .collect(Collectors.toMap(r -> r.getEntry().getEntryId(), r -> r));
+        Map<UUID, RaceResult> resultMap = new HashMap<>();
+        for (RaceResult result : results) {
+            resultMap.put(result.getEntry().getEntryId(), result);
+        }
 
         for (Prediction prediction : predictions) {
             scorePrediction(prediction, resultMap, tournament);
         }
 
         predictionRepository.saveAll(predictions);
+        for (Prediction prediction : predictions) {
+            notificationEventService.predictionScored(prediction);
+        }
     }
 
     private void scorePrediction(Prediction prediction, Map<UUID, RaceResult> resultMap, Tournament tournament) {
@@ -86,14 +90,6 @@ public class ScoringServiceImpl implements ScoringService {
         spectator.setTotalPoints(spectator.getTotalPoints() + totalRewardPoints);
         spectatorRepository.save(spectator);
 
-        notificationService.sendNotification(
-                spectator.getUser().getUserId(),
-                "Prediction Scored",
-                "Your prediction for race has been scored! You earned " + totalRewardPoints + " points.",
-                NotificationType.PredictionScored,
-                "Prediction",
-                prediction.getPredictionId()
-        );
     }
 
     private int scoreDetail(PredictionDetail detail, Map<UUID, RaceResult> resultMap,

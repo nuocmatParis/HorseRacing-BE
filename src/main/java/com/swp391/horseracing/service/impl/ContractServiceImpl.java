@@ -10,6 +10,7 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.ContractMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.ContractService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.PaymentService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -43,6 +44,7 @@ public class ContractServiceImpl implements ContractService {
     WalletTransactionRepository walletTransactionRepository;
     TournamentRepository tournamentRepository;
     RaceEntryRepository raceEntryRepository;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -90,6 +92,7 @@ public class ContractServiceImpl implements ContractService {
                         .build();
 
         JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractInvited(savedContract);
 
         return contractMapper.toContractResponse(savedContract);
     }
@@ -149,6 +152,7 @@ public class ContractServiceImpl implements ContractService {
 
         invoiceService.createHiringFeeInvoice(horseTournamentRegistration.getOwner().getUser().getUserId(),
                 savedContract.getContractId(), jockeyTournamentRegistration.getHireFee());
+        notificationEventService.contractAccepted(savedContract);
 
         return contractMapper.toContractResponse(savedContract);
     }
@@ -179,6 +183,9 @@ public class ContractServiceImpl implements ContractService {
         }
 
         contractRepository.saveAll(cancelContracts.values());
+        for (JockeyHorseContract cancelledContract : cancelContracts.values()) {
+            notificationEventService.contractCancelled(cancelledContract, cancelledContract.getCancelReason());
+        }
     }
     @Override
     @Transactional
@@ -196,7 +203,9 @@ public class ContractServiceImpl implements ContractService {
 
         contract.setRejectedReason(reason);
 
-        return contractMapper.toContractResponse(contractRepository.save(contract));
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractRejected(savedContract, reason);
+        return contractMapper.toContractResponse(savedContract);
     }
 
     @Override
@@ -252,6 +261,7 @@ public class ContractServiceImpl implements ContractService {
     *
     **/
     @Override
+    @Transactional
     public ContractResponse approveContract(UUID contractId) {
         User admin = userCurrentService.getCurrentUser();
 
@@ -290,7 +300,9 @@ public class ContractServiceImpl implements ContractService {
         contract.setReviewedBy(admin);
         contract.setReviewedAt(now);
 
-        return contractMapper.toContractResponse(contractRepository.save(contract));
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractApproved(savedContract);
+        return contractMapper.toContractResponse(savedContract);
     }
 
     private BigDecimal calculateAdvanceAmount(JockeyHorseContract contract){
@@ -399,7 +411,9 @@ public class ContractServiceImpl implements ContractService {
         contract.setReviewedBy(admin);
         contract.setReviewedAt(LocalDateTime.now());
 
-        return contractMapper.toContractResponse(contractRepository.save(contract));
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractRejected(savedContract, reason);
+        return contractMapper.toContractResponse(savedContract);
     }
 
     private void validateInvite(HorseOwner currentOwner, HorseTournamentRegistration horseTournamentRegistration,
@@ -534,7 +548,9 @@ public class ContractServiceImpl implements ContractService {
         contract.setFinalPayoutStatus(FinalPayoutStatus.RELEASED);
         contract.setFinalPayoutAt(now);
 
-        return contractMapper.toContractResponse(contractRepository.save(contract));
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.jockeyPayoutReleased(savedContract);
+        return contractMapper.toContractResponse(savedContract);
     }
 
     @Override
@@ -602,7 +618,9 @@ public class ContractServiceImpl implements ContractService {
         if (contract.getAdvancePayoutStatus() == AdvancePayoutStatus.NOT_PAID) {
             contract.setAdvancePayoutStatus(AdvancePayoutStatus.CANCELLED);
         }
-        return contractMapper.toContractResponse(contractRepository.save(contract));
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractCancelled(savedContract, reason.trim());
+        return contractMapper.toContractResponse(savedContract);
     }
 
     private boolean isOwnerCancellable(ContractStatus status) {

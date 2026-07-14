@@ -29,6 +29,7 @@ import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.InvoiceRepository;
 import com.swp391.horseracing.service.InvoiceService;
+import com.swp391.horseracing.service.BusinessNotificationEventService;
 import com.swp391.horseracing.service.TournamentService;
 import java.time.LocalTime;
 import lombok.AccessLevel;
@@ -60,6 +61,7 @@ public class TournamentServiceImpl implements TournamentService {
     HorseTournamentRegistrationRepository horseRegistrationRepository;
     InvoiceRepository invoiceRepository;
     InvoiceService invoiceService;
+    BusinessNotificationEventService notificationEventService;
 
     @Override
     @Transactional
@@ -276,7 +278,9 @@ public class TournamentServiceImpl implements TournamentService {
         activatePrizeStructures(id);
 
         setPhaseAndStatus(tournament, TournamentPhase.REGISTRATION_OPEN);
-        return toResponse(tournamentRepository.save(tournament));
+        Tournament savedTournament = tournamentRepository.save(tournament);
+        notificationEventService.tournamentPublished(savedTournament);
+        return toResponse(savedTournament);
     }
 
     @Override
@@ -341,7 +345,9 @@ public class TournamentServiceImpl implements TournamentService {
         }
 
         setPhaseAndStatus(tournament, TournamentPhase.RACING);
-        return toResponse(tournamentRepository.save(tournament));
+        Tournament savedTournament = tournamentRepository.save(tournament);
+        notificationEventService.schedulePublished(savedTournament);
+        return toResponse(savedTournament);
     }
 
     @Override
