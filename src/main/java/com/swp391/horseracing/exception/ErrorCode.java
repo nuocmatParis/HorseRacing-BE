@@ -507,6 +507,31 @@ public enum ErrorCode {
     NOTIFICATION_NOT_FOUND(1901, HttpStatus.NOT_FOUND, "Notification not found"),
     NOTIFICATION_EVENT_INVALID(1902, HttpStatus.BAD_REQUEST, "Notification event is invalid"),
     NOTIFICATION_PAYLOAD_INVALID(1903, HttpStatus.BAD_REQUEST, "Notification event payload is invalid"),
+
+    ROUND_GAP_TOO_SHORT(1819, HttpStatus.BAD_REQUEST, "Insufficient gap between rounds"),
+
+    FILE_UPLOAD_FAILED(2001, HttpStatus.INTERNAL_SERVER_ERROR, "File upload failed"),
+
+    // BRACKET PLAN
+    INVALID_MAX_APPROVED_ENTRIES(2101, HttpStatus.BAD_REQUEST, "Max approved entries must be a power of 2 and at least 8"),
+    BRACKET_NOT_CONFIRMED(2103, HttpStatus.BAD_REQUEST, "Bracket plan has not been confirmed yet"),
+    BRACKET_PLAN_STALE(2104, HttpStatus.BAD_REQUEST, "Bracket plan is stale due to registration changes"),
+    BRACKET_PLAN_LOCKED(2105, HttpStatus.BAD_REQUEST, "Bracket plan is locked after schedule publication"),
+    APPROVED_ENTRIES_BELOW_BRACKET_MINIMUM(2106, HttpStatus.BAD_REQUEST, "Approved entries is below the minimum required for this bracket"),
+    APPROVED_ENTRIES_EXCEED_MAXIMUM(2107, HttpStatus.BAD_REQUEST, "Approved entries exceed the tournament capacity"),
+    RACE_ENTRIES_OUT_OF_RANGE(2108, HttpStatus.BAD_REQUEST, "Race entries count must be between 8 and 16"),
+    ROUND_STRUCTURE_MISMATCH(2109, HttpStatus.BAD_REQUEST, "Round structure does not match the bracket plan"),
+    RACE_STRUCTURE_MISMATCH(2110, HttpStatus.BAD_REQUEST, "Race structure does not match the bracket plan"),
+    NEXT_ROUND_NOT_ENOUGH_QUALIFIERS(2111, HttpStatus.BAD_REQUEST, "Not enough qualifiers to advance to next round"),
+    ROUND_REPORTS_NOT_FULLY_PUBLISHED(2112, HttpStatus.BAD_REQUEST, "Not all race reports in this round are published"),
+    ROUND_TRANSITION_ALREADY_COMPLETED(2113, HttpStatus.CONFLICT, "Round transition has already been completed"),
+    FINAL_ROUND_MUST_HAVE_ONE_RACE(2114, HttpStatus.BAD_REQUEST, "Final round must have exactly one race"),
+    PRIZE_PAYOUT_ONLY_ALLOWED_FOR_FINAL(2115, HttpStatus.BAD_REQUEST, "Prize payout is only allowed for the final round"),
+    PRIZE_PAYOUT_ALREADY_COMPLETED(2116, HttpStatus.CONFLICT, "Prize payout has already been completed for this tournament"),
+    BRACKET_PLAN_VERSION_CONFLICT(2117, HttpStatus.CONFLICT, "Bracket plan version has changed, please preview again"),
+    INVALID_JOCKEY_CAPACITY(2118, HttpStatus.BAD_REQUEST, "Max approved jockeys must be at least 125 percent of max approved entries"),
+    TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET(2119, HttpStatus.BAD_REQUEST, "Tournament date range is too short for the selected bracket"),
+    RACE_SCHEDULE_INCOMPLETE(2120, HttpStatus.BAD_REQUEST, "All races in the active round must have a valid schedule before publication"),
     ;
 
 

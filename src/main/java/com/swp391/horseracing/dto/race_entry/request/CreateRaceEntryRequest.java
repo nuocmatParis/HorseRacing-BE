@@ -20,7 +20,6 @@ public class CreateRaceEntryRequest {
     @NotNull(message = "Contract ID is required")
     UUID contractId;
 
-    @NotNull(message = "Lane number is required")
     @Min(value = 1, message = "Lane number must be at least 1")
     Integer laneNumber;
 }

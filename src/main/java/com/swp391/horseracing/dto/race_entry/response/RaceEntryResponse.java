@@ -17,7 +17,7 @@ public class RaceEntryResponse {
     UUID entryId;
     UUID raceId;
     UUID contractId;
-    int laneNumber;
+    Integer laneNumber;
     RaceEntryStatus status;
     UUID assignedById;
     LocalDateTime assignedAt;

@@ -651,7 +651,317 @@ equipmentWeightKg = 1.5
 
 ---
 
-## 19. Rule chưa chốt
+## 19. Bracket lũy thừa của 2 và Top 4 đi tiếp
+
+**TARGET**
+
+### 19.1. Phân biệt ba khái niệm
+
+Ba nghiệp vụ sau độc lập với nhau:
+
+1. Mỗi Race không phải Final lấy **Top 4** để đi tiếp.
+2. Spectator vẫn chỉ dự đoán **Top 3** của từng Race.
+3. Chỉ **Top 3 của Race Final** nhận giải thưởng chung cuộc.
+
+Entry đứng hạng 4 có thể đi tiếp ở Race không phải Final, nhưng:
+
+- Không phải một vị trí dùng để chấm prediction.
+- Không nhận giải thưởng chung cuộc nếu đứng hạng 4 ở Final.
+- Final không lấy Top 4 đi tiếp vì không còn Round sau.
+
+### 19.2. Cấu hình bracket
+
+```java
+int minMaxApprovedEntries = 8;
+int minEntriesPerRace = 8;
+int maxEntriesPerRace = 16;
+int qualifiersPerRace = 4;
+int predictionPositions = 3;
+int finalPrizePositions = 3;
+```
+
+`maxApprovedEntries` phải thỏa mãn:
+
+```text
+maxApprovedEntries >= 8
+và maxApprovedEntries là lũy thừa của 2
+```
+
+Ví dụ hợp lệ:
+
+```text
+8, 16, 32, 64, 128, 256, 512, ...
+```
+
+Không giới hạn nghiệp vụ ở một danh sách kết thúc tại 64 hoặc 128. Mọi lũy thừa của 2 từ 8 trở lên đều hợp lệ, trong giới hạn kiểu dữ liệu mà hệ thống có thể lưu và tính toán an toàn.
+
+Validation có thể dùng:
+
+```java
+value >= 8 && (value & (value - 1)) == 0
+```
+
+`maxApprovedEntries` là sức chứa tối đa của Tournament, không bắt buộc số hồ sơ thực tế phải bằng đúng giá trị đó.
+
+### 19.3. Tính cấu trúc Round/Race
+
+Với `maxApprovedEntries >= 16`:
+
+```text
+firstRoundRaceCount = maxApprovedEntries / maxEntriesPerRace
+minimumApprovedRequired = firstRoundRaceCount × minEntriesPerRace
+```
+
+Do `minEntriesPerRace = 8` và `maxEntriesPerRace = 16`:
+
+```text
+minimumApprovedRequired = maxApprovedEntries / 2
+```
+
+Số hồ sơ APPROVED thực tế `actualApprovedEntries` chỉ giữ được cấu trúc đã chọn khi:
+
+```text
+minimumApprovedRequired
+<= actualApprovedEntries
+<= maxApprovedEntries
+```
+
+Hai Race ở Round hiện tại cung cấp entry cho một Race ở Round tiếp theo:
+
+```text
+Race A lấy Top 4 ─┐
+                  ├─> Race C có 8 entry
+Race B lấy Top 4 ─┘
+```
+
+Vì vậy:
+
+```text
+nextRoundRaceCount = currentRoundRaceCount / 2
+```
+
+- Round đầu có 8–16 entry trong mỗi Race.
+- Từ Round thứ hai trở đi, mỗi Race nhận đúng 8 entry.
+- Số Race giảm một nửa qua mỗi Round cho đến khi còn một Final.
+- Không cần DFS/backtracking để tìm cây giải vì cấu trúc được suy ra trực tiếp.
+
+Ví dụ:
+
+| Max approved | APPROVED thực tế hợp lệ | Cấu trúc | Tổng Race |
+|---:|---:|---|---:|
+| 8 | 8 | 1 Final | 1 |
+| 16 | 8–16 | 1 Final | 1 |
+| 32 | 16–32 | 2 Race vòng loại → 1 Final | 3 |
+| 64 | 32–64 | 4 → 2 → 1 Final | 7 |
+| 128 | 64–128 | 8 → 4 → 2 → 1 Final | 15 |
+| 256 | 128–256 | 16 → 8 → 4 → 2 → 1 Final | 31 |
+
+Với giá trị tổng quát:
+
+```text
+maxApprovedEntries = 2^n
+APPROVED thực tế hợp lệ: từ 2^(n-1) đến 2^n
+```
+
+Dấu giữa hai giá trị trên biểu thị một khoảng, không phải phép trừ.
+
+### 19.4. Trường hợp đặc biệt 8 và 16
+
+Với `maxApprovedEntries = 8`:
+
+```text
+Phải có đúng 8 entry
+→ Tournament có một Final
+```
+
+Với `maxApprovedEntries = 16`, theo mô hình hiện tại:
+
+```text
+Có từ 8 đến 16 entry
+→ Tournament chạy thẳng một Final
+```
+
+Do đó Final của Tournament mức 16 có thể có tối đa 16 entry. Đây là ngoại lệ so với Final của cây giải lớn hơn, vốn nhận tám qualifier từ hai Race trước.
+
+### 19.5. Phân bổ entry cân bằng
+
+Với:
+
+```text
+N = actualApprovedEntries
+r = firstRoundRaceCount
+```
+
+Tính:
+
+```text
+baseSize = N / r
+remainder = N % r
+```
+
+Quy tắc:
+
+- `remainder` Race đầu nhận `baseSize + 1` entry.
+- Các Race còn lại nhận `baseSize` entry.
+- Chênh lệch số entry giữa hai Race không quá một.
+- Không dồn toàn bộ entry dư vào một Race.
+- Một horse, jockey hoặc contract không được xuất hiện hai lần trong cùng Round.
+
+Ví dụ với `N = 50` và `r = 4`:
+
+```text
+baseSize = 50 / 4 = 12
+remainder = 50 % 4 = 2
+
+Kết quả: 13, 13, 12, 12
+```
+
+Không chia thành `16, 16, 10, 8` dù từng Race vẫn nằm trong khoảng 8–16, vì mức cạnh tranh giữa các Race không cân bằng.
+
+Công thức trên chỉ quyết định số lượng entry của từng Race. Để chọn entry cụ thể có thể dùng:
+
+- Seeded shuffle và lưu seed để có thể tái hiện kết quả.
+- Phân bổ theo horse rating bằng thuật toán cố định và có thể kiểm tra lại.
+
+Không dùng thứ tự đăng ký làm lợi thế mặc định và không cho Admin tùy ý đưa entry vào Race thuận lợi.
+
+### 19.6. Flow mẫu với sức chứa 64 và 50 entry
+
+Admin cấu hình:
+
+```text
+maxApprovedEntries = 64
+```
+
+Hệ thống suy ra:
+
+```text
+Round 1: 4 Race
+Round 2: 2 Race
+Round 3: 1 Final
+```
+
+Khi đóng đăng ký có 50 entry hợp lệ:
+
+```text
+minimumApprovedRequired = 4 × 8 = 32
+32 <= 50 <= 64
+→ Giữ được cấu trúc
+```
+
+Phân bổ Round 1:
+
+```text
+Race 1: 13 entry
+Race 2: 13 entry
+Race 3: 12 entry
+Race 4: 12 entry
+```
+
+Sau khi toàn bộ report Round 1 được Published:
+
+```text
+Top 4 Race 1 + Top 4 Race 2 → Race 5 có 8 entry
+Top 4 Race 3 + Top 4 Race 4 → Race 6 có 8 entry
+```
+
+Sau khi toàn bộ report Round 2 được Published:
+
+```text
+Top 4 Race 5 + Top 4 Race 6 → Final có 8 entry
+```
+
+Final xác định Top 3 nhận giải chung cuộc. Prediction của từng Race, kể cả Race vòng loại và Final, vẫn chỉ chấm official Top 3 của chính Race đó.
+
+### 19.7. Kiểm tra khi đóng đăng ký
+
+1. Đếm số entry thực tế đủ điều kiện tham dự.
+2. Không cho vượt `maxApprovedEntries`.
+3. Tính lại khả năng phân bổ vào Round đầu.
+4. Mỗi Race phải có từ 8 đến 16 entry.
+5. Nếu hợp lệ, hiển thị preview và chờ Admin xác nhận.
+6. Nếu không đủ, không tự tạo Race dưới tám entry và không tự đổi bracket.
+7. Đề xuất mức lũy thừa của 2 thấp hơn phù hợp gần nhất.
+8. Chỉ thay đổi cấu trúc sau khi Admin xác nhận.
+
+Ví dụ:
+
+```text
+maxApprovedEntries = 64
+actualApprovedEntries = 30
+minimumApprovedRequired = 32
+
+30 < 32
+→ Không giữ được cấu trúc 64
+→ Đề xuất chuyển xuống cấu trúc 32
+→ Chờ Admin xác nhận
+```
+
+### 19.8. Chuyển Round
+
+Chỉ chuyển Round khi:
+
+- Tất cả Race của Round hiện tại đã `COMPLETED`.
+- Tất cả Race Report của Round đã `Published`.
+- Official result không còn được chỉnh sửa.
+
+Với từng Race không phải Final:
+
+1. Chỉ lấy RaceResult status `FINISHED`.
+2. Sắp xếp theo official rank tăng dần.
+3. Lấy bốn entry có rank tốt nhất.
+4. Không lấy `DID_NOT_FINISH` hoặc `DISQUALIFIED` đi tiếp.
+5. Ghép Top 4 của hai Race thành tám entry của Race kế tiếp.
+6. Tạo RaceEntry cho Round tiếp theo.
+7. Chuyển Round tiếp theo sang `SCHEDULING` đúng một lần.
+
+Transition phải idempotent để request hoặc scheduler chạy lại không tạo RaceEntry trùng.
+
+Nếu một Race không có đủ bốn entry `FINISHED`, hệ thống:
+
+- Không dùng DNF/DQ để lấp chỗ.
+- Tạm dừng chuyển Round.
+- Thông báo Admin.
+- Chờ áp dụng reserve/wildcard policy sau khi rule đó được chốt.
+
+### 19.9. Prediction và giải thưởng
+
+Official result ví dụ:
+
+```text
+Hạng 1: Horse A
+Hạng 2: Horse B
+Hạng 3: Horse C
+Hạng 4: Horse D
+```
+
+Nếu đây không phải Final:
+
+- A, B, C và D đi tiếp.
+- Prediction chỉ chấm theo A, B và C.
+- Horse D không tạo điểm cho vị trí prediction nào.
+
+Nếu đây là Final:
+
+- A, B và C là Top 3 chung cuộc và được xử lý giải thưởng.
+- D không nhận giải chung cuộc.
+- Không có entry nào đi tiếp.
+
+Race không thuộc Final:
+
+- Không payout giải thưởng chung cuộc.
+- Publish report và chấm prediction Top 3.
+- Dùng Top 4 để tạo Round tiếp theo.
+
+Race Final:
+
+- Chỉ payout khi Final Race Report đã Published.
+- Chỉ payout official rank 1, 2 và 3.
+- Payout phải idempotent và không được thực hiện hai lần.
+
+---
+
+## 20. Rule chưa chốt
 
 Các quyết định cần chốt trước phase tương ứng:
 
@@ -660,10 +970,11 @@ Các quyết định cần chốt trước phase tương ứng:
 3. Disqualified có lưu original rank ngoài official rank không.
 4. Có đồng bộ RaceResult status về RaceEntry status không.
 5. Staff được release lúc start hay finish.
+6. Nếu một Race không đủ bốn entry `FINISHED`, reserve/wildcard được chọn theo tiêu chí nào.
 
 ---
 
-## 20. Giá trị mặc định tổng hợp
+## 21. Giá trị mặc định tổng hợp
 
 | Rule | Giá trị mặc định | Khoảng cấu hình |
 |---|---:|---:|
@@ -678,6 +989,11 @@ Các quyết định cần chốt trước phase tương ứng:
 | Start sớm tối đa | 0 phút | Không âm |
 | Start muộn tối đa | 30 phút | Không âm |
 | Khung vận hành Race | 30 phút | Theo cấu hình/policy giải |
+| Max approved entry | Lũy thừa của 2, tối thiểu 8 | `8, 16, 32, 64, ...` |
+| Entry mỗi Race | Tối thiểu 8, tối đa 16 | Policy bracket |
+| Qualifier mỗi Race thường | Top 4 | Chỉ entry `FINISHED` |
+| Vị trí prediction | Top 3 | Độc lập với qualifier Top 4 |
+| Vị trí nhận giải chung cuộc | Top 3 Final | Chỉ Race duy nhất thuộc Final Round |
 | TOP1 đúng | 100 điểm | Từ 0 trở lên |
 | TOP3 đúng vị trí | 30 điểm/selection | Từ 0 trở lên |
 | TOP3 đúng horse sai vị trí | 10 điểm/selection | Từ 0 trở lên |

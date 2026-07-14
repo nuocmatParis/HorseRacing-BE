@@ -1,12 +1,16 @@
 package com.swp391.horseracing.scheduler;
 
+import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
+import com.swp391.horseracing.repository.RaceReportRepository;
+import com.swp391.horseracing.enums.ReportStatus;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -27,6 +31,7 @@ public class TournamentPhaseScheduler {
     TournamentRepository tournamentRepository;
     RoundRepository roundRepository;
     RaceRepository raceRepository;
+    RaceReportRepository raceReportRepository;
 
     @Transactional
     @Scheduled(fixedRate = 60_000)
@@ -57,11 +62,51 @@ public class TournamentPhaseScheduler {
             List<Round> rounds = roundRepository
                     .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournament.getTournamentId());
 
-            boolean allFinished = rounds.stream()
-                    .flatMap(round -> raceRepository.findByRound_RoundId(round.getRoundId()).stream())
-                    .allMatch(race -> race.getFinishedAt() != null);
+            if (rounds.isEmpty()) continue;
 
-            if (allFinished && !rounds.isEmpty()) {
+            Round currentRound = findCurrentRound(tournament, rounds);
+
+            // Intermediate-round advancement belongs to RaceReportService after every
+            // report is published and all Top 4 qualifiers are validated atomically.
+            if (!currentRound.isFinal()) {
+                continue;
+            }
+
+            boolean allFinished = true;
+            List<Race> finalRaces = raceRepository.findByRound_RoundId(currentRound.getRoundId());
+            if (finalRaces.isEmpty()) {
+                allFinished = false;
+            }
+            for (Race race : finalRaces) {
+                if (race.getStatus() != RoundStatus.COMPLETED
+                        || raceReportRepository.findByRace_RaceId(race.getRaceId())
+                        .filter(report -> report.getStatus() == ReportStatus.Published)
+                        .isEmpty()) {
+                    allFinished = false;
+                    break;
+                }
+            }
+
+            if (!allFinished) continue;
+
+            int currentIndex = -1;
+            for (int i = 0; i < rounds.size(); i++) {
+                if (rounds.get(i).getRoundId().equals(currentRound.getRoundId())) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            int nextIndex = currentIndex + 1;
+
+            if (nextIndex < rounds.size()) {
+                Round nextRound = rounds.get(nextIndex);
+                tournament.setCurrentRoundName(nextRound.getRoundName());
+                tournamentRepository.save(tournament);
+                log.info("Tournament {} round complete: '{}' → '{}'",
+                        tournament.getTournamentId(),
+                        currentRound.getRoundName(),
+                        nextRound.getRoundName());
+            } else {
                 tournament.setPhase(TournamentPhase.RESULT_PENDING);
                 tournament.setStatus(TournamentStatus.ONGOING);
                 tournamentRepository.save(tournament);
@@ -69,5 +114,17 @@ public class TournamentPhaseScheduler {
                         tournament.getTournamentId());
             }
         }
+    }
+
+    private Round findCurrentRound(Tournament tournament, List<Round> rounds) {
+        String currentRoundName = tournament.getCurrentRoundName();
+        if (currentRoundName != null) {
+            for (Round round : rounds) {
+                if (round.getRoundName().equals(currentRoundName)) {
+                    return round;
+                }
+            }
+        }
+        return rounds.get(0);
     }
 }

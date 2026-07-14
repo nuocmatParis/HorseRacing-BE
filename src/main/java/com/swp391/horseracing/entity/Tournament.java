@@ -145,8 +145,8 @@ public class Tournament {
     @Column(name = "break_end_time")
     LocalTime breakEndTime;
 
-    @Column(name = "max_rounds", nullable = false)
-    int maxRounds;
+    @Column(name = "max_rounds")
+    Integer maxRounds;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -178,6 +178,13 @@ public class Tournament {
     @Column(name = "scheduling_deadline_at", nullable = false)
     LocalDateTime schedulingDeadlineAt;
 
+    @Column(name = "current_round_name", length = 100)
+    String currentRoundName;
+
+    @Builder.Default
+    @Column(name = "min_round_gap_days", nullable = false)
+    int minRoundGapDays = 7;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "race_class", length = 50)
     RaceClass raceClass;
@@ -203,6 +210,24 @@ public class Tournament {
 
     @Column(name = "max_approved_jockeys", nullable = false)
     Integer maxApprovedJockeys;
+
+    @Column(name = "max_approved_entries", nullable = false)
+    Integer maxApprovedEntries;
+
+    @Column(name = "planned_round_count")
+    Integer plannedRoundCount;
+
+    @Column(name = "planned_race_count")
+    Integer plannedRaceCount;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bracket_plan_status", nullable = false, length = 50)
+    com.swp391.horseracing.enums.BracketPlanStatus bracketPlanStatus = com.swp391.horseracing.enums.BracketPlanStatus.NOT_GENERATED;
+
+    @Builder.Default
+    @Column(name = "bracket_plan_version")
+    Integer bracketPlanVersion = 1;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

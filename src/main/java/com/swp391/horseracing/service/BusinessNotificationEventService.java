@@ -29,4 +29,5 @@ public interface BusinessNotificationEventService {
     void predictionVoided(Prediction prediction, String reason);
     void prizeReceived(RaceResult result);
     void jockeyPayoutReleased(JockeyHorseContract contract);
+    void roundTransitionBlocked(Round round);
 }

@@ -2,6 +2,7 @@ package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
+import com.swp391.horseracing.dto.race_entry.request.UpdateLaneRequest;
 import com.swp391.horseracing.dto.race_entry.request.UpdateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
 import com.swp391.horseracing.service.RaceEntryService;
@@ -59,5 +60,37 @@ public class RaceEntryController {
     public ApiResponse<Void> delete(@PathVariable UUID entryId) {
         raceEntryService.delete(entryId);
         return ApiResponse.<Void>builder().build();
+    }
+
+    @PostMapping("/rounds/{roundId}/auto-assign")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> autoAssignRound(@PathVariable UUID roundId) {
+        raceEntryService.autoAssignRound(roundId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PostMapping("/races/{raceId}/auto-assign-lanes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> autoAssignLanes(@PathVariable UUID raceId) {
+        raceEntryService.autoAssignLanes(raceId);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PatchMapping("/{entryId}/lane")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<RaceEntryResponse> updateLane(@PathVariable UUID entryId,
+                                                      @RequestBody @Valid UpdateLaneRequest request) {
+        return ApiResponse.<RaceEntryResponse>builder()
+                .result(raceEntryService.updateLane(entryId, request.getLaneNumber()))
+                .build();
+    }
+
+    @PatchMapping("/{entryId}/swap/{targetEntryId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<RaceEntryResponse> swapLanes(@PathVariable UUID entryId,
+                                                     @PathVariable UUID targetEntryId) {
+        return ApiResponse.<RaceEntryResponse>builder()
+                .result(raceEntryService.swapLanes(entryId, targetEntryId))
+                .build();
     }
 }

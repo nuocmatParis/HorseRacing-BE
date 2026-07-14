@@ -29,5 +29,5 @@ public class JockeyResponse {
     JockeyTier jockeyTier;
     LocalDateTime tierUpdatedAt;
     LocalDateTime lastRaceAt;
-
+    String imageUrl;
 }

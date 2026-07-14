@@ -92,13 +92,12 @@ public class CreateTournamentRequest {
     @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
     Integer predictionTop3PerfectBonusPoints = 50;
 
-    @NotNull(message = "Max rounds is required")
-    @Min(value = 1, message = "Max rounds must be at least 1")
-    Integer maxRounds;
+    @Min(value = 7, message = "Min round gap days must be at least 7")
+    Integer minRoundGapDays = 7;
 
-    @NotNull(message = "Max approved horses is required")
-    @Min(value = 1, message = "Max approved horses must be at least 1")
-    Integer maxApprovedHorses;
+    @NotNull(message = "Max approved entries is required")
+    @Min(value = 8, message = "Max approved entries must be at least 8")
+    Integer maxApprovedEntries;
 
     @NotNull(message = "Max approved jockeys is required")
     @Min(value = 1, message = "Max approved jockeys must be at least 1")

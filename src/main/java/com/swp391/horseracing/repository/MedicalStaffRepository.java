@@ -6,14 +6,18 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+@Repository
 public interface MedicalStaffRepository extends JpaRepository<MedicalStaff, UUID> {
 
     Optional<MedicalStaff> findByUser_UserId(UUID userId);
+
+    boolean existsByUser_UserId(UUID userId);
 
     List<MedicalStaff> findByStatus(MedicalStaffStatus status);
 

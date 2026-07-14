@@ -176,7 +176,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         Tournament tournament = registration.getTournament();
         long approvedCount = horseRegistrationRepository.countByTournament_TournamentIdAndStatus(
                 tournament.getTournamentId(), RegistrationStatus.APPROVED);
-        if (tournament.getMaxApprovedHorses() != null && approvedCount >= tournament.getMaxApprovedHorses()) {
+        if (tournament.getMaxApprovedEntries() != null && approvedCount >= tournament.getMaxApprovedEntries()) {
             throw new AppException(ErrorCode.HORSE_REGISTRATION_LIMIT_EXCEEDED);
         }
 

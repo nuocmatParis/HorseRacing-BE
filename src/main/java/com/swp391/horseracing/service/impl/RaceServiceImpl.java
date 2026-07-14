@@ -77,6 +77,9 @@ public class RaceServiceImpl implements RaceService {
         if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
+        if (round.getTournament().getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
+            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+        }
 
         Tournament tournament = round.getTournament();
         LocalDateTime endTime = request.getStartTime().plusMinutes(tournament.getDefaultRaceOperationalMinutes());
@@ -93,11 +96,6 @@ public class RaceServiceImpl implements RaceService {
         if (raceRepository.existsByRound_RoundIdAndName(roundId, request.getName())) {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
         }
-
-        if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
-            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
-        }
-
         if(round.getMaxRaces() <= round.getRaces().size()){
             throw new AppException(ErrorCode.MAX_RACES_REACHED);
         }
@@ -108,11 +106,15 @@ public class RaceServiceImpl implements RaceService {
             }
         }
 
+        if (raceRepository.existsByRound_RoundIdAndSequenceOrder(roundId, request.getSequenceOrder())) {
+            throw new AppException(ErrorCode.DUPLICATE_RACE_SEQUENCE);
+        }
         validateRaceScheduleConstraints(round, request.getStartTime(), endTime, null);
 
         User currentUser = getCurrentUser();
 
         Race race = raceMapper.toRace(request);
+        race.setStatus(RoundStatus.SCHEDULING);
         race.setEndTime(endTime);
         race.setRound(round);
         race.setCreatedBy(currentUser);
@@ -130,8 +132,15 @@ public class RaceServiceImpl implements RaceService {
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
         Round round = race.getRound();
-        if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
+        Tournament tournament = round.getTournament();
+        boolean scheduleEditable = tournament.getStatus() == TournamentStatus.DRAFT
+                || tournament.getPhase() == TournamentPhase.SCHEDULING;
+        if (!scheduleEditable) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
+        }
+        if (tournament.getBracketPlanStatus() == BracketPlanStatus.CONFIRMED
+                || tournament.getBracketPlanStatus() == BracketPlanStatus.LOCKED) {
+            validateOnlyRaceScheduleChanges(request);
         }
 
         if (request.getName() != null && !request.getName().equals(race.getName())
@@ -145,6 +154,9 @@ public class RaceServiceImpl implements RaceService {
         }
 
         LocalDateTime newStartTime = request.getStartTime() != null ? request.getStartTime() : race.getStartTime();
+        if (newStartTime == null || round.getStartDate() == null || round.getEndDate() == null) {
+            throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
+        }
         LocalDateTime newEndTime = newStartTime.plusMinutes(round.getTournament().getDefaultRaceOperationalMinutes());
 
         if (!newStartTime.toLocalDate().equals(newEndTime.toLocalDate())) {
@@ -167,7 +179,6 @@ public class RaceServiceImpl implements RaceService {
             reorderRaces(round.getRoundId(), race.getRaceId(), newSequence);
         }
 
-        Tournament tournament = round.getTournament();
         race.setPredictionOpenAt(race.getStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
         race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
@@ -183,6 +194,9 @@ public class RaceServiceImpl implements RaceService {
         if (race.getRound().getTournament().getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
+        if (race.getRound().getTournament().getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
+            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+        }
 
         raceRepository.delete(race);
     }
@@ -192,6 +206,11 @@ public class RaceServiceImpl implements RaceService {
     public RaceResponse publishSchedule(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        BracketPlanStatus bracketStatus = race.getRound().getTournament().getBracketPlanStatus();
+        if (bracketStatus == BracketPlanStatus.CONFIRMED || bracketStatus == BracketPlanStatus.LOCKED) {
+            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+        }
 
         if (race.getStatus() != RoundStatus.SCHEDULING) {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
@@ -409,6 +428,9 @@ public class RaceServiceImpl implements RaceService {
             if (excludeRaceId != null && existing.getRaceId().equals(excludeRaceId)) {
                 continue;
             }
+            if (existing.getStartTime() == null || existing.getEndTime() == null) {
+                continue;
+            }
             
             LocalDateTime minStartAfterExisting = existing.getEndTime().plusMinutes(minInterval);
             LocalDateTime maxEndBeforeExisting = existing.getStartTime().minusMinutes(minInterval);
@@ -594,6 +616,9 @@ public class RaceServiceImpl implements RaceService {
                 if (otherRace.getRaceId().equals(raceId) || otherRace.getStatus() == RoundStatus.CANCELLED) {
                     continue;
                 }
+                if (otherRace.getStartTime() == null || otherRace.getEndTime() == null) {
+                    continue;
+                }
                 long restThreshold = 60; // 60 minutes rest time
                 LocalDateTime otherStart = otherRace.getStartTime();
                 LocalDateTime otherEnd = otherRace.getEndTime();
@@ -612,6 +637,9 @@ public class RaceServiceImpl implements RaceService {
             for (RaceEntry je : jockeyEntries) {
                 Race otherRace = je.getRace();
                 if (otherRace.getRaceId().equals(raceId) || otherRace.getStatus() == RoundStatus.CANCELLED) {
+                    continue;
+                }
+                if (otherRace.getStartTime() == null || otherRace.getEndTime() == null) {
                     continue;
                 }
                 LocalDateTime otherStart = otherRace.getStartTime();
@@ -635,6 +663,9 @@ public class RaceServiceImpl implements RaceService {
             for (RaceReferee oa : otherAssignments) {
                 Race otherRace = oa.getRace();
                 if (otherRace.getRaceId().equals(raceId) || otherRace.getStatus() == RoundStatus.CANCELLED) {
+                    continue;
+                }
+                if (otherRace.getStartTime() == null || otherRace.getEndTime() == null) {
                     continue;
                 }
                 LocalDateTime otherStart = otherRace.getStartTime();
@@ -667,6 +698,9 @@ public class RaceServiceImpl implements RaceService {
                     if (otherRace.getRaceId().equals(raceId) || otherRace.getStatus() == RoundStatus.CANCELLED) {
                         continue;
                     }
+                    if (otherRace.getStartTime() == null) {
+                        continue;
+                    }
                     LocalDateTime otherWindowStart = otherRace.getStartTime().minusMinutes(openMin);
                     LocalDateTime otherWindowEnd = otherRace.getStartTime().minusMinutes(closeMin);
                     
@@ -683,6 +717,9 @@ public class RaceServiceImpl implements RaceService {
                 for (RaceInspectionAssignment oa : otherAssigns) {
                     Race otherRace = oa.getRace();
                     if (otherRace.getRaceId().equals(raceId) || otherRace.getStatus() == RoundStatus.CANCELLED) {
+                        continue;
+                    }
+                    if (otherRace.getStartTime() == null) {
                         continue;
                     }
                     LocalDateTime otherWindowStart = otherRace.getStartTime().minusMinutes(openMin);
@@ -752,5 +789,45 @@ public class RaceServiceImpl implements RaceService {
         }
         
         return proposals;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void validateRoundScheduleForPublication(UUID roundId) {
+        Round round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        if (round.getStartDate() == null || round.getEndDate() == null) {
+            throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
+        }
+
+        List<Race> races = raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(roundId);
+        if (races.isEmpty()) {
+            throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
+        }
+        int durationMinutes = round.getTournament().getDefaultRaceOperationalMinutes();
+        for (Race race : races) {
+            if (race.getStartTime() == null || race.getEndTime() == null) {
+                throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
+            }
+            LocalDateTime requiredEndTime = race.getStartTime().plusMinutes(durationMinutes);
+            if (!requiredEndTime.equals(race.getEndTime())) {
+                throw new AppException(ErrorCode.INVALID_RACE_DATES);
+            }
+            if (race.getStartTime().isBefore(round.getStartDate())
+                    || race.getEndTime().isAfter(round.getEndDate())) {
+                throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
+            }
+            validateRaceScheduleConstraints(round, race.getStartTime(), race.getEndTime(), race.getRaceId());
+            validateRescheduleConflictsInternal(race, race.getStartTime(), race.getEndTime());
+        }
+    }
+
+    private void validateOnlyRaceScheduleChanges(UpdateRaceRequest request) {
+        if (request.getName() != null
+                || request.getTrackCondition() != null
+                || request.getDistance() != null
+                || request.getSequenceOrder() != null) {
+            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+        }
     }
 }

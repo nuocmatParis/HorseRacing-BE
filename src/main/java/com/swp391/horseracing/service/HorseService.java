@@ -3,6 +3,7 @@ package com.swp391.horseracing.service;
 import com.swp391.horseracing.dto.horse.request.HorseCreationRequest;
 import com.swp391.horseracing.dto.horse.request.HorseUpdateRequest;
 import com.swp391.horseracing.dto.horse.response.HorseResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -13,4 +14,5 @@ public interface HorseService {
     HorseResponse getById(UUID horseId);
     HorseResponse update(UUID horseId, HorseUpdateRequest request);
     void delete(UUID horseId);
+    HorseResponse uploadImage(UUID horseId, MultipartFile file);
 }

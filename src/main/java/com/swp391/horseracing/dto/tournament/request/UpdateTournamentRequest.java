@@ -130,11 +130,11 @@ public class UpdateTournamentRequest {
 
     LocalDateTime schedulingDeadlineAt;
 
-    @Min(value = 1, message = "Max rounds must be at least 1")
-    Integer maxRounds;
+    @Min(value = 7, message = "Min round gap days must be at least 7")
+    Integer minRoundGapDays;
 
-    @Min(value = 1, message = "Max approved horses must be at least 1")
-    Integer maxApprovedHorses;
+    @Min(value = 8, message = "Max approved entries must be at least 8")
+    Integer maxApprovedEntries;
 
     @Min(value = 1, message = "Max approved jockeys must be at least 1")
     Integer maxApprovedJockeys;

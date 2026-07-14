@@ -16,16 +16,20 @@ import com.swp391.horseracing.mapper.UserMapper;
 import com.swp391.horseracing.repository.EmailVerificationRepository;
 import com.swp391.horseracing.repository.RoleRepository;
 import com.swp391.horseracing.repository.UserRepository;
+import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.EmailService;
 import com.swp391.horseracing.service.UserService;
 import com.swp391.horseracing.service.WalletService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,6 +49,7 @@ public class UserServiceImpl implements UserService {
     EmailService emailService;
     EmailVerificationRepository emailVerificationRepository;
     EmailVerificationMapper emailVerificationMapper;
+    CloudinaryService cloudinaryService;
 
     static Set<RoleName> SELF_REGISTER_ALLOWED_ROLES = Set.of(
             RoleName.SPECTATOR,
@@ -151,6 +156,23 @@ public class UserServiceImpl implements UserService {
             responseList.add(userMapper.toUserResponse(user));
         }
         return responseList;
+    }
+
+    @Override
+    @Transactional
+    public UserResponse uploadAvatar(MultipartFile file) {
+        var context = SecurityContextHolder.getContext();
+        String username = context.getAuthentication().getName();
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file, "avatars");
+            user.setImageUrl(imageUrl);
+            return userMapper.toUserResponse(userRepository.save(user));
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
+        }
     }
 
     private String generateOtp(){
