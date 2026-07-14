@@ -243,7 +243,26 @@ public class RaceServiceImpl implements RaceService {
         race.setPredictionOpenAt(commonPredictionOpenAt);
         race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
-        return raceMapper.toRaceResponse(raceRepository.save(race));
+        Race savedRace = raceRepository.save(race);
+        markRoundScheduledIfAllRacesPublished(race.getRound());
+        return raceMapper.toRaceResponse(savedRace);
+    }
+
+    private void markRoundScheduledIfAllRacesPublished(Round round) {
+        List<Race> races = raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(round.getRoundId());
+        if (races.isEmpty()) {
+            return;
+        }
+
+        for (Race race : races) {
+            if (race.getStatus() != RoundStatus.SCHEDULED
+                    && race.getStatus() != RoundStatus.CANCELLED) {
+                return;
+            }
+        }
+
+        round.setStatus(RoundStatus.SCHEDULED);
+        roundRepository.save(round);
     }
 
     private void reorderRaces(UUID roundId, UUID raceId, int newSequence) {
@@ -352,6 +371,8 @@ public class RaceServiceImpl implements RaceService {
         race.setStatus(RoundStatus.ONGOING);
         race.setStartedAt(LocalDateTime.now());
         race.setStartedBy(currentUser);
+        race.getRound().setStatus(RoundStatus.ONGOING);
+        roundRepository.save(race.getRound());
 
         // Also release staff assignments since race started (from Phase 11 — Staff availability)
         // veterinarian and medical staff assigned to this race can be set to AVAILABLE or we just release the bận status.

@@ -52,6 +52,9 @@ public class SecurityConfig {
     @Value("${jwt.signer-key}")
     private String signerKey;
 
+    @Value("${app.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+    private String[] corsAllowedOriginPatterns;
+
     @Bean
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
@@ -110,11 +113,9 @@ public class SecurityConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
-        // Allow common local dev ports
-        corsConfiguration.addAllowedOrigin("http://localhost:5173");
-        corsConfiguration.addAllowedOrigin("http://localhost:5174");
-        corsConfiguration.addAllowedOrigin("http://localhost:3000");
-        corsConfiguration.addAllowedOrigin("http://127.0.0.1:5173");
+        for (String originPattern : corsAllowedOriginPatterns) {
+            corsConfiguration.addAllowedOriginPattern(originPattern.trim());
+        }
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
         corsConfiguration.setAllowCredentials(true);

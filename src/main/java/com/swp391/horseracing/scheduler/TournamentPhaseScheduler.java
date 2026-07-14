@@ -89,6 +89,11 @@ public class TournamentPhaseScheduler {
 
             if (!allFinished) continue;
 
+            if (currentRound.getStatus() != RoundStatus.COMPLETED) {
+                currentRound.setStatus(RoundStatus.COMPLETED);
+                roundRepository.save(currentRound);
+            }
+
             int currentIndex = -1;
             for (int i = 0; i < rounds.size(); i++) {
                 if (rounds.get(i).getRoundId().equals(currentRound.getRoundId())) {

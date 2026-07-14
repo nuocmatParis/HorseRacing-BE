@@ -16,13 +16,17 @@ public class RaceReportResponse {
 
     UUID reportId;
     UUID raceId;
+    String raceName;
     UUID refereeId;
+    String refereeName;
     String summary;
     String appealNote;
     ReportStatus status;
     UUID signedById;
+    String signedByName;
     LocalDateTime signedAt;
     UUID publishedById;
+    String publishedByName;
     LocalDateTime publishedAt;
     LocalDateTime createdAt;
 }

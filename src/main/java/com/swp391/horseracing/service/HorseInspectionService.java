@@ -7,4 +7,5 @@ import java.util.UUID;
 
 public interface HorseInspectionService {
     HorseInspectionResponse createInspection(UUID entryId, HorseInspectionRequest request);
+    HorseInspectionResponse getInspection(UUID entryId);
 }

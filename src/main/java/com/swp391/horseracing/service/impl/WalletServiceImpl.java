@@ -32,6 +32,7 @@ import static com.swp391.horseracing.enums.WalletPurpose.*;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WalletServiceImpl implements WalletService {
+
     WalletMapper walletMapper;
     WalletRepository walletRepository;
     UserCurrentService userCurrentService;
@@ -82,13 +83,6 @@ public class WalletServiceImpl implements WalletService {
     @Transactional
     public List<WalletResponse> createSystemWallets() {
         List<WalletResponse> responses = new ArrayList<>();
-
-        boolean alreadyExists = walletRepository.existsByOwnerTypeAndUserIsNullAndWalletPurpose(
-                WalletOwnerType.SYSTEM, SYSTEM_REVENUE);
-
-        if (alreadyExists) {
-            throw new AppException(ErrorCode.WALLET_ALREADY_EXISTS);
-        }
 
         List<WalletPurpose> walletPurposes = List.of(
                 SYSTEM_REVENUE,
@@ -162,4 +156,5 @@ public class WalletServiceImpl implements WalletService {
                 .transactionResponse(transactionMapper.toTransactionResponse(savedTransaction))
                 .build();
     }
+
 }

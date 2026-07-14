@@ -9,6 +9,7 @@ import com.swp391.horseracing.dto.race_portal.RaceScheduleResponse;
 import com.swp391.horseracing.dto.race_portal.RaceSummaryResponse;
 import com.swp391.horseracing.dto.race_portal.SpectatorRaceDetailResponse;
 import com.swp391.horseracing.entity.MedicalStaff;
+import com.swp391.horseracing.entity.AIPrediction;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.RaceEntry;
 import com.swp391.horseracing.entity.RaceInspectionAssignment;
@@ -19,9 +20,12 @@ import com.swp391.horseracing.entity.Referee;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.entity.Veterinarian;
+import com.swp391.horseracing.entity.HorseInspection;
+import com.swp391.horseracing.entity.JockeyInspection;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.MedicalStaffRepository;
+import com.swp391.horseracing.repository.AIPredictionRepository;
 import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceInspectionStaffAssignmentRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
@@ -31,6 +35,8 @@ import com.swp391.horseracing.repository.RaceResultRepository;
 import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.VeterinarianRepository;
+import com.swp391.horseracing.repository.HorseInspectionRepository;
+import com.swp391.horseracing.repository.JockeyInspectionRepository;
 import com.swp391.horseracing.service.RacePortalService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
@@ -44,7 +50,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -63,6 +71,9 @@ public class RacePortalServiceImpl implements RacePortalService {
     MedicalStaffRepository medicalStaffRepository;
     TournamentRepository tournamentRepository;
     UserCurrentService userCurrentService;
+    HorseInspectionRepository horseInspectionRepository;
+    JockeyInspectionRepository jockeyInspectionRepository;
+    AIPredictionRepository aiPredictionRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -134,6 +145,40 @@ public class RacePortalServiceImpl implements RacePortalService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResponse<RaceResultsResponse> getOwnerProvisionalResults(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findProvisionalResultsForOwner(
+                user.getUserId(), PageRequest.of(page, size));
+        List<RaceResultsResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Owner_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toResultsResponse(race, entries, true, true));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceResultsResponse> getJockeyProvisionalResults(int page, int size) {
+        validatePage(page, size);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findProvisionalResultsForJockey(
+                user.getUserId(), PageRequest.of(page, size));
+        List<RaceResultsResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Jockey_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toResultsResponse(race, entries, false, true));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<RaceSummaryResponse> getUpcomingRaces(
             LocalDateTime from, LocalDateTime to, UUID tournamentId, int page, int size) {
         validatePage(page, size);
@@ -164,13 +209,20 @@ public class RacePortalServiceImpl implements RacePortalService {
             throw new AppException(ErrorCode.SCHEDULE_NOT_PUBLISHED);
         }
         List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        Map<UUID, AIPrediction> predictionByEntryId = new HashMap<>();
+        for (AIPrediction prediction : predictions) {
+            if (prediction.getEntry() != null) {
+                predictionByEntryId.put(prediction.getEntry().getEntryId(), prediction);
+            }
+        }
         return SpectatorRaceDetailResponse.builder()
                 .race(toRaceSummary(race))
                 .cancelledAt(race.getCancelledAt())
                 .cancellationReason(race.getCancellationReason())
                 .rescheduledAt(race.getRescheduledAt())
                 .rescheduleReason(race.getRescheduleReason())
-                .entries(toEntryResponses(entries))
+                .entries(toEntryResponses(entries, predictionByEntryId))
                 .build();
     }
 
@@ -243,8 +295,16 @@ public class RacePortalServiceImpl implements RacePortalService {
     }
 
     private RaceResultsResponse toResultsResponse(Race race, List<RaceEntry> entries, boolean ownerView) {
-        RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId())
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
+        return toResultsResponse(race, entries, ownerView, false);
+    }
+
+    private RaceResultsResponse toResultsResponse(
+            Race race, List<RaceEntry> entries, boolean ownerView, boolean provisional) {
+        Optional<RaceReport> optionalReport = raceReportRepository.findByRace_RaceId(race.getRaceId());
+        if (!provisional && optionalReport.isEmpty()) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_FOUND);
+        }
+        RaceReport report = optionalReport.orElse(null);
         List<RaceResultItemResponse> results = new ArrayList<>();
         for (RaceEntry entry : entries) {
             Optional<RaceResult> optionalResult = raceResultRepository.findByEntry_EntryId(entry.getEntryId());
@@ -267,8 +327,10 @@ public class RacePortalServiceImpl implements RacePortalService {
         }
         return RaceResultsResponse.builder()
                 .race(toRaceSummary(race))
-                .reportId(report.getReportId())
-                .publishedAt(report.getPublishedAt())
+                .reportId(report == null ? null : report.getReportId())
+                .publishedAt(report == null ? null : report.getPublishedAt())
+                .reportStatus(report == null ? null : report.getStatus())
+                .provisional(provisional)
                 .myResults(results)
                 .build();
     }
@@ -315,8 +377,26 @@ public class RacePortalServiceImpl implements RacePortalService {
         return responses;
     }
 
+    private List<RaceEntryViewResponse> toEntryResponses(
+            List<RaceEntry> entries,
+            Map<UUID, AIPrediction> predictionByEntryId) {
+        List<RaceEntryViewResponse> responses = new ArrayList<>();
+        for (RaceEntry entry : entries) {
+            RaceEntryViewResponse response = toEntryResponse(entry);
+            AIPrediction prediction = predictionByEntryId.get(entry.getEntryId());
+            if (prediction != null) {
+                response.setWinProbability(prediction.getWinProbability());
+                response.setTopNProbability(prediction.getTopNProbability());
+                response.setConfidenceScore(prediction.getConfidenceScore());
+                response.setPredictionReason(prediction.getPredictionReason());
+            }
+            responses.add(response);
+        }
+        return responses;
+    }
+
     private RaceEntryViewResponse toEntryResponse(RaceEntry entry) {
-        return RaceEntryViewResponse.builder()
+        RaceEntryViewResponse.RaceEntryViewResponseBuilder builder = RaceEntryViewResponse.builder()
                 .entryId(entry.getEntryId())
                 .laneNumber(entry.getLaneNumber())
                 .status(entry.getStatus())
@@ -325,8 +405,24 @@ public class RacePortalServiceImpl implements RacePortalService {
                 .jockeyId(entry.getContract().getJockey().getJockeyId())
                 .jockeyName(entry.getContract().getJockey().getUser().getFullName())
                 .scratchedReason(entry.getScratchedReason())
-                .disqualifiedReason(entry.getDisqualifiedReason())
-                .build();
+                .disqualifiedReason(entry.getDisqualifiedReason());
+
+        Optional<HorseInspection> horseInspection = horseInspectionRepository
+                .findByRaceEntry_EntryId(entry.getEntryId());
+        if (horseInspection.isPresent()) {
+            builder.horseInspectionId(horseInspection.get().getHorseInspectionId())
+                    .horseInspectionStatus(horseInspection.get().getStatus())
+                    .horseInspectionResult(horseInspection.get().getResult());
+        }
+
+        Optional<JockeyInspection> jockeyInspection = jockeyInspectionRepository
+                .findByRaceEntry_EntryId(entry.getEntryId());
+        if (jockeyInspection.isPresent()) {
+            builder.jockeyInspectionId(jockeyInspection.get().getJockeyInspectionId())
+                    .jockeyInspectionStatus(jockeyInspection.get().getStatus())
+                    .jockeyInspectionResult(jockeyInspection.get().getResult());
+        }
+        return builder.build();
     }
 
     private <T> PageResponse<T> toPageResponse(Page<Race> source, List<T> items) {

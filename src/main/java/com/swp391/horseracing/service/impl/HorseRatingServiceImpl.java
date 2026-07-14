@@ -41,8 +41,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
 
         List<RaceResult> allResults = raceResultRepository.findByRace_RaceId(raceId);
 
-        // Validation: Scratched or withdrawn entries must NOT have a RaceResult record
-        // and all existing results must have starter statuses (FINISHED, DNF, DISQUALIFIED)
         for (RaceResult result : allResults) {
             if (!isActualStarter(result.getEntry())) {
                 throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
@@ -56,7 +54,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
 
         List<RaceResult> starters = allResults;
 
-        // Find finish times for rank 1 and rank 2 to compute performance gap
         Float winnerTime = starters.stream()
                 .filter(r -> r.getStatus() == RaceResultStatus.FINISHED && r.getRank() != null && r.getRank() == 1)
                 .map(RaceResult::getFinishTime)
@@ -77,11 +74,9 @@ public class HorseRatingServiceImpl implements HorseRatingService {
             Horse horse = result.getEntry().getContract().getHorse();
             UUID horseId = horse.getHorseId();
             
-            // Retrieve old rating from the snapshot map
+
             int oldRating = ratingSnapshot.getOrDefault(horseId, horse.getCurrentRating());
             RaceClass oldRaceClass = RaceClass.fromRating(oldRating);
-
-            // Opponent average rating calculation (excluding the target horse)
             double sumOpponentRating = 0;
             int countOpponents = 0;
             for (RaceResult s : starters) {
@@ -97,7 +92,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
             Integer rank = result.getRank();
             RaceResultStatus status = result.getStatus();
 
-            // 1. BasePoint
             int baseChange = 0;
             if (status == RaceResultStatus.FINISHED && rank != null) {
                 if (rank == 1) {
@@ -113,7 +107,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 baseChange = properties.getDisqualifiedChange();
             }
 
-            // 2. OpponentStrengthBonus
             int opponentStrengthBonus = 0;
             if (status == RaceResultStatus.FINISHED && rank != null && rank >= 1 && rank <= 5) {
                 if (ratingDifference >= properties.getStrongOpponentDifference()) {
@@ -127,7 +120,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 }
             }
 
-            // 3. FinishPerformanceBonus
             int finishPerformanceBonus = 0;
             Float myTime = result.getFinishTime();
             if (status == RaceResultStatus.FINISHED && rank != null && winnerTime != null && myTime != null) {
@@ -151,15 +143,12 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 }
             }
 
-            // 4. FieldSizeBonus
             int fieldSizeBonus = 0;
             if (status == RaceResultStatus.FINISHED && rank != null && rank == 1) {
                 if (starters.size() >= properties.getLargeFieldSize()) {
                     fieldSizeBonus = properties.getLargeFieldBonus();
                 }
             }
-
-            // 5. UnderperformancePenalty
             int underperformancePenalty = 0;
             if (status == RaceResultStatus.FINISHED && rank != null && rank >= 6) {
                 if (winnerTime != null && myTime != null) {
@@ -172,8 +161,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                         underperformancePenalty = properties.getSmallUnderperformancePenalty();
                     }
                 }
-                
-                // Add penalty if rating is significantly higher than opponents but finished in bottom half
+
                 boolean inBottomHalf = rank > (starters.size() / 2);
                 if ((oldRating - averageOpponentRating) >= properties.getHighRatedUnderperformanceDifference() && inBottomHalf) {
                     underperformancePenalty += properties.getHighRatedUnderperformanceExtraPenalty();
@@ -181,7 +169,6 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 underperformancePenalty = Math.max(properties.getMaxDecrease(), underperformancePenalty);
             }
 
-            // Sum and Clamp rating change
             int finalChange = baseChange + opponentStrengthBonus + finishPerformanceBonus + fieldSizeBonus + underperformancePenalty;
             if (status == RaceResultStatus.FINISHED && rank != null) {
                 if (rank == 1) {

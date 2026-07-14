@@ -43,6 +43,25 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
     BusinessNotificationEventService notificationEventService;
 
     @Override
+    @Transactional(readOnly = true)
+    public HorseInspectionResponse getInspection(UUID entryId) {
+        RaceEntry raceEntry = raceEntryRepository.findById(entryId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND));
+        User currentUser = userCurrentService.getCurrentUser();
+        Veterinarian veterinarian = veterinarianRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.VETERINARIAN_PROFILE_NOT_FOUND));
+        RaceInspectionAssignment assignment = raceInspectionStaffAssignmentRepository
+                .findByRace_RaceId(raceEntry.getRace().getRaceId())
+                .orElseThrow(() -> new AppException(ErrorCode.VET_NOT_ASSIGNED_TO_RACE));
+        if (!assignment.getVeterinarian().getVetId().equals(veterinarian.getVetId())) {
+            throw new AppException(ErrorCode.VET_NOT_ASSIGNED_TO_RACE);
+        }
+        HorseInspection inspection = horseInspectionRepository.findByRaceEntry_EntryId(entryId)
+                .orElseThrow(() -> new AppException(ErrorCode.HORSE_INSPECTION_NOT_FOUND));
+        return horseInspectionMapper.toResponse(inspection);
+    }
+
+    @Override
     @Transactional
     public HorseInspectionResponse createInspection(UUID entryId, HorseInspectionRequest request) {
         RaceEntry raceEntry = raceEntryRepository.findById(entryId)

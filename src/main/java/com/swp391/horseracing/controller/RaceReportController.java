@@ -2,6 +2,7 @@ package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.race_report.response.RaceReportResponse;
+import com.swp391.horseracing.dto.race_report.request.UpdateRaceReportRequest;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
 import com.swp391.horseracing.service.RaceReportService;
 import lombok.AccessLevel;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import jakarta.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,6 +27,16 @@ public class RaceReportController {
     public ApiResponse<RaceReportResponse> getRefereeReport(@PathVariable UUID raceId) {
         return ApiResponse.<RaceReportResponse>builder()
                 .result(raceReportService.getRefereeReport(raceId))
+                .build();
+    }
+
+    @PutMapping("/api/referee/races/{raceId}/report")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> updateRefereeReport(
+            @PathVariable UUID raceId,
+            @RequestBody @Valid UpdateRaceReportRequest request) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.updateRefereeReport(raceId, request))
                 .build();
     }
 

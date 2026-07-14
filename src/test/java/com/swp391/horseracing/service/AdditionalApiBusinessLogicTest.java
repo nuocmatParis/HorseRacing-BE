@@ -476,7 +476,7 @@ class AdditionalApiBusinessLogicTest {
         BracketPreviewResponse enoughTime = tournamentService.getBracketPreview(tournamentId);
         assertEquals(true, enoughTime.isScheduleFeasible());
         assertEquals(true, enoughTime.isValid());
-        assertEquals(LocalDate.of(2026, 8, 24), enoughTime.getEarliestPossibleEndDate());
+        assertEquals(LocalDate.of(2026, 8, 23), enoughTime.getEarliestPossibleEndDate());
     }
 
     @Test
@@ -550,6 +550,17 @@ class AdditionalApiBusinessLogicTest {
         assertEquals(2, response.getRounds().size());
         assertEquals(2, response.getRounds().get(0).getRaces().size());
         assertEquals(1, response.getRounds().get(1).getRaces().size());
+        assertEquals(
+                response.getRounds().get(0).getSuggestedEndDate()
+                        .toLocalDate().plusDays(7),
+                response.getRounds().get(1).getSuggestedStartDate()
+                        .toLocalDate()
+        );
+        assertEquals(
+                tournament.getRaceDayStartTime(),
+                response.getRounds().get(1).getSuggestedStartDate()
+                        .toLocalTime()
+        );
         assertEquals(response.getProposedFinalEndAt(),
                 response.getRounds().get(1).getRaces().get(0).getSuggestedEndTime());
     }

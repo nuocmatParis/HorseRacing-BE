@@ -30,4 +30,11 @@ public class VetInspectionController {
                 .result(horseInspectionService.createInspection(entryId, request))
                 .build();
     }
+
+    @GetMapping("/{entryId}/horse-inspection")
+    public ApiResponse<HorseInspectionResponse> getHorseInspection(@PathVariable UUID entryId) {
+        return ApiResponse.<HorseInspectionResponse>builder()
+                .result(horseInspectionService.getInspection(entryId))
+                .build();
+    }
 }

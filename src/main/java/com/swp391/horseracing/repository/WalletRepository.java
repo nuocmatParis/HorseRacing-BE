@@ -42,5 +42,10 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Wallet> findByOwnerTypeAndWalletPurpose(WalletOwnerType ownerType, WalletPurpose walletPurpose);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Wallet w WHERE w.ownerType = :ownerType AND w.user IS NULL AND w.walletPurpose = :walletPurpose")
+    Optional<Wallet> findSystemWalletForUpdate(@Param("ownerType") WalletOwnerType ownerType,
+                                               @Param("walletPurpose") WalletPurpose walletPurpose);
 }
 

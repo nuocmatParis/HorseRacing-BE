@@ -119,6 +119,17 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
                 content = "Round " + value(payload, "roundName")
                         + " cannot advance because at least one race has fewer than four eligible finishers.";
             }
+            case APPEAL_SUBMITTED -> {
+                title = "Có khiếu nại mới cần xử lý";
+                content = "Khiếu nại mới cho ngựa " + value(payload, "horseName")
+                        + " tại race " + value(payload, "raceName") + ".";
+            }
+            case APPEAL_REVIEWED -> {
+                title = "Khiếu nại đã được xử lý";
+                content = "Khiếu nại tại race " + value(payload, "raceName")
+                        + " có kết quả " + value(payload, "status")
+                        + ". Kết luận: " + value(payload, "resolution") + ".";
+            }
             default -> throw new AppException(ErrorCode.NOTIFICATION_EVENT_INVALID);
         }
         return new NotificationMessage(title, content, policyService.showToast(event.getEventType()));

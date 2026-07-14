@@ -136,6 +136,13 @@ public class VnpayCallbackServiceImpl implements VnpayCallbackService {
         ).orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
 
         validateWalletActive(wallet);
+        boolean prizePoolTopUp = paymentTransaction.getPurpose()
+                == PaymentPurpose.SYSTEM_PRIZE_POOL_TOP_UP;
+        if (prizePoolTopUp
+                && (wallet.getOwnerType() != WalletOwnerType.SYSTEM
+                || wallet.getWalletPurpose() != WalletPurpose.SYSTEM_PRIZE_POOL)) {
+            throw new AppException(ErrorCode.INVALID_SYSTEM_WALLET_PURPOSE);
+        }
 
         BigDecimal balanceBefore = wallet.getBalance();
         BigDecimal balanceAfter = balanceBefore.add(paymentTransaction.getAmount());
@@ -148,7 +155,9 @@ public class VnpayCallbackServiceImpl implements VnpayCallbackService {
                 .invoice(null)
                 .raceResultId(null)
                 .contractId(null)
-                .type(TransactionType.DEPOSIT)
+                .type(prizePoolTopUp
+                        ? TransactionType.SYSTEM_PRIZE_POOL_TOP_UP
+                        : TransactionType.DEPOSIT)
                 .direction(TransactionDirection.CREDIT)
                 .amount(paymentTransaction.getAmount())
                 .balanceBefore(balanceBefore)
@@ -157,7 +166,10 @@ public class VnpayCallbackServiceImpl implements VnpayCallbackService {
                 .counterpartyType(CounterpartyType.EXTERNAL)
                 .transactionGroupId(UUID.randomUUID())
                 .status(TransactionStatus.SUCCESS)
-                .note("VNPAY deposit: " + paymentTransaction.getVnpTxnRef())
+                .note(prizePoolTopUp
+                        ? paymentTransaction.getVnpOrderInfo() + " | VNPay: " + paymentTransaction.getVnpTxnRef()
+                        : "VNPay nạp ví: " + paymentTransaction.getVnpTxnRef())
+                .performedBy(prizePoolTopUp ? paymentTransaction.getUser() : null)
                 .build();
 
         Transaction savedWalletTransaction = transactionRepository.save(walletTransaction);

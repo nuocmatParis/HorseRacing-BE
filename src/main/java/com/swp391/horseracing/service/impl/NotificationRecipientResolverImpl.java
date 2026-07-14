@@ -34,6 +34,7 @@ public class NotificationRecipientResolverImpl implements NotificationRecipientR
     RaceInspectionStaffAssignmentRepository inspectionAssignmentRepository;
     PredictionRepository predictionRepository;
     RaceResultRepository raceResultRepository;
+    AppealRepository appealRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -68,6 +69,9 @@ public class NotificationRecipientResolverImpl implements NotificationRecipientR
             addIfActive(recipients, contract.getJockey().getUser());
         } else if (type == NotificationEventType.ROUND_TRANSITION_BLOCKED) {
             addActiveRoleUsers(recipients, Arrays.asList(RoleName.ADMIN));
+        } else if (type == NotificationEventType.APPEAL_SUBMITTED
+                || type == NotificationEventType.APPEAL_REVIEWED) {
+            addAppealRecipients(recipients, event.getAggregateId(), type);
         }
         return recipients;
     }
@@ -220,6 +224,20 @@ public class NotificationRecipientResolverImpl implements NotificationRecipientR
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_RESULT_NOT_FOUND));
         addIfActive(recipients, result.getEntry().getContract().getOwner().getUser());
         addIfActive(recipients, result.getEntry().getContract().getJockey().getUser());
+    }
+
+    private void addAppealRecipients(
+            Set<UUID> recipients, UUID appealId, NotificationEventType type) {
+        Appeal appeal = appealRepository.findById(appealId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPEAL_NOT_FOUND));
+        if (type == NotificationEventType.APPEAL_SUBMITTED) {
+            Referee headReferee = appeal.getEntry().getRace().getRound().getHeadReferee();
+            if (headReferee != null) {
+                addIfActive(recipients, headReferee.getUser());
+            }
+        } else {
+            addIfActive(recipients, appeal.getSubmittedBy());
+        }
     }
 
     private void addIfActive(Set<UUID> recipients, User user) {

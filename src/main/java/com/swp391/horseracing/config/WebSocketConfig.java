@@ -21,12 +21,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Value("${notification.websocket.endpoint:/ws}")
     String websocketEndpoint;
 
+    @Value("${notification.websocket.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+    String[] allowedOriginPatterns;
+
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint(websocketEndpoint)
-                .setAllowedOriginPatterns(
-                        "http://localhost:*",
-                        "http://127.0.0.1:*")
+                .setAllowedOriginPatterns(allowedOriginPatterns)
                 .withSockJS();
     }
 

@@ -42,7 +42,7 @@ public class PaymentTransaction {
     private PaymentProvider provider;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "purpose", nullable = false)
+    @Column(name = "purpose", nullable = false, length = 50)
     private PaymentPurpose purpose;
 
     @Column(name = "amount", nullable = false, precision = 15, scale = 2)

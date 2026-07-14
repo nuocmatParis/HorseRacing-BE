@@ -19,6 +19,11 @@ public class RaceResultResponse {
     UUID resultId;
     UUID raceId;
     UUID entryId;
+    int laneNumber;
+    UUID horseId;
+    String horseName;
+    UUID jockeyId;
+    String jockeyName;
     Float finishTime;
     Integer rank;
     BigDecimal prizeMoney;

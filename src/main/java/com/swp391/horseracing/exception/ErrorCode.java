@@ -421,6 +421,10 @@ public enum ErrorCode {
 
     RACE_VIOLATION_REPORTING_CLOSED(1720, HttpStatus.BAD_REQUEST, "Violation reporting is closed for this race"),
 
+    HORSE_INSPECTION_NOT_FOUND(1721, HttpStatus.NOT_FOUND, "Horse inspection not found for this entry"),
+
+    JOCKEY_INSPECTION_NOT_FOUND(1722, HttpStatus.NOT_FOUND, "Jockey inspection not found for this entry"),
+
     // RACE RESULT
     RACE_RESULT_NOT_FOUND(2601, HttpStatus.NOT_FOUND, "Race result not found"),
     RACE_RESULT_ALREADY_EXISTS(2602, HttpStatus.CONFLICT, "Race result already exists for this entry"),
@@ -456,6 +460,9 @@ public enum ErrorCode {
     // APPEAL EVIDENCE
     APPEAL_EVIDENCE_NOT_FOUND(2640, HttpStatus.NOT_FOUND, "Appeal evidence not found"),
     APPEAL_EVIDENCE_REQUIRED(2641, HttpStatus.BAD_REQUEST, "Either file URL or text content must be provided for evidence"),
+    APPEAL_EVIDENCE_FILE_TYPE_INVALID(2642, HttpStatus.BAD_REQUEST, "Evidence file type does not match the selected evidence type"),
+    APPEAL_EVIDENCE_FILE_TOO_LARGE(2643, HttpStatus.BAD_REQUEST, "Evidence file exceeds the allowed size"),
+    APPEAL_EVIDENCE_UPLOAD_FAILED(2644, HttpStatus.INTERNAL_SERVER_ERROR, "Evidence file upload failed"),
 
     VIOLATION_NOT_FOUND(2650, HttpStatus.NOT_FOUND, "Violation not found"),
     VIOLATION_ALREADY_RESOLVED(2651, HttpStatus.CONFLICT, "Violation has already been resolved"),

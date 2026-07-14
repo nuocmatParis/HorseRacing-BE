@@ -39,6 +39,25 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
     BusinessNotificationEventService notificationEventService;
 
     @Override
+    @Transactional(readOnly = true)
+    public JockeyInspectionResponse getInspection(UUID entryId) {
+        RaceEntry raceEntry = raceEntryRepository.findById(entryId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND));
+        User currentUser = userCurrentService.getCurrentUser();
+        MedicalStaff medicalStaff = medicalStaffRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEDICAL_STAFF_PROFILE_NOT_FOUND));
+        RaceInspectionAssignment assignment = raceInspectionStaffAssignmentRepository
+                .findByRace_RaceId(raceEntry.getRace().getRaceId())
+                .orElseThrow(() -> new AppException(ErrorCode.MEDICAL_STAFF_NOT_ASSIGNED_TO_RACE));
+        if (!assignment.getMedicalStaff().getMedStaffId().equals(medicalStaff.getMedStaffId())) {
+            throw new AppException(ErrorCode.MEDICAL_STAFF_NOT_ASSIGNED_TO_RACE);
+        }
+        JockeyInspection inspection = jockeyInspectionRepository.findByRaceEntry_EntryId(entryId)
+                .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_INSPECTION_NOT_FOUND));
+        return jockeyInspectionMapper.toResponse(inspection);
+    }
+
+    @Override
     @Transactional
     public JockeyInspectionResponse createInspection(UUID entryId, JockeyInspectionRequest request) {
         RaceEntry raceEntry = raceEntryRepository.findById(entryId)

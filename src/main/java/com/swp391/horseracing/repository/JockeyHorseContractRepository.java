@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -50,9 +52,22 @@ public interface JockeyHorseContractRepository extends JpaRepository<JockeyHorse
 
     long countByTournament_TournamentIdAndStatus(UUID tournamentId, ContractStatus status);
 
+    long countByStatus(ContractStatus status);
+
     List<JockeyHorseContract> findByTournament_TournamentIdAndStatusAndEscrowStatus(
             UUID tournamentId,
             com.swp391.horseracing.enums.ContractStatus status,
             com.swp391.horseracing.enums.EscrowStatus escrowStatus
     );
+
+    @Query("SELECT DISTINCT contract FROM JockeyHorseContract contract "
+            + "JOIN FETCH contract.tournament tournament "
+            + "JOIN FETCH contract.horse horse "
+            + "JOIN FETCH contract.jockey jockey "
+            + "JOIN FETCH jockey.user jockeyUser "
+            + "JOIN FETCH contract.owner owner "
+            + "JOIN FETCH owner.user ownerUser "
+            + "WHERE contract.contractId IN :contractIds")
+    List<JockeyHorseContract> findAllWithTransactionContextByContractIdIn(
+            @Param("contractIds") Collection<UUID> contractIds);
 }

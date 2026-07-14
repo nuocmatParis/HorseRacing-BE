@@ -132,6 +132,10 @@ public class VnpayController {
                 "amount",
                 params.get("vnp_Amount")
         );
+        String transactionRef = params.get("vnp_TxnRef");
+        if (transactionRef != null && transactionRef.startsWith("PRIZE_")) {
+            uriBuilder.queryParam("paymentTarget", "SYSTEM_PRIZE_POOL");
+        }
 
         return uriBuilder.build()
                 .encode()
