@@ -1,6 +1,7 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import jakarta.validation.constraints.NotNull;
 import com.swp391.horseracing.dto.tournament.response.PrizeStructureResponse;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.dto.tournament.response.RoundResponse;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -99,6 +101,15 @@ public class TournamentController {
     public ApiResponse<RoundResponse> removeHeadReferee(@PathVariable UUID roundId) {
         return ApiResponse.<RoundResponse>builder()
                 .result(roundService.removeHeadReferee(roundId))
+                .build();
+    }
+
+    @PostMapping("/{id}/image")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<TournamentResponse> uploadImage(@PathVariable UUID id,
+                                                       @RequestParam("file") @NotNull MultipartFile file) {
+        return ApiResponse.<TournamentResponse>builder()
+                .result(tournamentService.uploadImage(id, file))
                 .build();
     }
 }
