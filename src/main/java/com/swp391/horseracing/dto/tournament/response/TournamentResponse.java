@@ -28,6 +28,7 @@ public class TournamentResponse {
     LocalDate endDate;
     LocalDateTime finishedAt;
     String location;
+    String imageUrl;
     BigDecimal registrationFee;
     BigDecimal systemContractFee;
     BigDecimal totalPrizePool;

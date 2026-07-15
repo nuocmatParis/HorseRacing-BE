@@ -53,6 +53,9 @@ public class Tournament {
     @Column(name = "location", nullable = false, length = 200)
     String location;
 
+    @Column(name = "image_url", length = 500)
+    String imageUrl;
+
     @Column(name = "registration_fee", nullable = false, precision = 15, scale = 2)
     BigDecimal registrationFee;
 

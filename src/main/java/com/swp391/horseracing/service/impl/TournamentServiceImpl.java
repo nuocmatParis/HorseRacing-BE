@@ -42,10 +42,12 @@ import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.repository.JockeyHorseContractRepository;
 import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.InvoiceRepository;
+import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.BusinessNotificationEventService;
 import com.swp391.horseracing.service.TournamentService;
 import com.swp391.horseracing.service.RaceService;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import lombok.AccessLevel;
@@ -54,6 +56,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -92,6 +95,7 @@ public class TournamentServiceImpl implements TournamentService {
     BusinessNotificationEventService notificationEventService;
     JockeyHorseContractRepository jockeyHorseContractRepository;
     RaceService raceService;
+    CloudinaryService cloudinaryService;
 
     @Override
     @Transactional
@@ -1453,6 +1457,20 @@ public class TournamentServiceImpl implements TournamentService {
         }
         if (tournament.getPlannedRaceCount() == null || totalRaces != tournament.getPlannedRaceCount()) {
             throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
+        }
+    }
+
+    @Override
+    @Transactional
+    public TournamentResponse uploadImage(UUID id, MultipartFile file) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
+        try {
+            String imageUrl = cloudinaryService.uploadImage(file, "tournaments");
+            tournament.setImageUrl(imageUrl);
+            return toResponse(tournamentRepository.save(tournament));
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
         }
     }
 }
