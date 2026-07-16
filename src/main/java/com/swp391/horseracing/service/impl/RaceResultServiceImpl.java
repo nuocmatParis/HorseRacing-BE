@@ -46,10 +46,10 @@ public class RaceResultServiceImpl implements RaceResultService {
         Optional<RaceReport> reportOpt = raceReportRepository.findByRace_RaceId(raceId);
         if (reportOpt.isPresent()) {
             ReportStatus status = reportOpt.get().getStatus();
-            if (status == ReportStatus.Published) {
+            if (status == ReportStatus.PUBLISHED) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
             }
-            if (status == ReportStatus.Signed) {
+            if (status == ReportStatus.SIGNED || status == ReportStatus.SUBMITTED_TO_HEAD) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SIGNED);
             }
         }
@@ -150,10 +150,10 @@ public class RaceResultServiceImpl implements RaceResultService {
         Optional<RaceReport> reportOpt = raceReportRepository.findByRace_RaceId(raceId);
         if (reportOpt.isPresent()) {
             ReportStatus status = reportOpt.get().getStatus();
-            if (status == ReportStatus.Published) {
+            if (status == ReportStatus.PUBLISHED) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
             }
-            if (status == ReportStatus.Signed) {
+            if (status == ReportStatus.SIGNED || status == ReportStatus.SUBMITTED_TO_HEAD) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SIGNED);
             }
         }

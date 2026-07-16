@@ -1,5 +1,8 @@
 package com.swp391.horseracing.enums;
 
 public enum ReportStatus {
-    Draft, Signed, Published
+    DRAFT,
+    SUBMITTED_TO_HEAD,
+    SIGNED,
+    PUBLISHED
 }

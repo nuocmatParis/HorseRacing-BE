@@ -11,7 +11,10 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequiredArgsConstructor
@@ -36,6 +39,34 @@ public class ParticipantRaceController {
             @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.<PageResponse<RaceScheduleResponse>>builder()
                 .result(racePortalService.getJockeySchedule(page, size))
+                .build();
+    }
+
+    @GetMapping("/api/owner/races")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
+    public ApiResponse<PageResponse<RaceScheduleResponse>> getOwnerRaces(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<RaceScheduleResponse>>builder()
+                .result(racePortalService.getOwnerRaces(from, to, page, size))
+                .build();
+    }
+
+    @GetMapping("/api/jockey/races")
+    @PreAuthorize("hasRole('JOCKEY')")
+    public ApiResponse<PageResponse<RaceScheduleResponse>> getJockeyRaces(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.<PageResponse<RaceScheduleResponse>>builder()
+                .result(racePortalService.getJockeyRaces(from, to, page, size))
                 .build();
     }
 

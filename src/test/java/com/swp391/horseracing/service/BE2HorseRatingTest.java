@@ -334,26 +334,26 @@ public class BE2HorseRatingTest {
     @Test
     void testPreviewSignedReportOnly() {
         RaceReport draftReport = new RaceReport();
-        draftReport.setStatus(ReportStatus.Draft);
+        draftReport.setStatus(ReportStatus.DRAFT);
         when(raceRepository.findById(raceId)).thenReturn(Optional.of(race));
         when(raceReportRepository.findByRace_RaceId(raceId)).thenReturn(Optional.of(draftReport));
 
         assertThrows(AppException.class, () -> horseRatingService.previewForRace(raceId));
 
         RaceReport signedReport = new RaceReport();
-        signedReport.setStatus(ReportStatus.Signed);
+        signedReport.setStatus(ReportStatus.SIGNED);
         when(raceReportRepository.findByRace_RaceId(raceId)).thenReturn(Optional.of(signedReport));
         when(raceResultRepository.findByRace_RaceId(raceId)).thenReturn(Collections.emptyList());
 
         RaceRatingPreviewResponse response = horseRatingService.previewForRace(raceId);
         assertNotNull(response);
-        assertEquals("Signed", response.getReportStatus());
+        assertEquals("SIGNED", response.getReportStatus());
     }
 
     @Test
     void testPreviewDoesNotSave() {
         RaceReport report = new RaceReport();
-        report.setStatus(ReportStatus.Signed);
+        report.setStatus(ReportStatus.SIGNED);
         when(raceRepository.findById(raceId)).thenReturn(Optional.of(race));
         when(raceReportRepository.findByRace_RaceId(raceId)).thenReturn(Optional.of(report));
         when(raceResultRepository.findByRace_RaceId(raceId)).thenReturn(Collections.emptyList());
@@ -367,20 +367,20 @@ public class BE2HorseRatingTest {
     @Test
     void testRatingChangesOnlyForPublished() {
         RaceReport signedReport = new RaceReport();
-        signedReport.setStatus(ReportStatus.Signed);
+        signedReport.setStatus(ReportStatus.SIGNED);
         when(raceRepository.findById(raceId)).thenReturn(Optional.of(race));
         when(raceReportRepository.findByRace_RaceId(raceId)).thenReturn(Optional.of(signedReport));
 
         assertThrows(AppException.class, () -> horseRatingService.getRatingChangesForRace(raceId));
 
         RaceReport publishedReport = new RaceReport();
-        publishedReport.setStatus(ReportStatus.Published);
+        publishedReport.setStatus(ReportStatus.PUBLISHED);
         when(raceReportRepository.findByRace_RaceId(raceId)).thenReturn(Optional.of(publishedReport));
         when(ratingHistoryRepository.findByRace_RaceId(raceId)).thenReturn(Collections.emptyList());
 
         RaceRatingChangesResponse response = horseRatingService.getRatingChangesForRace(raceId);
         assertNotNull(response);
-        assertEquals("Published", response.getReportStatus());
+        assertEquals("PUBLISHED", response.getReportStatus());
     }
 
     @Test
@@ -496,7 +496,7 @@ public class BE2HorseRatingTest {
 
         // 2. One published -> PARTIAL
         RaceReport report2 = new RaceReport();
-        report2.setStatus(ReportStatus.Published);
+        report2.setStatus(ReportStatus.PUBLISHED);
         when(raceReportRepository.findByRace_RaceId(race2.getRaceId())).thenReturn(Optional.of(report2));
         when(ratingHistoryRepository.findByRace_RaceId(race2.getRaceId())).thenReturn(Collections.emptyList());
 

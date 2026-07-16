@@ -22,6 +22,7 @@ import com.swp391.horseracing.entity.RaceReport;
 import com.swp391.horseracing.entity.RaceResult;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.enums.ReportStatus;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.repository.AIPredictionRepository;
 import com.swp391.horseracing.repository.HorseRepository;
@@ -141,7 +142,7 @@ public class HomePageServiceImpl implements HomePageService {
 
     private Optional<LatestRaceResults> getLatestRaceResults() {
         Optional<RaceReport> latestReport = raceReportRepository.findAll().stream()
-                .filter(report -> report.getStatus() == ReportStatus.Published)
+                .filter(report -> report.getStatus() == ReportStatus.PUBLISHED)
                 .filter(report -> report.getPublishedAt() != null)
                 .max(Comparator.comparing(RaceReport::getPublishedAt));
 
@@ -248,6 +249,12 @@ public class HomePageServiceImpl implements HomePageService {
 
     private Optional<FeaturedPrediction> getFeaturedPrediction(List<HomeRace> upcomingRaces) {
         for (HomeRace race : upcomingRaces) {
+            Race predictionRace = raceRepository.findById(race.raceId()).orElse(null);
+            if (predictionRace == null
+                    || predictionRace.getAiPredictionPublicationStatus()
+                    != AIPredictionPublicationStatus.PUBLISHED) {
+                continue;
+            }
             List<AIPrediction> predictions = aiPredictionRepository
                     .findByEntry_Race_RaceId(race.raceId());
             if (predictions.isEmpty()) {

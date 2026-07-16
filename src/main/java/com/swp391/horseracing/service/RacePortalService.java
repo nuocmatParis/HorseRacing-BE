@@ -13,6 +13,12 @@ import java.util.UUID;
 public interface RacePortalService {
     PageResponse<RaceScheduleResponse> getOwnerSchedule(int page, int size);
     PageResponse<RaceScheduleResponse> getJockeySchedule(int page, int size);
+
+    PageResponse<RaceScheduleResponse> getOwnerRaces(
+            LocalDateTime from, LocalDateTime to, int page, int size);
+
+    PageResponse<RaceScheduleResponse> getJockeyRaces(
+            LocalDateTime from, LocalDateTime to, int page, int size);
     PageResponse<RaceResultsResponse> getOwnerResults(int page, int size);
     PageResponse<RaceResultsResponse> getJockeyResults(int page, int size);
     PageResponse<RaceResultsResponse> getOwnerProvisionalResults(int page, int size);

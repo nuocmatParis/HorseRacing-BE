@@ -57,8 +57,8 @@ public class NotificationTemplateServiceImpl implements NotificationTemplateServ
                 content = "Hợp đồng cho ngựa " + value(payload, "horseName") + " bị từ chối. Lý do: " + value(payload, "reason") + ".";
             }
             case CONTRACT_APPROVED -> {
-                title = "Hợp đồng đã được duyệt";
-                content = "Hợp đồng cho ngựa " + value(payload, "horseName") + " đã được Admin duyệt.";
+                title = "Hợp đồng đã có hiệu lực";
+                content = "Hợp đồng cho ngựa " + value(payload, "horseName") + " đã có hiệu lực. Khoản tạm ứng cho kỵ sĩ đã được giải ngân.";
             }
             case CONTRACT_CANCELLED -> {
                 title = "Hợp đồng đã bị hủy";

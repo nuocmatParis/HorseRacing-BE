@@ -3,6 +3,9 @@ package com.swp391.horseracing.service.impl;
 import com.swp391.horseracing.dto.tournament.request.CreateRaceRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateRaceRequest;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
+import com.swp391.horseracing.dto.race.response.RaceEntryReadinessResponse;
+import com.swp391.horseracing.dto.race.response.RaceStartReadinessResponse;
+import com.swp391.horseracing.dto.race.response.RaceStartWindowResponse;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
@@ -288,8 +291,14 @@ public class RaceServiceImpl implements RaceService {
     @Override
     @Transactional
     public RaceResponse startRace(UUID raceId) {
-        Race race = raceRepository.findById(raceId)
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
+                // Compatibility fallback for repository stubs and non-locking adapters;
+                // production JPA resolves the pessimistic query first.
+                .or(() -> raceRepository.findById(raceId))
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        User currentUser = getCurrentUser();
+        validateRefereeCanOperateRace(race, currentUser);
 
         if (race.getStatus() != RoundStatus.SCHEDULED) {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULED_STATUS);
@@ -310,23 +319,6 @@ public class RaceServiceImpl implements RaceService {
         // Lazy finalize entries if not yet finalized
         if (race.getInspectionFinalizedAt() == null) {
             finalizeRaceEntries(raceId);
-        }
-
-        User currentUser = getCurrentUser();
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-
-        boolean isAuthorized = false;
-        if (race.getRound().getHeadReferee() != null 
-                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
-            isAuthorized = true;
-        }
-        if (!isAuthorized) {
-            isAuthorized = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
-                    race.getRaceId(), referee.getRefereeId());
-        }
-        if (!isAuthorized) {
-            throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
         }
 
         List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
@@ -386,6 +378,145 @@ public class RaceServiceImpl implements RaceService {
         Race savedRace = raceRepository.save(race);
         notificationEventService.raceStarted(savedRace);
         return raceMapper.toRaceResponse(savedRace);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RaceStartReadinessResponse getStartReadiness(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        User currentUser = getCurrentUser();
+        validateRefereeCanOperateRace(race, currentUser);
+
+        LocalDateTime now = LocalDateTime.now();
+        Tournament tournament = race.getRound().getTournament();
+        LocalDateTime earliestStart = race.getStartTime() == null ? null
+                : race.getStartTime().minusMinutes(tournament.getStartEarlyToleranceMinutes());
+        LocalDateTime latestStart = race.getStartTime() == null ? null
+                : race.getStartTime().plusMinutes(tournament.getStartLateToleranceMinutes());
+
+        List<String> raceBlockingReasons = new ArrayList<>();
+        if (race.getStatus() != RoundStatus.SCHEDULED) {
+            raceBlockingReasons.add("Cuộc đua không ở trạng thái đã lên lịch.");
+        }
+        if (earliestStart == null || latestStart == null) {
+            raceBlockingReasons.add("Cuộc đua chưa có thời gian bắt đầu hợp lệ.");
+        } else {
+            if (now.isBefore(earliestStart)) {
+                raceBlockingReasons.add("Chưa đến khung giờ được phép bắt đầu cuộc đua.");
+            }
+            if (now.isAfter(latestStart)) {
+                raceBlockingReasons.add("Đã quá khung giờ được phép bắt đầu cuộc đua.");
+            }
+        }
+
+        List<RaceEntryReadinessResponse> entryResponses = new ArrayList<>();
+        int activeEntryCount = 0;
+        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        for (RaceEntry entry : entries) {
+            List<String> entryReasons = new ArrayList<>();
+            boolean active = isActiveRaceEntry(entry);
+            HorseInspection horseInspection =
+                    horseInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId()).orElse(null);
+            JockeyInspection jockeyInspection =
+                    jockeyInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId()).orElse(null);
+
+            if (!active) {
+                entryReasons.add("Lượt tham gia không còn ở trạng thái đủ điều kiện xuất phát.");
+            } else {
+                activeEntryCount++;
+                if (horseInspection == null) {
+                    entryReasons.add("Ngựa chưa có hồ sơ kiểm tra sức khỏe.");
+                } else {
+                    if (horseInspection.getStatus() != InspectionStatus.CONFIRMED) {
+                        entryReasons.add("Kết quả kiểm tra sức khỏe ngựa chưa được xác nhận.");
+                    }
+                    if (horseInspection.getResult() != InspectionResult.PASS) {
+                        entryReasons.add("Ngựa chưa đạt kiểm tra sức khỏe.");
+                    }
+                    if (horseInspection.getHandicapWeight() != null
+                            && horseInspection.getHandicapWeight() > 0
+                            && !Boolean.TRUE.equals(horseInspection.getIsHandicapConfirmed())) {
+                        entryReasons.add("Mức cân handicap của ngựa chưa được xác nhận.");
+                    }
+                }
+                if (jockeyInspection == null) {
+                    entryReasons.add("Kỵ sĩ chưa có hồ sơ kiểm tra sức khỏe.");
+                } else {
+                    if (jockeyInspection.getStatus() != InspectionStatus.CONFIRMED) {
+                        entryReasons.add("Kết quả kiểm tra sức khỏe kỵ sĩ chưa được xác nhận.");
+                    }
+                    if (jockeyInspection.getResult() != InspectionResult.PASS) {
+                        entryReasons.add("Kỵ sĩ chưa đạt kiểm tra sức khỏe.");
+                    }
+                }
+            }
+
+            entryResponses.add(RaceEntryReadinessResponse.builder()
+                    .entryId(entry.getEntryId())
+                    .horseName(entry.getContract().getHorse().getName())
+                    .jockeyName(entry.getContract().getJockey().getUser().getFullName())
+                    .entryStatus(entry.getStatus())
+                    .horseInspectionStatus(horseInspection == null ? null : horseInspection.getStatus())
+                    .horseInspectionResult(horseInspection == null ? null : horseInspection.getResult())
+                    .jockeyInspectionStatus(jockeyInspection == null ? null : jockeyInspection.getStatus())
+                    .jockeyInspectionResult(jockeyInspection == null ? null : jockeyInspection.getResult())
+                    .canRace(active && entryReasons.isEmpty())
+                    .blockingReasons(entryReasons)
+                    .build());
+        }
+
+        int minEntries = race.getRound().getMinEntries();
+        if (activeEntryCount < minEntries) {
+            raceBlockingReasons.add("Chưa đủ số lượt tham gia hoạt động tối thiểu để bắt đầu.");
+        }
+        for (RaceEntryReadinessResponse entry : entryResponses) {
+            if (isActiveStatus(entry.getEntryStatus()) && !entry.isCanRace()) {
+                raceBlockingReasons.add("Còn lượt tham gia chưa hoàn tất điều kiện kiểm tra sức khỏe.");
+                break;
+            }
+        }
+
+        return RaceStartReadinessResponse.builder()
+                .raceId(race.getRaceId())
+                .raceStatus(race.getStatus())
+                .canStart(raceBlockingReasons.isEmpty())
+                .inspectionFinalizedAt(race.getInspectionFinalizedAt())
+                .startWindow(RaceStartWindowResponse.builder()
+                        .earliestStart(earliestStart)
+                        .latestStart(latestStart)
+                        .serverNow(now)
+                        .build())
+                .activeEntryCount(activeEntryCount)
+                .minEntries(minEntries)
+                .blockingReasons(raceBlockingReasons)
+                .entries(entryResponses)
+                .build();
+    }
+
+    private boolean isActiveRaceEntry(RaceEntry entry) {
+        return isActiveStatus(entry.getStatus());
+    }
+
+    private boolean isActiveStatus(RaceEntryStatus status) {
+        return status != RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
+                && status != RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE
+                && status != RaceEntryStatus.SCRATCHED
+                && status != RaceEntryStatus.DISQUALIFIED;
+    }
+
+    private void validateRefereeCanOperateRace(Race race, User currentUser) {
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        boolean authorized = race.getRound().getHeadReferee() != null
+                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId());
+        if (!authorized) {
+            authorized = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                    race.getRaceId(), referee.getRefereeId());
+        }
+        if (!authorized) {
+            throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
+        }
     }
 
     private User getCurrentUser() {

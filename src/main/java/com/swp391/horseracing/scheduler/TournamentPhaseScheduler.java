@@ -80,7 +80,7 @@ public class TournamentPhaseScheduler {
             for (Race race : finalRaces) {
                 if (race.getStatus() != RoundStatus.COMPLETED
                         || raceReportRepository.findByRace_RaceId(race.getRaceId())
-                        .filter(report -> report.getStatus() == ReportStatus.Published)
+                        .filter(report -> report.getStatus() == ReportStatus.PUBLISHED)
                         .isEmpty()) {
                     allFinished = false;
                     break;

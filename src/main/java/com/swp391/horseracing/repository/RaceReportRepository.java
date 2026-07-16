@@ -9,7 +9,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
+import com.swp391.horseracing.enums.ReportStatus;
 
 @Repository
 public interface RaceReportRepository extends JpaRepository<RaceReport, UUID> {
@@ -21,4 +23,7 @@ public interface RaceReportRepository extends JpaRepository<RaceReport, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM RaceReport r WHERE r.race.raceId = :raceId")
     Optional<RaceReport> findForUpdateByRace_RaceId(@Param("raceId") UUID raceId);
+
+    List<RaceReport> findByRace_Round_RoundIdAndStatusOrderBySubmittedAtAsc(
+            UUID roundId, ReportStatus status);
 }

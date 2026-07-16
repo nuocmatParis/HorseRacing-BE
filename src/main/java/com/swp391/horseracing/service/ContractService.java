@@ -30,12 +30,6 @@ public interface ContractService {
 
     PaymentResponse payContractCreationFee(UUID contractId);
 
-    List<ContractResponse> getPendingContracts();
-
-    ContractResponse approveContract(UUID contractId);
-
-    ContractResponse rejectContractByAdmin(UUID contractId, String reason);
-
     ContractResponse releaseFinalPayout(UUID contractId);
 
     PageResponse<ContractResponse> getContractsByStatus(ContractStatus status, int page, int size);

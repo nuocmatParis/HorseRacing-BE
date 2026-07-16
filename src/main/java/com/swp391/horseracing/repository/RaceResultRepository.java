@@ -47,4 +47,15 @@ public interface RaceResultRepository extends JpaRepository<RaceResult, UUID> {
             + "WHERE result.resultId IN :resultIds")
     List<RaceResult> findAllWithTransactionContextByResultIdIn(
             @Param("resultIds") Collection<UUID> resultIds);
+
+    @Query("SELECT DISTINCT result FROM RaceResult result "
+            + "JOIN FETCH result.race race "
+            + "JOIN FETCH race.round round "
+            + "JOIN FETCH round.tournament tournament "
+            + "JOIN FETCH result.entry entry "
+            + "JOIN FETCH entry.contract contract "
+            + "JOIN FETCH contract.horse horse "
+            + "WHERE contract.jockey.user.userId = :userId "
+            + "ORDER BY race.startTime DESC")
+    List<RaceResult> findAllForJockeyStatistics(@Param("userId") UUID userId);
 }

@@ -80,7 +80,7 @@ public class AppealServiceImpl implements AppealService {
 
         if (raceReportRepository.existsByRace_RaceId(entry.getRace().getRaceId())) {
             RaceReport report = raceReportRepository.findByRace_RaceId(entry.getRace().getRaceId()).get();
-            if (report.getStatus() == ReportStatus.Published) {
+            if (report.getStatus() == ReportStatus.PUBLISHED) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
             }
         }
