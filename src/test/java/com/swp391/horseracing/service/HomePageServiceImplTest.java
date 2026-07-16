@@ -192,7 +192,7 @@ class HomePageServiceImplTest {
         prediction.setPredictedTopN(3);
         prediction.setPredictionReason("Phong độ và rating ổn định.");
         prediction.setGeneratedAt(now.minusMinutes(10));
-        when(aiPredictionRepository.findByEntry_Race_RaceId(raceId))
+        when(aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId))
                 .thenReturn(List.of(prediction));
 
         HomePageResponse response = homePageService.getHomePage();

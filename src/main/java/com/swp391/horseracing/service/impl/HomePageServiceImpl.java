@@ -256,7 +256,7 @@ public class HomePageServiceImpl implements HomePageService {
                 continue;
             }
             List<AIPrediction> predictions = aiPredictionRepository
-                    .findByEntry_Race_RaceId(race.raceId());
+                    .findByEntry_Race_RaceIdOrderByCreatedAtAsc(race.raceId());
             if (predictions.isEmpty()) {
                 continue;
             }

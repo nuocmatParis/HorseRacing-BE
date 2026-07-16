@@ -54,7 +54,7 @@ class AIPredictionPublicationWorkflowTest {
         Race race = eligibleRace();
         race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.PUBLISHED);
         when(raceRepository.findById(race.getRaceId())).thenReturn(Optional.of(race));
-        when(aiPredictionRepository.findByEntry_Race_RaceId(race.getRaceId()))
+        when(aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(race.getRaceId()))
                 .thenReturn(new ArrayList<>());
         when(aiPredictionMapper.toAIPredictionResponseList(new ArrayList<>()))
                 .thenReturn(new ArrayList<>());

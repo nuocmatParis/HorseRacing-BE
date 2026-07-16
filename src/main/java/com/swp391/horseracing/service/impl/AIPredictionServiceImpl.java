@@ -203,7 +203,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
     public AIPredictionAggregateResponse getAdminPredictionsByRace(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
-        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
         predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
         return toAggregate(race, predictions);
     }
@@ -216,7 +216,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         if (race.getAiPredictionPublicationStatus() != AIPredictionPublicationStatus.PUBLISHED) {
             throw new AppException(ErrorCode.AI_PREDICTION_NOT_PUBLISHED);
         }
-        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
         predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
         return toAggregate(race, predictions);
     }
@@ -230,7 +230,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         if (race.getAiPredictionPublicationStatus() == AIPredictionPublicationStatus.PUBLISHED) {
             throw new AppException(ErrorCode.AI_PREDICTION_ALREADY_PUBLISHED);
         }
-        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
         if (predictions.isEmpty()) {
             throw new AppException(ErrorCode.AI_PREDICTION_NOT_FOUND);
         }
@@ -255,7 +255,7 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         race.setAiPredictionPublishedAt(null);
         race.setAiPredictionPublishedBy(null);
         raceRepository.save(race);
-        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
         predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
         return toAggregate(race, predictions);
     }

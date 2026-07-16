@@ -133,7 +133,7 @@ class RacePortalServiceImplTest {
                 .confidenceScore(new BigDecimal("88.00"))
                 .predictionReason("Phong độ gần đây ổn định")
                 .build();
-        when(aiPredictionRepository.findByEntry_Race_RaceId(raceId))
+        when(aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId))
                 .thenReturn(List.of(prediction));
 
         SpectatorRaceDetailResponse response = racePortalService.getSpectatorRaceDetail(raceId);
@@ -142,7 +142,7 @@ class RacePortalServiceImplTest {
         assertEquals(new BigDecimal("71.25"), response.getEntries().get(0).getTopNProbability());
         assertEquals(new BigDecimal("88.00"), response.getEntries().get(0).getConfidenceScore());
         assertEquals("Phong độ gần đây ổn định", response.getEntries().get(0).getPredictionReason());
-        verify(aiPredictionRepository).findByEntry_Race_RaceId(raceId);
+        verify(aiPredictionRepository).findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
     }
 
     @Test
@@ -155,6 +155,6 @@ class RacePortalServiceImplTest {
         assertNull(response.getEntries().get(0).getTopNProbability());
         assertNull(response.getEntries().get(0).getConfidenceScore());
         assertNull(response.getEntries().get(0).getPredictionReason());
-        verify(aiPredictionRepository, never()).findByEntry_Race_RaceId(raceId);
+        verify(aiPredictionRepository, never()).findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
     }
 }

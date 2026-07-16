@@ -23,6 +23,7 @@ import com.swp391.horseracing.entity.Veterinarian;
 import com.swp391.horseracing.entity.HorseInspection;
 import com.swp391.horseracing.entity.JockeyInspection;
 import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.MedicalStaffRepository;
@@ -43,6 +44,7 @@ import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -60,6 +62,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class RacePortalServiceImpl implements RacePortalService {
     RaceRepository raceRepository;
     RaceEntryRepository raceEntryRepository;
@@ -248,14 +251,16 @@ public class RacePortalServiceImpl implements RacePortalService {
             throw new AppException(ErrorCode.SCHEDULE_NOT_PUBLISHED);
         }
         List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
-        List<AIPrediction> predictions = new ArrayList<>();
-        if (race.getAiPredictionPublicationStatus() == AIPredictionPublicationStatus.PUBLISHED) {
-            predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
-        }
         Map<UUID, AIPrediction> predictionByEntryId = new HashMap<>();
-        for (AIPrediction prediction : predictions) {
-            if (prediction.getEntry() != null) {
-                predictionByEntryId.put(prediction.getEntry().getEntryId(), prediction);
+        if (race.getStatus() != RoundStatus.CANCELLED
+                && race.getAiPredictionPublicationStatus() == AIPredictionPublicationStatus.PUBLISHED) {
+            List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
+            for (AIPrediction prediction : predictions) {
+                if (prediction.getEntry() != null) {
+                    predictionByEntryId.put(prediction.getEntry().getEntryId(), prediction);
+                } else {
+                    log.warn("AI prediction {} has null entry reference, skipping", prediction.getPredictionId());
+                }
             }
         }
         return SpectatorRaceDetailResponse.builder()

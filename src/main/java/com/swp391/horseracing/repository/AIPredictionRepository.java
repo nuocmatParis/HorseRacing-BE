@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface AIPredictionRepository extends JpaRepository<AIPrediction, UUID> {
 
-    List<AIPrediction> findByEntry_Race_RaceId(UUID raceId);
+    List<AIPrediction> findByEntry_Race_RaceIdOrderByCreatedAtAsc(UUID raceId);
 
     Optional<AIPrediction> findByEntry_EntryId(UUID entryId);
 
