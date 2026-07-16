@@ -23,7 +23,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -210,7 +209,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public PaymentResponse payHiringFee(UUID contractId) {
-        return null;
+        return paymentService.payHiringFee(contractId);
     }
 
     @Override
@@ -221,7 +220,7 @@ public class ContractServiceImpl implements ContractService {
 
         HorseOwner owner = userCurrentService.getCurrentOwner();
 
-        if(!contract.getOwner().getUser().getUserId().equals(owner.getOwnerId()))
+        if(!contract.getOwner().getUser().getUserId().equals(owner.getUser().getUserId()))
             throw new AppException(ErrorCode.UNAUTHENTICATED);
 
         if (contract.getStatus() != ContractStatus.HIRING_PAID)
@@ -232,188 +231,6 @@ public class ContractServiceImpl implements ContractService {
 
         return paymentService.payInvoice(invoice.getInvoiceId());
 
-    }
-
-    @Override
-    public List<ContractResponse> getPendingContracts() {
-        List<ContractResponse> responseList = new ArrayList<>();
-
-        List<JockeyHorseContract> contracts = contractRepository.findByStatusOrderByRequestedAtDesc(ContractStatus.PENDING_ADMIN_REVIEW);
-
-        for(JockeyHorseContract contract : contracts){
-            responseList.add(contractMapper.toContractResponse(contract));
-        }
-
-        return responseList;
-    }
-
-    /*
-    *
-    SYSTEM_ESCROW debit 30%
-    Jockey USER_MAIN credit 30%
-
-    Contract:
-    status = APPROVED
-    advancePaidAmount = 30%
-    escrowAmount = 70%
-    escrowStatus = PARTIALLY_RELEASED
-    advancePayoutStatus = PAID
-    *
-    **/
-    @Override
-    @Transactional
-    public ContractResponse approveContract(UUID contractId) {
-        User admin = userCurrentService.getCurrentUser();
-
-        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
-                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
-
-        if (contract.getStatus() != ContractStatus.PENDING_ADMIN_REVIEW)
-            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
-
-        if (contract.getPaymentStatus() != ContractPaymentStatus.PAID)
-            throw new AppException(ErrorCode.CONTRACT_HIRING_FEE_NOT_PAID);
-
-        if (contract.getEscrowStatus() != EscrowStatus.HELD)
-            throw new AppException(ErrorCode.INVALID_ESCROW_STATUS);
-
-        BigDecimal advanceAmount = calculateAdvanceAmount(contract);
-
-        releaseAdvancePayoutToJockey(contract, advanceAmount);
-
-        BigDecimal remainingEscrow = contract.getHireFee().subtract(advanceAmount);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        contract.setStatus(ContractStatus.APPROVED);
-
-        contract.setAdvancePaidAmount(advanceAmount);
-
-        contract.setEscrowAmount(remainingEscrow);
-
-        contract.setEscrowStatus(EscrowStatus.PARTIALLY_RELEASED);
-
-        contract.setAdvancePayoutStatus(AdvancePayoutStatus.PAID);
-
-        contract.setAdvancePayoutAt(now);
-
-        contract.setReviewedBy(admin);
-        contract.setReviewedAt(now);
-
-        JockeyHorseContract savedContract = contractRepository.save(contract);
-        notificationEventService.contractApproved(savedContract);
-        return contractMapper.toContractResponse(savedContract);
-    }
-
-    private BigDecimal calculateAdvanceAmount(JockeyHorseContract contract){
-        BigDecimal percent = BigDecimal.valueOf(contract.getAdvancePercent());
-
-        return contract.getHireFee().multiply(percent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-    }
-
-    private void releaseAdvancePayoutToJockey(JockeyHorseContract contract, BigDecimal amount){
-        Wallet systemEscrowWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
-                WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_ESCROW).orElseThrow(()
-                -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
-
-        Wallet jockeyWallet =
-                walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
-                        contract.getJockey().getUser().getUserId(), WalletPurpose.USER_MAIN).orElseThrow(()
-                        -> new AppException(ErrorCode.WALLET_NOT_FOUND));
-
-        if (systemEscrowWallet.getBalance().compareTo(amount) < 0)
-            throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
-
-        UUID transactionGroupId = UUID.randomUUID();
-
-        BigDecimal systemBalanceBefore = systemEscrowWallet.getBalance();
-        BigDecimal systemBalanceAfter = systemBalanceBefore.subtract(amount);
-
-        BigDecimal jockeyBalanceBefore = jockeyWallet.getBalance();
-        BigDecimal jockeyBalanceAfter = jockeyBalanceBefore.add(amount);
-
-        systemEscrowWallet.setBalance(systemBalanceAfter);
-
-        jockeyWallet.setBalance(jockeyBalanceAfter);
-
-        walletRepository.save(systemEscrowWallet);
-        walletRepository.save(jockeyWallet);
-
-        Transaction systemTransaction = Transaction.builder()
-                .wallet(systemEscrowWallet)
-                .contractId(contract.getContractId())
-                .type(TransactionType.JOCKEY_HIRING_ADVANCE_PAYOUT)
-                .direction(TransactionDirection.DEBIT)
-                .amount(amount)
-                .balanceBefore(systemBalanceBefore)
-                .balanceAfter(systemBalanceAfter)
-                .counterpartyWalletId(jockeyWallet.getWalletId())
-                .counterpartyType(CounterpartyType.USER)
-                .transactionGroupId(transactionGroupId)
-                .status(TransactionStatus.SUCCESS)
-                .note("Jockey advance payout")
-                .build();
-
-        Transaction jockeyTransaction = Transaction.builder()
-                .wallet(jockeyWallet)
-                .contractId(contract.getContractId())
-                .type(TransactionType.JOCKEY_HIRING_ADVANCE_INCOME)
-                .direction(TransactionDirection.CREDIT)
-                .amount(amount)
-                .balanceBefore(jockeyBalanceBefore)
-                .balanceAfter(jockeyBalanceAfter)
-                .counterpartyWalletId(systemEscrowWallet.getWalletId())
-                .counterpartyType(CounterpartyType.SYSTEM)
-                .transactionGroupId(transactionGroupId)
-                .status(TransactionStatus.SUCCESS)
-                .note("Advance income from contract")
-                .build();
-
-        walletTransactionRepository.save(systemTransaction);
-
-        walletTransactionRepository.save(jockeyTransaction);
-    }
-
-    @Override
-    @Transactional
-    public ContractResponse rejectContractByAdmin(UUID contractId, String reason) {
-        User admin = userCurrentService.getCurrentUser();
-
-        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
-                -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
-
-        if (contract.getStatus() != ContractStatus.PENDING_ADMIN_REVIEW)
-            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
-
-        // Refund hiring fee invoice
-        Optional<Invoice> hiringInvoice = invoiceRepository.findByContractIdAndInvoiceType(
-                contract.getContractId(), InvoiceType.JOCKEY_HIRING_FEE);
-        boolean hiringRefunded = false;
-        if (hiringInvoice.isPresent() && hiringInvoice.get().getStatus() == InvoiceStatus.PAID) {
-            paymentService.refundInvoice(hiringInvoice.get().getInvoiceId());
-            hiringRefunded = true;
-        }
-
-        // Refund contract creation fee invoice
-        Optional<Invoice> contractFeeInvoice = invoiceRepository.findByContractIdAndInvoiceType(
-                contract.getContractId(), InvoiceType.CONTRACT_CREATION_FEE);
-        if (contractFeeInvoice.isPresent() && contractFeeInvoice.get().getStatus() == InvoiceStatus.PAID) {
-            paymentService.refundInvoice(contractFeeInvoice.get().getInvoiceId());
-        }
-
-        contract.setStatus(ContractStatus.REJECTED);
-        if (hiringRefunded) {
-            contract.setPaymentStatus(ContractPaymentStatus.REFUNDED);
-            contract.setEscrowStatus(EscrowStatus.REFUNDED);
-        }
-
-        contract.setRejectedReason(reason);
-        contract.setReviewedBy(admin);
-        contract.setReviewedAt(LocalDateTime.now());
-
-        JockeyHorseContract savedContract = contractRepository.save(contract);
-        notificationEventService.contractRejected(savedContract, reason);
-        return contractMapper.toContractResponse(savedContract);
     }
 
     private void validateInvite(HorseOwner currentOwner, HorseTournamentRegistration horseTournamentRegistration,

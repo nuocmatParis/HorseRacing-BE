@@ -44,7 +44,24 @@ public class RaceReport {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    ReportStatus status = ReportStatus.Draft;
+    ReportStatus status = ReportStatus.DRAFT;
+
+    @Column(name = "submitted_at")
+    LocalDateTime submittedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "submitted_by")
+    Referee submittedBy;
+
+    @Column(name = "returned_at")
+    LocalDateTime returnedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "returned_by")
+    Referee returnedBy;
+
+    @Column(name = "return_reason", columnDefinition = "TEXT")
+    String returnReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "signed_by")

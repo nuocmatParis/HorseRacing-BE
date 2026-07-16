@@ -247,7 +247,7 @@ class RoundTransitionBusinessLogicTest {
     private RaceReport publishedReport(Race race) {
         RaceReport report = new RaceReport();
         report.setRace(race);
-        report.setStatus(ReportStatus.Published);
+        report.setStatus(ReportStatus.PUBLISHED);
         return report;
     }
 

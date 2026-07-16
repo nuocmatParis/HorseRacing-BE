@@ -1,13 +1,18 @@
 package com.swp391.horseracing.service;
 
-import com.swp391.horseracing.dto.prediction.response.AIPredictionResponse;
+import com.swp391.horseracing.dto.prediction.response.AIPredictionAggregateResponse;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface AIPredictionService {
 
-    List<AIPredictionResponse> generatePredictions(UUID raceId, int topN);
+    AIPredictionAggregateResponse generatePredictions(UUID raceId, int topN);
 
-    List<AIPredictionResponse> getPredictionsByRace(UUID raceId);
+    AIPredictionAggregateResponse getAdminPredictionsByRace(UUID raceId);
+
+    AIPredictionAggregateResponse getPublishedPredictionsByRace(UUID raceId);
+
+    AIPredictionAggregateResponse publishPredictions(UUID raceId);
+
+    AIPredictionAggregateResponse unpublishPredictions(UUID raceId);
 }

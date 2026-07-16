@@ -3,6 +3,7 @@ package com.swp391.horseracing.service.impl;
 import com.swp391.horseracing.entity.Invoice;
 import com.swp391.horseracing.enums.InvoiceType;
 import com.swp391.horseracing.service.ContractPaymentService;
+import com.swp391.horseracing.service.ContractActivationService;
 import com.swp391.horseracing.service.InvoicePaymentCompleteService;
 import com.swp391.horseracing.service.RegistrationPaymentService;
 import lombok.AccessLevel;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 public class InvoicePaymentCompleteServiceImpl implements InvoicePaymentCompleteService {
     RegistrationPaymentService registrationPaymentService;
     ContractPaymentService contractPaymentService;
+    ContractActivationService contractActivationService;
 
     @Override
     public void handleAfterPaid(Invoice invoice) {
@@ -32,8 +34,10 @@ public class InvoicePaymentCompleteServiceImpl implements InvoicePaymentComplete
                 contractPaymentService.markHiringFeePaid(invoice.getContractId());
         }
 
-        if(invoice.getInvoiceType() == InvoiceType.CONTRACT_CREATION_FEE)
-            if(invoice.getContractId() != null)
-                contractPaymentService.markContractFeePaid(invoice.getContractId());
+        if(invoice.getInvoiceType() == InvoiceType.CONTRACT_CREATION_FEE) {
+            if(invoice.getContractId() != null) {
+                contractActivationService.activateAfterFullPayment(invoice.getContractId());
+            }
+        }
     }
 }

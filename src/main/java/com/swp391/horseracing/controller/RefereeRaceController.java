@@ -2,6 +2,7 @@ package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
+import com.swp391.horseracing.dto.race.response.RaceStartReadinessResponse;
 import com.swp391.horseracing.service.RaceService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,13 @@ public class RefereeRaceController {
     public ApiResponse<RaceResponse> startRace(@PathVariable UUID raceId) {
         return ApiResponse.<RaceResponse>builder()
                 .result(raceService.startRace(raceId))
+                .build();
+    }
+
+    @GetMapping("/{raceId}/start-readiness")
+    public ApiResponse<RaceStartReadinessResponse> getStartReadiness(@PathVariable UUID raceId) {
+        return ApiResponse.<RaceStartReadinessResponse>builder()
+                .result(raceService.getStartReadiness(raceId))
                 .build();
     }
 }

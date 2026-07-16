@@ -30,6 +30,7 @@ public class ViolationServiceImpl implements ViolationService {
     RefereeRepository refereeRepository;
     RaceRefereeRepository raceRefereeRepository;
     ViolationRepository violationRepository;
+    RaceReportRepository raceReportRepository;
     UserCurrentService userCurrentService;
     ViolationMapper violationMapper;
 
@@ -41,6 +42,10 @@ public class ViolationServiceImpl implements ViolationService {
 
         Race race = raceEntry.getRace();
         RoundStatus raceStatus = race.getStatus();
+        RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
+        if (report != null && report.getStatus() != ReportStatus.DRAFT) {
+            throw new AppException(ErrorCode.RACE_VIOLATION_REPORTING_CLOSED);
+        }
 
         // Validate violation type based on current race status
         validateViolationType(raceStatus, request.getType());

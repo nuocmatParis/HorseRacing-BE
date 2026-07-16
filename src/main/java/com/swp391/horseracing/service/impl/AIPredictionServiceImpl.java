@@ -4,7 +4,11 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.swp391.horseracing.dto.prediction.response.AIPredictionResponse;
+import com.swp391.horseracing.dto.prediction.response.AIPredictionAggregateResponse;
 import com.swp391.horseracing.entity.*;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
+import com.swp391.horseracing.enums.RaceEntryStatus;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TrackCondition;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -14,6 +18,7 @@ import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.service.AIClientService;
 import com.swp391.horseracing.service.AIPredictionService;
+import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -37,19 +42,30 @@ public class AIPredictionServiceImpl implements AIPredictionService {
     RaceEntryRepository raceEntryRepository;
     AIClientService aiClientService;
     AIPredictionMapper aiPredictionMapper;
+    UserCurrentService userCurrentService;
     ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String MODEL_VERSION = "gpt-4o-mini-v1";
 
     @Override
     @Transactional
-    public List<AIPredictionResponse> generatePredictions(UUID raceId, int topN) {
-        Race race = raceRepository.findById(raceId)
+    public AIPredictionAggregateResponse generatePredictions(UUID raceId, int topN) {
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        validateRaceCanChangePrediction(race);
 
-        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        List<RaceEntry> allEntries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        List<RaceEntry> entries = new ArrayList<>();
+        for (RaceEntry entry : allEntries) {
+            if (isPredictionEntryEligible(entry)) {
+                entries.add(entry);
+            }
+        }
         if (entries.isEmpty()) {
             throw new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND);
+        }
+        if (topN < 1 || topN > entries.size()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         List<Map<String, Object>> entryDataList = buildEntryData(entries);
@@ -78,9 +94,10 @@ public class AIPredictionServiceImpl implements AIPredictionService {
             resultMap.put(result.get("entryId").toString(), result);
         }
 
-        int maxRating = entries.stream()
-                .mapToInt(e -> e.getContract().getHorse().getCurrentRating())
-                .max().orElse(1);
+        int maxRating = 1;
+        for (RaceEntry entry : entries) {
+            maxRating = Math.max(maxRating, entry.getContract().getHorse().getCurrentRating());
+        }
 
         List<AIPrediction> predictions = new ArrayList<>();
         for (RaceEntry entry : entries) {
@@ -169,17 +186,112 @@ public class AIPredictionServiceImpl implements AIPredictionService {
         }
 
         List<AIPrediction> saved = aiPredictionRepository.saveAll(predictions);
-        return aiPredictionMapper.toAIPredictionResponseList(saved.stream()
-                .sorted(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()))
-                .toList());
+        saved.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
+
+        LocalDateTime generatedAt = LocalDateTime.now();
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.DRAFT);
+        race.setAiPredictionGeneratedAt(generatedAt);
+        race.setAiPredictionGeneratedBy(userCurrentService.getCurrentUser());
+        race.setAiPredictionPublishedAt(null);
+        race.setAiPredictionPublishedBy(null);
+        raceRepository.save(race);
+        return toAggregate(race, saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<AIPredictionResponse> getPredictionsByRace(UUID raceId) {
+    public AIPredictionAggregateResponse getAdminPredictionsByRace(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
         List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
         predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
-        return aiPredictionMapper.toAIPredictionResponseList(predictions);
+        return toAggregate(race, predictions);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AIPredictionAggregateResponse getPublishedPredictionsByRace(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        if (race.getAiPredictionPublicationStatus() != AIPredictionPublicationStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.AI_PREDICTION_NOT_PUBLISHED);
+        }
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
+        return toAggregate(race, predictions);
+    }
+
+    @Override
+    @Transactional
+    public AIPredictionAggregateResponse publishPredictions(UUID raceId) {
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        validateRaceCanChangePrediction(race);
+        if (race.getAiPredictionPublicationStatus() == AIPredictionPublicationStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.AI_PREDICTION_ALREADY_PUBLISHED);
+        }
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        if (predictions.isEmpty()) {
+            throw new AppException(ErrorCode.AI_PREDICTION_NOT_FOUND);
+        }
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.PUBLISHED);
+        race.setAiPredictionPublishedAt(LocalDateTime.now());
+        race.setAiPredictionPublishedBy(userCurrentService.getCurrentUser());
+        raceRepository.save(race);
+        predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
+        return toAggregate(race, predictions);
+    }
+
+    @Override
+    @Transactional
+    public AIPredictionAggregateResponse unpublishPredictions(UUID raceId) {
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        validateRaceCanChangePrediction(race);
+        if (race.getAiPredictionPublicationStatus() != AIPredictionPublicationStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.AI_PREDICTION_NOT_PUBLISHED);
+        }
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.DRAFT);
+        race.setAiPredictionPublishedAt(null);
+        race.setAiPredictionPublishedBy(null);
+        raceRepository.save(race);
+        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        predictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
+        return toAggregate(race, predictions);
+    }
+
+    private void validateRaceCanChangePrediction(Race race) {
+        if (race.getSchedulePublishedAt() == null
+                || race.getStatus() != RoundStatus.SCHEDULED
+                || race.getStartTime() == null
+                || !race.getStartTime().isAfter(LocalDateTime.now())) {
+            throw new AppException(ErrorCode.AI_PREDICTION_RACE_NOT_ELIGIBLE);
+        }
+    }
+
+    private boolean isPredictionEntryEligible(RaceEntry entry) {
+        RaceEntryStatus status = entry.getStatus();
+        return status != RaceEntryStatus.SCRATCHED
+                && status != RaceEntryStatus.DISQUALIFIED
+                && status != RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
+                && status != RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE;
+    }
+
+    private AIPredictionAggregateResponse toAggregate(Race race, List<AIPrediction> predictions) {
+        List<AIPredictionResponse> items = aiPredictionMapper.toAIPredictionResponseList(predictions);
+        return AIPredictionAggregateResponse.builder()
+                .raceId(race.getRaceId())
+                .raceName(race.getName())
+                .startTime(race.getStartTime())
+                .publicationStatus(race.getAiPredictionPublicationStatus())
+                .generatedAt(race.getAiPredictionGeneratedAt())
+                .generatedBy(race.getAiPredictionGeneratedBy() == null
+                        ? null : race.getAiPredictionGeneratedBy().getFullName())
+                .publishedAt(race.getAiPredictionPublishedAt())
+                .publishedBy(race.getAiPredictionPublishedBy() == null
+                        ? null : race.getAiPredictionPublishedBy().getFullName())
+                .predictions(items)
+                .build();
     }
 
     private List<Map<String, Object>> buildEntryData(List<RaceEntry> entries) {

@@ -15,6 +15,11 @@ public class PredictionDetailResponse {
 
     UUID predictionDetailId;
     UUID entryId;
+    UUID horseId;
+    String horseName;
+    UUID jockeyId;
+    String jockeyName;
+    Integer laneNumber;
     int predictedRank;
     PredictionDetailStatus status;
     Integer awardedPoints;

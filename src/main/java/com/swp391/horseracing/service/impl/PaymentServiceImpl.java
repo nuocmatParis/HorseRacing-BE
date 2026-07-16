@@ -50,6 +50,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         validateInvoiceBelongsToCurrentUser(invoice, currentUser);
         validateInvoiceCanBePaid(invoice);
+        lockContractForInvoice(invoice);
 
         Wallet userWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(currentUser.getUserId(),
                 WalletPurpose.USER_MAIN).orElseThrow(()
@@ -369,6 +370,14 @@ public class PaymentServiceImpl implements PaymentService {
 
         if(invoice.getDueDate() != null && invoice.getDueDate().isBefore(LocalDateTime.now()))
             throw new AppException(ErrorCode.INVOICE_EXPIRED);
+    }
+
+    private void lockContractForInvoice(Invoice invoice) {
+        if (invoice.getContractId() == null) {
+            return;
+        }
+        contractRepository.findForUpdateByContractId(invoice.getContractId())
+                .orElseThrow(() -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
     }
 
     private void validateWalletActive(Wallet wallet){

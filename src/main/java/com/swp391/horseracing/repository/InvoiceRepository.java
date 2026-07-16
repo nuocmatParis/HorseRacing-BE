@@ -31,6 +31,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Invoice> findForUpdateByInvoiceId(UUID invoiceId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Invoice> findForUpdateByContractIdAndInvoiceType(UUID contractId, InvoiceType invoiceType);
+
     List<Invoice> findAllByStatusOrderByCreatedAtDesc(InvoiceStatus invoiceStatus);
 
     boolean existsByContractIdAndInvoiceType(UUID contractId, InvoiceType invoiceType);
