@@ -271,7 +271,7 @@ public class PredictionServiceImpl implements PredictionService {
         if (race.getAiPredictionPublicationStatus() != AIPredictionPublicationStatus.PUBLISHED) {
             return response;
         }
-        List<AIPrediction> aiPredictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> aiPredictions = aiPredictionRepository.findByEntry_Race_RaceIdOrderByCreatedAtAsc(raceId);
         if (!aiPredictions.isEmpty()) {
             aiPredictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
             response.setAiPredictions(aiPredictionMapper.toAIPredictionResponseList(aiPredictions));
