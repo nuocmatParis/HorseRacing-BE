@@ -40,22 +40,23 @@ class AdminDashboardServiceImplTest {
     }
 
     @Test
-    void getSummaryCountsOnlyItemsThatNeedAdminAttention() {
+    void getSummaryCountsActiveContractsWithoutAnAdminReviewQueue() {
         when(tournamentRepository.count()).thenReturn(7L);
         when(registrationRepository.countByStatus(RegistrationStatus.PENDING_REVIEW)).thenReturn(4L);
-        when(contractRepository.countByStatus(ContractStatus.PENDING_ADMIN_REVIEW)).thenReturn(3L);
+        when(contractRepository.countByStatus(ContractStatus.APPROVED)).thenReturn(3L);
         when(raceRepository.countByStatus(RoundStatus.SCHEDULED)).thenReturn(9L);
 
         AdminDashboardSummaryResponse response = service.getSummary();
 
         assertEquals(7L, response.getTotalTournaments());
         assertEquals(4L, response.getPendingRegistrations());
-        assertEquals(3L, response.getPendingContracts());
+        assertEquals(0L, response.getPendingContracts());
+        assertEquals(3L, response.getActiveContracts());
         assertEquals(9L, response.getScheduledRaces());
         assertNotNull(response.getGeneratedAt());
 
         verify(registrationRepository).countByStatus(RegistrationStatus.PENDING_REVIEW);
-        verify(contractRepository).countByStatus(ContractStatus.PENDING_ADMIN_REVIEW);
+        verify(contractRepository).countByStatus(ContractStatus.APPROVED);
         verify(raceRepository).countByStatus(RoundStatus.SCHEDULED);
     }
 }

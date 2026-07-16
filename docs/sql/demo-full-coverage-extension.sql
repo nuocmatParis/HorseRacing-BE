@@ -2,7 +2,7 @@
 -- HRTMS DEMO FULL COVERAGE EXTENSION (MySQL 8+)
 -- Chạy SAU docs/sql/demo-test-data.sql trên database local/test.
 -- Mục tiêu: bổ sung bracket 32 entry để demo 2 race vòng loại -> 1 Final.
--- Mật khẩu tất cả tài khoản demo_bracket_jock01..32: admin123
+-- Mật khẩu tất cả tài khoản jockey9..jockey40: admin123
 -- ============================================================================
 
 USE SWP391_Project_HRTMS;
@@ -26,10 +26,16 @@ SET @race_b_start = DATE_ADD(@race_a_end, INTERVAL 35 MINUTE);
 SET @race_b_end = DATE_ADD(@race_b_start, INTERVAL 30 MINUTE);
 SET @final_start = DATE_ADD(@race_b_start, INTERVAL 7 DAY);
 SET @final_end = DATE_ADD(@final_start, INTERVAL 30 MINUTE);
-
+ALTER DATABASE `SWP391_Project_HRTMS` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 -- Reset dữ liệu phát sinh nếu đã từng publish hai report và chuyển Top 4.
-DELETE FROM horse_rating_histories WHERE race_id IN (@race_a, @race_b);
-DELETE FROM race_entries WHERE race_id = @race_final;
+DELETE FROM horse_rating_histories
+WHERE race_id IN (
+                  @race_a COLLATE utf8mb4_unicode_ci,
+                  @race_b COLLATE utf8mb4_unicode_ci
+    );
+
+DELETE FROM race_entries
+WHERE race_id = @race_final COLLATE utf8mb4_unicode_ci;
 
 DROP TEMPORARY TABLE IF EXISTS demo_numbers_32;
 CREATE TEMPORARY TABLE demo_numbers_32 (n INT PRIMARY KEY);
@@ -45,7 +51,7 @@ INSERT INTO users
      image_url, status, created_at, last_login_at, role_id)
 SELECT
     CONCAT('11000000-0000-0000-0000-', LPAD(n, 12, '0')),
-    CONCAT('demo_bracket_jock', LPAD(n, 2, '0')),
+    CONCAT('jockey', n + 8),
     @demo_password,
     CONCAT('demo.bracket.jock', LPAD(n, 2, '0'), '@hrtms.local'),
     DATE_ADD('1990-01-01', INTERVAL n MONTH),
@@ -53,7 +59,10 @@ SELECT
     CONCAT('Kỵ sĩ Bracket ', LPAD(n, 2, '0')),
     NULL, NULL, 'ACTIVE', @now, @now, @role_jockey
 FROM demo_numbers_32
-ON DUPLICATE KEY UPDATE password = VALUES(password), status = 'ACTIVE';
+ON DUPLICATE KEY UPDATE
+    username = VALUES(username),
+    password = VALUES(password),
+    status = 'ACTIVE';
 
 INSERT INTO jockeys
     (jockey_id, user_id, height, weight, experience_years, license_number,
@@ -281,7 +290,7 @@ ON DUPLICATE KEY UPDATE status = 'Signed', published_by = NULL, published_at = N
 DROP TEMPORARY TABLE IF EXISTS demo_numbers_32;
 
 SELECT 'Bracket jockey users' AS demo_group, COUNT(*) AS total
-FROM users WHERE username LIKE 'demo_bracket_jock%'
+FROM users WHERE user_id LIKE '11000000-0000-0000-0000-%'
 UNION ALL
 SELECT 'Bracket horses', COUNT(*) FROM horses WHERE name LIKE 'Ngựa Bracket %'
 UNION ALL

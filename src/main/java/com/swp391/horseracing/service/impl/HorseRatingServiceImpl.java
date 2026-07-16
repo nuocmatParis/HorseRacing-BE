@@ -219,7 +219,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
         RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
 
-        if (report.getStatus() != ReportStatus.Signed) {
+        if (report.getStatus() != ReportStatus.SIGNED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_SIGNED);
         }
 
@@ -334,7 +334,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
         RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
 
-        if (report.getStatus() != ReportStatus.Published) {
+        if (report.getStatus() != ReportStatus.PUBLISHED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_PUBLISHED);
         }
 
@@ -392,7 +392,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
 
         for (Race race : roundRaces) {
             Optional<RaceReport> reportOpt = raceReportRepository.findByRace_RaceId(race.getRaceId());
-            boolean isPublished = reportOpt.isPresent() && reportOpt.get().getStatus() == ReportStatus.Published;
+            boolean isPublished = reportOpt.isPresent() && reportOpt.get().getStatus() == ReportStatus.PUBLISHED;
             boolean isCancelled = race.getStatus() == RoundStatus.CANCELLED;
 
             if (isPublished) {

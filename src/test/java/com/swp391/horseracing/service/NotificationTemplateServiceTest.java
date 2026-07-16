@@ -13,6 +13,24 @@ import static org.mockito.Mockito.when;
 
 class NotificationTemplateServiceTest {
     @Test
+    void contractActivationNotificationDoesNotMentionAdminApproval() {
+        NotificationPolicyService policyService = mock(NotificationPolicyService.class);
+        NotificationTemplateServiceImpl service =
+                new NotificationTemplateServiceImpl(new ObjectMapper(), policyService);
+        NotificationEvent event = NotificationEvent.builder()
+                .eventType(NotificationEventType.CONTRACT_APPROVED)
+                .payloadJson("{\"horseName\":\"Sấm Sét\",\"tournamentName\":\"Cúp Mùa Hè\"}")
+                .build();
+
+        NotificationMessage message = service.build(event);
+
+        assertEquals("Hợp đồng đã có hiệu lực", message.title());
+        assertTrue(message.content().contains("đã có hiệu lực"));
+        assertFalse(message.content().toLowerCase().contains("admin"));
+        assertFalse(message.content().contains("được duyệt"));
+    }
+
+    @Test
     void everyEventTypeHasAVietnameseTemplate() {
         NotificationPolicyService policyService = mock(NotificationPolicyService.class);
         NotificationTemplateServiceImpl service =

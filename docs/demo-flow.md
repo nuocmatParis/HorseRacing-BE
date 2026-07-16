@@ -4,13 +4,17 @@
 
 Chỉ dùng database local/test. Các seed có đặt lại số dư ví demo và không được chạy trên production.
 
-Khởi động BE một lần để Flyway/Hibernate tạo đúng schema, sau đó chạy SQL theo đúng thứ tự:
+Khởi động BE một lần để Flyway/Hibernate tạo đúng schema rồi dừng BE trong lúc
+cleanup/import, tránh scheduler thay đổi trạng thái giữa chừng. Chạy SQL theo đúng thứ tự:
 
 ```text
+0. docs/sql/demo-cleanup.sql (chạy trước nếu database đã có seed demo cũ)
 1. docs/sql/demo-test-data.sql
 2. docs/sql/demo-full-coverage-extension.sql
 3. docs/sql/demo-workflow-scenarios.sql
 ```
+
+Import xong mới khởi động lại BE và FE để bắt đầu demo.
 
 Kết quả chính sau khi import:
 
@@ -25,20 +29,20 @@ Mật khẩu chung: `admin123`.
 
 | Tài khoản | Role | Mục đích |
 |---|---|---|
-| `demo_admin` | ADMIN | Dashboard, duyệt, scheduling, ví, publish report |
-| `demo_owner` | HORSE_OWNER | Đăng ký ngựa, contract, appeal, ví |
-| `demo_spec` | SPECTATOR | Tạo/sửa dự đoán TOP3 |
-| `demo_spec_old` | SPECTATOR | Xem prediction được chấm sau publish |
-| `demo_ref` | REFEREE/HEAD_REFEREE | Start race, result, violation, appeal, ký report |
-| `demo_ref2` | REFEREE | Staff AVAILABLE để Admin phân công |
-| `demo_vet`, `demo_med` | VET/MEDICAL | Khám race upcoming |
-| `demo_vet2`, `demo_med2` | VET/MEDICAL | Staff AVAILABLE để Admin phân công |
-| `demo_jock01..08` | JOCKEY | Upcoming/final payout cũ |
-| `demo_bracket_jock01..32` | JOCKEY | Contract và chuyển vòng bracket 32 |
+| `admin1` | ADMIN | Dashboard, duyệt, scheduling, ví, publish report |
+| `owner1` | HORSE_OWNER | Đăng ký ngựa, contract, appeal, ví |
+| `spectator1` | SPECTATOR | Tạo/sửa dự đoán TOP3 |
+| `spectator2` | SPECTATOR | Xem prediction được chấm sau publish |
+| `referee1` | REFEREE/HEAD_REFEREE | Start race, result, violation, appeal, ký report |
+| `referee2` | REFEREE | Staff AVAILABLE để Admin phân công |
+| `vet1`, `medical1` | VET/MEDICAL | Khám race upcoming |
+| `vet2`, `medical2` | VET/MEDICAL | Staff AVAILABLE để Admin phân công |
+| `jockey1..8` | JOCKEY | Upcoming/final payout cũ |
+| `jockey9..40` | JOCKEY | Contract và chuyển vòng bracket 32 |
 
 ## 3. Admin Dashboard và hồ sơ chờ xử lý
 
-1. Đăng nhập `demo_admin`.
+1. Đăng nhập `admin1`.
 2. Mở **Bảng điều khiển**.
 3. Kiểm tra bốn KPI: tổng Tournament, hồ sơ ngựa chờ duyệt, contract chờ duyệt, race đã lên lịch.
 4. Bấm từng KPI để kiểm tra điều hướng.
@@ -54,14 +58,14 @@ Kỳ vọng:
 
 ### Owner
 
-1. Đăng nhập `demo_owner`.
+1. Đăng nhập `owner1`.
 2. Mở danh sách Tournament và chọn `DEMO 5 - Đang mở đăng ký`.
 3. Chọn một ngựa chưa đăng ký vào Tournament này và gửi hồ sơ.
 4. Kiểm tra trạng thái hồ sơ trong danh sách đăng ký của Owner.
 
 ### Jockey
 
-1. Đăng nhập `demo_bracket_jock05`.
+1. Đăng nhập `jockey13`.
 2. Chọn `DEMO 5 - Đang mở đăng ký`.
 3. Đăng ký tham gia.
 
@@ -69,19 +73,19 @@ Kỳ vọng: Jockey đăng ký thành công ngay, không có bước Admin duy�
 
 ## 5. Owner tìm Jockey và tạo contract
 
-1. Đăng nhập `demo_owner`.
+1. Đăng nhập `owner1`.
 2. Mở Tournament `DEMO 6 - Đang ghép Kỵ sĩ`.
 3. Chọn ngựa `Hồ Sơ Chờ Duyệt` — ngựa này đã APPROVED riêng trong Tournament demo matching.
-4. Tìm một trong `demo_bracket_jock01..04`, gửi lời mời contract.
+4. Tìm một trong `jockey9..12`, gửi lời mời contract.
 5. Đăng nhập đúng tài khoản Jockey được mời và thử chấp nhận hoặc từ chối.
 6. Nếu chấp nhận, hoàn thành bước thanh toán/submit contract theo giao diện.
-7. Đăng nhập `demo_admin`, duyệt contract `PENDING_ADMIN_REVIEW`.
+7. Đăng nhập `admin1`, duyệt contract `PENDING_ADMIN_REVIEW`.
 
 Kỳ vọng: contract đi đúng các trạng thái mời → Jockey phản hồi → thanh toán/submit → Admin duyệt; không sửa trạng thái trực tiếp ở FE.
 
 ## 6. Admin Scheduling Board
 
-1. Đăng nhập `demo_admin`.
+1. Đăng nhập `admin1`.
 2. Chọn `DEMO 7 - Đang xếp lịch` và Round `Vòng 1 (Chung Kết)`.
 3. Bấm **Tự động phân entry**.
 4. Kiểm tra 8 contract APPROVED được đưa vào `DEMO Scheduling Race`.
@@ -98,7 +102,7 @@ Chạy lại `demo-workflow-scenarios.sql` để xóa assignment/entry của ri�
 
 ## 7. Spectator upcoming race và dự đoán TOP3
 
-1. Đăng nhập `demo_spec`.
+1. Đăng nhập `spectator1`.
 2. Chọn Tournament `DEMO 1 - Race sắp diễn ra` và race `DEMO Upcoming Race`.
 3. Kiểm tra 8 entry, lane, tên ngựa, Kỵ sĩ, xác suất thắng, Top 3 probability và confidence.
 4. Chọn đúng ba entry cho Hạng 1, Hạng 2, Hạng 3.
@@ -115,8 +119,8 @@ Kỳ vọng:
 
 Ngay sau khi chạy seed, race upcoming bắt đầu sau khoảng 60 phút, đúng cửa sổ inspection T-90 đến T-30.
 
-1. Đăng nhập `demo_vet`, mở danh sách ngựa được phân công và submit inspection.
-2. Đăng nhập `demo_med`, mở danh sách Kỵ sĩ được phân công và submit medical inspection.
+1. Đăng nhập `vet1`, mở danh sách ngựa được phân công và submit inspection.
+2. Đăng nhập `medical1`, mở danh sách Kỵ sĩ được phân công và submit medical inspection.
 3. Cho phần lớn entry PASS; có thể chọn một entry FAIL để kiểm tra tự động SCRATCHED khi finalize.
 4. Thử submit lại cùng một inspection để kiểm tra lỗi “đã tồn tại”.
 
@@ -137,7 +141,7 @@ WHERE race_id = @race_id;
 
 Sau đó:
 
-1. Đăng nhập `demo_ref`.
+1. Đăng nhập `referee1`.
 2. Start `DEMO Upcoming Race`.
 3. Ghi một violation.
 4. Nhập result: FINISHED có rank/finishTime; một DNF hoặc DQ không cần rank/finishTime.
@@ -148,7 +152,7 @@ Sau đó:
 ## 10. Admin publish Final Report, rating và payout
 
 1. Chạy lại `demo-test-data.sql` nếu Final đã từng được publish.
-2. Đăng nhập `demo_admin`.
+2. Đăng nhập `admin1`.
 3. Mở **Biên bản cuộc đua**.
 4. Chọn `DEMO 2 - Final chờ publish` → `DEMO Final Signed Race`.
 5. Kiểm tra checklist, 6 FINISHED, 1 DNF, 1 DISQUALIFIED và rating preview.
@@ -157,7 +161,7 @@ Sau đó:
 Kỳ vọng:
 
 - Report chuyển `Published` và không còn nút publish lần hai.
-- Prediction của `demo_spec_old` chuyển `SCORED`.
+- Prediction của `spectator2` chuyển `SCORED`.
 - Horse rating được áp dụng đúng một lần.
 - Top 3 được chia thưởng Owner/Jockey.
 - 70% phí thuê còn lại được release cho Jockey khi đủ điều kiện.
@@ -165,17 +169,17 @@ Kỳ vọng:
 
 ## 11. Kiểm tra kết quả prediction và ví người tham gia
 
-1. Đăng nhập `demo_spec_old`, mở kết quả prediction.
+1. Đăng nhập `spectator2`, mở kết quả prediction.
 2. Kiểm tra predicted rank, official rank, đúng/sai, điểm từng lựa chọn và tổng reward points.
-3. Đăng nhập `demo_owner`, kiểm tra balance và `PRIZE_OWNER_SHARE`.
-4. Đăng nhập `demo_jock01`, kiểm tra `PRIZE_JOCKEY_SHARE` và `JOCKEY_HIRING_FINAL_INCOME`.
+3. Đăng nhập `owner1`, kiểm tra balance và `PRIZE_OWNER_SHARE`.
+4. Đăng nhập `jockey1`, kiểm tra `PRIZE_JOCKEY_SHARE` và `JOCKEY_HIRING_FINAL_INCOME`.
 
 Kỳ vọng: DNF/DQ không có official rank nhận 0 điểm nhưng không làm VOID toàn prediction; Jockey không có nút nạp tiền.
 
 ## 12. Admin nạp Quỹ giải thưởng qua VNPay
 
 1. Ghi lại số dư ba ví hệ thống trước khi test.
-2. Đăng nhập `demo_admin`, mở **Ví hệ thống**.
+2. Đăng nhập `admin1`, mở **Ví hệ thống**.
 3. Tại **Quỹ giải thưởng**, bấm **Nạp quỹ giải thưởng**.
 4. Nhập ví dụ:
 
@@ -199,7 +203,7 @@ Kỳ vọng:
 ## 13. Demo bracket 32 và chuyển Top 4 atomic
 
 1. Chạy lại `demo-full-coverage-extension.sql` để reset scenario bracket.
-2. Đăng nhập `demo_admin`, mở **Biên bản cuộc đua**.
+2. Đăng nhập `admin1`, mở **Biên bản cuộc đua**.
 3. Chọn `DEMO 4 - Bracket 32 chuyển vòng`.
 4. Publish report của `DEMO Bracket - Vòng 1 Race A`.
 5. Kiểm tra Final vẫn chưa có entry vì Race B chưa Published.
@@ -215,6 +219,7 @@ Kỳ vọng:
 
 ## 14. Reset demo
 
+- Xóa sạch toàn bộ dữ liệu demo của cả ba seed: chạy `demo-cleanup.sql`.
 - Reset Final payout/prediction/upcoming: chạy lại `demo-test-data.sql`.
 - Reset bracket 32: chạy lại `demo-full-coverage-extension.sql`.
 - Reset Scheduling Board: chạy lại `demo-workflow-scenarios.sql`.

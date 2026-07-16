@@ -22,6 +22,7 @@ import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.entity.Veterinarian;
 import com.swp391.horseracing.entity.HorseInspection;
 import com.swp391.horseracing.entity.JockeyInspection;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.repository.MedicalStaffRepository;
@@ -99,6 +100,44 @@ public class RacePortalServiceImpl implements RacePortalService {
         User user = userCurrentService.getCurrentUser();
         Page<Race> races = raceRepository.findUpcomingForJockey(
                 user.getUserId(), LocalDateTime.now(), PageRequest.of(page, size));
+        List<RaceScheduleResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Jockey_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toScheduleResponse(race, entries));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceScheduleResponse> getOwnerRaces(
+            LocalDateTime from, LocalDateTime to, int page, int size) {
+        validatePage(page, size);
+        validateDateRange(from, to);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findParticipantRacesForOwner(
+                user.getUserId(), from, to, PageRequest.of(page, size));
+        List<RaceScheduleResponse> items = new ArrayList<>();
+        for (Race race : races.getContent()) {
+            List<RaceEntry> entries = raceEntryRepository
+                    .findByRace_RaceIdAndContract_Owner_User_UserIdOrderByLaneNumberAsc(
+                            race.getRaceId(), user.getUserId());
+            items.add(toScheduleResponse(race, entries));
+        }
+        return toPageResponse(races, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<RaceScheduleResponse> getJockeyRaces(
+            LocalDateTime from, LocalDateTime to, int page, int size) {
+        validatePage(page, size);
+        validateDateRange(from, to);
+        User user = userCurrentService.getCurrentUser();
+        Page<Race> races = raceRepository.findParticipantRacesForJockey(
+                user.getUserId(), from, to, PageRequest.of(page, size));
         List<RaceScheduleResponse> items = new ArrayList<>();
         for (Race race : races.getContent()) {
             List<RaceEntry> entries = raceEntryRepository
@@ -209,7 +248,10 @@ public class RacePortalServiceImpl implements RacePortalService {
             throw new AppException(ErrorCode.SCHEDULE_NOT_PUBLISHED);
         }
         List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
-        List<AIPrediction> predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        List<AIPrediction> predictions = new ArrayList<>();
+        if (race.getAiPredictionPublicationStatus() == AIPredictionPublicationStatus.PUBLISHED) {
+            predictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
+        }
         Map<UUID, AIPrediction> predictionByEntryId = new HashMap<>();
         for (AIPrediction prediction : predictions) {
             if (prediction.getEntry() != null) {
@@ -439,6 +481,12 @@ public class RacePortalServiceImpl implements RacePortalService {
     private void validatePage(int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new AppException(ErrorCode.INVALID_PAGE_REQUEST);
+        }
+    }
+
+    private void validateDateRange(LocalDateTime from, LocalDateTime to) {
+        if (from != null && to != null && to.isBefore(from)) {
+            throw new AppException(ErrorCode.INVALID_DATE_RANGE);
         }
     }
 }

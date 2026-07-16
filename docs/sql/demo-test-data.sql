@@ -19,14 +19,14 @@
 --
 -- Mật khẩu chung cho toàn bộ tài khoản demo: admin123
 -- Tài khoản chính:
---   demo_admin    / ADMIN
---   demo_owner    / HORSE_OWNER
---   demo_spec     / SPECTATOR chưa dự đoán (dùng tạo dự đoán mới)
---   demo_spec_old / SPECTATOR có prediction chờ chấm
---   demo_ref      / REFEREE
---   demo_vet      / VETERINARIAN
---   demo_med      / MEDICAL_STAFF
---   demo_jock01 ... demo_jock08 / JOCKEY
+--   admin1     / ADMIN
+--   owner1     / HORSE_OWNER
+--   spectator1 / SPECTATOR chưa dự đoán (dùng tạo dự đoán mới)
+--   spectator2 / SPECTATOR có prediction chờ chấm
+--   referee1   / REFEREE
+--   vet1       / VETERINARIAN
+--   medical1   / MEDICAL_STAFF
+--   jockey1 ... jockey8 / JOCKEY
 -- ============================================================================
 
 USE SWP391_Project_HRTMS;
@@ -85,22 +85,23 @@ INSERT INTO users
     (user_id, username, password, email, dob, gender, full_name, phone_number,
      image_url, status, created_at, last_login_at, role_id)
 VALUES
-    ('10000000-0000-0000-0000-000000000001', 'demo_admin', @demo_password, 'demo.admin@hrtms.local', '1990-01-01', 'MALE', 'Admin Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_admin),
-    ('10000000-0000-0000-0000-000000000002', 'demo_owner', @demo_password, 'demo.owner@hrtms.local', '1992-02-02', 'FEMALE', 'Chủ ngựa Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_owner),
-    ('10000000-0000-0000-0000-000000000003', 'demo_spec', @demo_password, 'demo.spectator@hrtms.local', '2000-03-03', 'MALE', 'Khán giả Demo Mới', NULL, NULL, 'ACTIVE', @now, @now, @role_spectator),
-    ('10000000-0000-0000-0000-000000000004', 'demo_spec_old', @demo_password, 'demo.spectator.history@hrtms.local', '1999-04-04', 'FEMALE', 'Khán giả Có Lịch Sử', NULL, NULL, 'ACTIVE', @now, @now, @role_spectator),
-    ('10000000-0000-0000-0000-000000000005', 'demo_ref', @demo_password, 'demo.referee@hrtms.local', '1988-05-05', 'MALE', 'Trọng tài Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_referee),
-    ('10000000-0000-0000-0000-000000000006', 'demo_vet', @demo_password, 'demo.vet@hrtms.local', '1987-06-06', 'FEMALE', 'Thú y Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_vet),
-    ('10000000-0000-0000-0000-000000000007', 'demo_med', @demo_password, 'demo.medical@hrtms.local', '1989-07-07', 'MALE', 'Y tế Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_medical),
-    ('10000000-0000-0000-0000-000000000101', 'demo_jock01', @demo_password, 'demo.jockey01@hrtms.local', '1995-01-11', 'MALE', 'Kỵ sĩ Demo 01', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000102', 'demo_jock02', @demo_password, 'demo.jockey02@hrtms.local', '1995-02-12', 'FEMALE', 'Kỵ sĩ Demo 02', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000103', 'demo_jock03', @demo_password, 'demo.jockey03@hrtms.local', '1995-03-13', 'MALE', 'Kỵ sĩ Demo 03', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000104', 'demo_jock04', @demo_password, 'demo.jockey04@hrtms.local', '1995-04-14', 'FEMALE', 'Kỵ sĩ Demo 04', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000105', 'demo_jock05', @demo_password, 'demo.jockey05@hrtms.local', '1995-05-15', 'MALE', 'Kỵ sĩ Demo 05', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000106', 'demo_jock06', @demo_password, 'demo.jockey06@hrtms.local', '1995-06-16', 'FEMALE', 'Kỵ sĩ Demo 06', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000107', 'demo_jock07', @demo_password, 'demo.jockey07@hrtms.local', '1995-07-17', 'MALE', 'Kỵ sĩ Demo 07', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
-    ('10000000-0000-0000-0000-000000000108', 'demo_jock08', @demo_password, 'demo.jockey08@hrtms.local', '1995-08-18', 'FEMALE', 'Kỵ sĩ Demo 08', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey)
+    ('10000000-0000-0000-0000-000000000001', 'admin1', @demo_password, 'demo.admin@hrtms.local', '1990-01-01', 'MALE', 'Admin Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_admin),
+    ('10000000-0000-0000-0000-000000000002', 'owner1', @demo_password, 'demo.owner@hrtms.local', '1992-02-02', 'FEMALE', 'Chủ ngựa Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_owner),
+    ('10000000-0000-0000-0000-000000000003', 'spectator1', @demo_password, 'demo.spectator@hrtms.local', '2000-03-03', 'MALE', 'Khán giả Demo Mới', NULL, NULL, 'ACTIVE', @now, @now, @role_spectator),
+    ('10000000-0000-0000-0000-000000000004', 'spectator2', @demo_password, 'demo.spectator.history@hrtms.local', '1999-04-04', 'FEMALE', 'Khán giả Có Lịch Sử', NULL, NULL, 'ACTIVE', @now, @now, @role_spectator),
+    ('10000000-0000-0000-0000-000000000005', 'referee1', @demo_password, 'demo.referee@hrtms.local', '1988-05-05', 'MALE', 'Trọng tài Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_referee),
+    ('10000000-0000-0000-0000-000000000006', 'vet1', @demo_password, 'demo.vet@hrtms.local', '1987-06-06', 'FEMALE', 'Thú y Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_vet),
+    ('10000000-0000-0000-0000-000000000007', 'medical1', @demo_password, 'demo.medical@hrtms.local', '1989-07-07', 'MALE', 'Y tế Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_medical),
+    ('10000000-0000-0000-0000-000000000101', 'jockey1', @demo_password, 'demo.jockey01@hrtms.local', '1995-01-11', 'MALE', 'Kỵ sĩ Demo 01', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000102', 'jockey2', @demo_password, 'demo.jockey02@hrtms.local', '1995-02-12', 'FEMALE', 'Kỵ sĩ Demo 02', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000103', 'jockey3', @demo_password, 'demo.jockey03@hrtms.local', '1995-03-13', 'MALE', 'Kỵ sĩ Demo 03', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000104', 'jockey4', @demo_password, 'demo.jockey04@hrtms.local', '1995-04-14', 'FEMALE', 'Kỵ sĩ Demo 04', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000105', 'jockey5', @demo_password, 'demo.jockey05@hrtms.local', '1995-05-15', 'MALE', 'Kỵ sĩ Demo 05', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000106', 'jockey6', @demo_password, 'demo.jockey06@hrtms.local', '1995-06-16', 'FEMALE', 'Kỵ sĩ Demo 06', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000107', 'jockey7', @demo_password, 'demo.jockey07@hrtms.local', '1995-07-17', 'MALE', 'Kỵ sĩ Demo 07', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey),
+    ('10000000-0000-0000-0000-000000000108', 'jockey8', @demo_password, 'demo.jockey08@hrtms.local', '1995-08-18', 'FEMALE', 'Kỵ sĩ Demo 08', NULL, NULL, 'ACTIVE', @now, @now, @role_jockey)
 ON DUPLICATE KEY UPDATE
+    username = VALUES(username),
     password = VALUES(password),
     full_name = VALUES(full_name),
     status = 'ACTIVE',
@@ -675,7 +676,7 @@ FROM race_results WHERE race_id = '90000000-0000-0000-0000-000000000002';
 --   GET  /api/spectator/races/90000000-0000-0000-0000-000000000001
 --   GET  /api/spectator/races/90000000-0000-0000-0000-000000000001/ai-predictions
 --   POST /api/spectator/races/90000000-0000-0000-0000-000000000001/predictions
---        Đăng nhập demo_spec để tạo dự đoán Top 3 mới.
+--        Đăng nhập spectator1 để tạo dự đoán Top 3 mới.
 --   GET  /api/admin/races/90000000-0000-0000-0000-000000000002/report
 --   POST /api/admin/races/90000000-0000-0000-0000-000000000002/report/publish
 --        Sau request này kiểm tra Owner/Jockey wallet và transaction history.

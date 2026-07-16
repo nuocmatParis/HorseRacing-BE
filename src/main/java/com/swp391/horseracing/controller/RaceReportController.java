@@ -3,6 +3,7 @@ package com.swp391.horseracing.controller;
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.race_report.response.RaceReportResponse;
 import com.swp391.horseracing.dto.race_report.request.UpdateRaceReportRequest;
+import com.swp391.horseracing.dto.race_report.request.ReturnRaceReportRequest;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
 import com.swp391.horseracing.service.RaceReportService;
 import lombok.AccessLevel;
@@ -40,12 +41,67 @@ public class RaceReportController {
                 .build();
     }
 
+    @PostMapping("/api/referee/races/{raceId}/report/submit")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> submitReport(@PathVariable UUID raceId) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.submitReport(raceId))
+                .build();
+    }
+
+    @GetMapping("/api/head-referee/rounds/{roundId}/reports")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<List<RaceReportResponse>> getHeadRefereeReports(
+            @PathVariable UUID roundId,
+            @RequestParam(defaultValue = "SUBMITTED_TO_HEAD") String status) {
+        return ApiResponse.<List<RaceReportResponse>>builder()
+                .result(raceReportService.getHeadRefereeReports(roundId, status))
+                .build();
+    }
+
+    @GetMapping("/api/head-referee/races/{raceId}/report")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> getHeadRefereeReport(@PathVariable UUID raceId) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.getHeadRefereeReport(raceId))
+                .build();
+    }
+
+    @PutMapping("/api/head-referee/races/{raceId}/report")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> updateHeadRefereeReport(
+            @PathVariable UUID raceId,
+            @RequestBody @Valid UpdateRaceReportRequest request) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.updateHeadRefereeReport(raceId, request))
+                .build();
+    }
+
+    @PostMapping("/api/head-referee/races/{raceId}/report/return")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> returnReport(
+            @PathVariable UUID raceId,
+            @RequestBody @Valid ReturnRaceReportRequest request) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.returnReport(raceId, request))
+                .build();
+    }
+
+    @PostMapping("/api/head-referee/races/{raceId}/report/sign")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<RaceReportResponse> signReport(@PathVariable UUID raceId) {
+        return ApiResponse.<RaceReportResponse>builder()
+                .result(raceReportService.signReport(raceId))
+                .build();
+    }
+
     @PostMapping("/api/referee/races/{raceId}/report/sign")
     @PreAuthorize("hasRole('REFEREE')")
-    public ApiResponse<RaceReportResponse> signReport(@PathVariable UUID raceId,
-                                                       @RequestBody UUID refereeId) {
+    public ApiResponse<RaceReportResponse> signReportLegacy(
+            @PathVariable UUID raceId,
+            @RequestBody(required = false) UUID ignoredRefereeId) {
         return ApiResponse.<RaceReportResponse>builder()
-                .result(raceReportService.signReport(raceId, refereeId))
+                .result(raceReportService.signReport(raceId))
                 .build();
     }
 

@@ -32,7 +32,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return AdminDashboardSummaryResponse.builder()
                 .totalTournaments(tournamentRepository.count())
                 .pendingRegistrations(horseRegistrationRepository.countByStatus(RegistrationStatus.PENDING_REVIEW))
-                .pendingContracts(contractRepository.countByStatus(ContractStatus.PENDING_ADMIN_REVIEW))
+                .pendingContracts(0L)
+                .activeContracts(contractRepository.countByStatus(ContractStatus.APPROVED))
                 .scheduledRaces(raceRepository.countByStatus(RoundStatus.SCHEDULED))
                 .generatedAt(LocalDateTime.now())
                 .build();

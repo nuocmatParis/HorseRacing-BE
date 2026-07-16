@@ -17,6 +17,7 @@ import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.JockeyTier;
 import com.swp391.horseracing.enums.RaceResultStatus;
 import com.swp391.horseracing.enums.ReportStatus;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
 import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
@@ -41,6 +42,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -157,11 +159,13 @@ class HomePageServiceImplTest {
         race.setStartTime(now.minusHours(2));
         race.setFinishedAt(now.minusHours(1));
         race.setRound(round);
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.PUBLISHED);
         entry.setRace(race);
+        when(raceRepository.findById(raceId)).thenReturn(Optional.of(race));
 
         RaceReport report = new RaceReport();
         report.setRace(race);
-        report.setStatus(ReportStatus.Published);
+        report.setStatus(ReportStatus.PUBLISHED);
         report.setPublishedAt(now.minusMinutes(30));
         when(raceReportRepository.findAll()).thenReturn(List.of(report));
 

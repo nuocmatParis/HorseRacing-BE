@@ -13,6 +13,7 @@ import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
 import com.swp391.horseracing.repository.AIPredictionRepository;
 import com.swp391.horseracing.repository.HorseInspectionRepository;
 import com.swp391.horseracing.repository.JockeyInspectionRepository;
@@ -44,6 +45,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class RacePortalServiceImplTest {
@@ -123,6 +125,7 @@ class RacePortalServiceImplTest {
 
     @Test
     void spectatorDetailMergesExistingAiPrediction() {
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.PUBLISHED);
         AIPrediction prediction = AIPrediction.builder()
                 .entry(entry)
                 .winProbability(new BigDecimal("42.50"))
@@ -144,7 +147,7 @@ class RacePortalServiceImplTest {
 
     @Test
     void spectatorDetailKeepsProbabilityNullWhenPredictionIsNotGenerated() {
-        when(aiPredictionRepository.findByEntry_Race_RaceId(raceId)).thenReturn(List.of());
+        race.setAiPredictionPublicationStatus(AIPredictionPublicationStatus.DRAFT);
 
         SpectatorRaceDetailResponse response = racePortalService.getSpectatorRaceDetail(raceId);
 
@@ -152,6 +155,6 @@ class RacePortalServiceImplTest {
         assertNull(response.getEntries().get(0).getTopNProbability());
         assertNull(response.getEntries().get(0).getConfidenceScore());
         assertNull(response.getEntries().get(0).getPredictionReason());
-        verify(aiPredictionRepository).findByEntry_Race_RaceId(raceId);
+        verify(aiPredictionRepository, never()).findByEntry_Race_RaceId(raceId);
     }
 }

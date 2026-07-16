@@ -2,6 +2,7 @@ package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.race_report.response.RaceReportResponse;
 import com.swp391.horseracing.dto.race_report.request.UpdateRaceReportRequest;
+import com.swp391.horseracing.dto.race_report.request.ReturnRaceReportRequest;
 import com.swp391.horseracing.dto.race_result.response.RaceResultResponse;
 import com.swp391.horseracing.dto.tournament.response.RoundQualifierResponse;
 import com.swp391.horseracing.entity.*;
@@ -66,13 +67,8 @@ public class RaceReportServiceImpl implements RaceReportService {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        User currentUser = userCurrentService.getCurrentUser();
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-
-        if (!isAssignedRefereeOrHead(race, referee)) {
-            throw new AppException(ErrorCode.RACE_REFEREE_NOT_FOUND);
-        }
+        Referee referee = getCurrentReferee();
+        validateAssignedRaceReferee(race, referee);
 
         if (!raceResultRepository.existsByRace_RaceId(raceId)) {
             throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
@@ -84,7 +80,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                             .race(race)
                             .referee(referee)
                             .summary("")
-                            .status(ReportStatus.Draft)
+                            .status(ReportStatus.DRAFT)
                             .build();
                     return raceReportRepository.save(newReport);
                 });
@@ -97,12 +93,8 @@ public class RaceReportServiceImpl implements RaceReportService {
     public RaceReportResponse updateRefereeReport(UUID raceId, UpdateRaceReportRequest request) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
-        User currentUser = userCurrentService.getCurrentUser();
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-        if (!isHeadReferee(race, referee)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
+        Referee referee = getCurrentReferee();
+        validateAssignedRaceReferee(race, referee);
         if (!raceResultRepository.existsByRace_RaceId(raceId)) {
             throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
         }
@@ -111,59 +103,131 @@ public class RaceReportServiceImpl implements RaceReportService {
                         .race(race)
                         .referee(referee)
                         .summary("")
-                        .status(ReportStatus.Draft)
+                        .status(ReportStatus.DRAFT)
                         .build()));
-        if (report.getStatus() != ReportStatus.Draft) {
+        if (report.getStatus() != ReportStatus.DRAFT) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_IN_DRAFT);
         }
-        if (request.getSummary() != null) {
-            report.setSummary(request.getSummary().trim());
+        if (!report.getReferee().getRefereeId().equals(referee.getRefereeId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
         }
-        if (request.getAppealNote() != null) {
-            report.setAppealNote(request.getAppealNote().trim());
-        }
+        applyReportContent(report, request);
         return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
     }
 
     @Override
     @Transactional
-    public RaceReportResponse signReport(UUID raceId, UUID refereeId) {
+    public RaceReportResponse submitReport(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Referee referee = getCurrentReferee();
+        validateAssignedRaceReferee(race, referee);
+        validateRaceResultsBeforeSigning(raceId);
 
+        RaceReport report = raceReportRepository.findForUpdateByRace_RaceId(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
+        if (report.getStatus() == ReportStatus.SUBMITTED_TO_HEAD) {
+            throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SUBMITTED);
+        }
+        if (report.getStatus() != ReportStatus.DRAFT) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_IN_DRAFT);
+        }
+        if (!report.getReferee().getRefereeId().equals(referee.getRefereeId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        if (report.getSummary() == null || report.getSummary().isBlank()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        report.setStatus(ReportStatus.SUBMITTED_TO_HEAD);
+        report.setSubmittedAt(LocalDateTime.now());
+        report.setSubmittedBy(referee);
+        return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RaceReportResponse> getHeadRefereeReports(UUID roundId, String statusValue) {
+        Round round = roundRepository.findById(roundId)
+                .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        Referee referee = getCurrentReferee();
+        validateHeadReferee(round, referee);
+        ReportStatus status;
+        try {
+            status = ReportStatus.valueOf(statusValue == null
+                    ? ReportStatus.SUBMITTED_TO_HEAD.name()
+                    : statusValue.trim().toUpperCase());
+        } catch (IllegalArgumentException exception) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        List<RaceReport> reports =
+                raceReportRepository.findByRace_Round_RoundIdAndStatusOrderBySubmittedAtAsc(roundId, status);
+        List<RaceReportResponse> responses = new ArrayList<>();
+        for (RaceReport report : reports) {
+            responses.add(raceReportMapper.toRaceReportResponse(report));
+        }
+        return responses;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RaceReportResponse getHeadRefereeReport(UUID raceId) {
+        RaceReport report = getHeadManagedReport(raceId, getCurrentReferee());
+        return raceReportMapper.toRaceReportResponse(report);
+    }
+
+    @Override
+    @Transactional
+    public RaceReportResponse updateHeadRefereeReport(UUID raceId, UpdateRaceReportRequest request) {
+        Referee referee = getCurrentReferee();
+        RaceReport report = getHeadManagedReportForUpdate(raceId, referee);
+        if (report.getStatus() != ReportStatus.SUBMITTED_TO_HEAD) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_SUBMITTED);
+        }
+        applyReportContent(report, request);
+        return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
+    }
+
+    @Override
+    @Transactional
+    public RaceReportResponse returnReport(UUID raceId, ReturnRaceReportRequest request) {
+        Referee referee = getCurrentReferee();
+        RaceReport report = getHeadManagedReportForUpdate(raceId, referee);
+        if (report.getStatus() != ReportStatus.SUBMITTED_TO_HEAD) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_SUBMITTED);
+        }
+        if (request.getReason() == null || request.getReason().isBlank()) {
+            throw new AppException(ErrorCode.RACE_REPORT_RETURN_REASON_REQUIRED);
+        }
+        report.setStatus(ReportStatus.DRAFT);
+        report.setReturnedAt(LocalDateTime.now());
+        report.setReturnedBy(referee);
+        report.setReturnReason(request.getReason().trim());
+        return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
+    }
+
+    @Override
+    @Transactional
+    public RaceReportResponse signReport(UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
         if (race.getStatus() != RoundStatus.FINISHED && race.getStatus() != RoundStatus.ONGOING) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
-        User currentUser = userCurrentService.getCurrentUser();
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-
-        if (refereeId != null && !referee.getRefereeId().equals(refereeId)) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        Round round = race.getRound();
-        if (round.getHeadReferee() == null || !round.getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
+        Referee referee = getCurrentReferee();
+        validateHeadReferee(race.getRound(), referee);
         validateRaceResultsBeforeSigning(raceId);
 
-        boolean hasPendingAppeals = appealRepository.existsByEntry_Race_RaceIdAndStatus(
-                raceId, AppealStatus.Pending);
-        if (hasPendingAppeals) {
-            throw new AppException(ErrorCode.APPEAL_NOT_PENDING);
+        if (appealRepository.existsByEntry_Race_RaceIdAndStatus(raceId, AppealStatus.Pending)) {
+            throw new AppException(ErrorCode.RACE_REPORT_PENDING_APPEAL);
         }
 
-        RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
+        RaceReport report = raceReportRepository.findForUpdateByRace_RaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
-
-        if (report.getStatus() != ReportStatus.Draft) {
-            throw new AppException(ErrorCode.RACE_REPORT_ALREADY_SIGNED);
+        if (report.getStatus() != ReportStatus.SUBMITTED_TO_HEAD) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_SUBMITTED);
         }
-
-        report.setStatus(ReportStatus.Signed);
+        report.setStatus(ReportStatus.SIGNED);
         report.setSignedBy(referee);
         report.setSignedAt(LocalDateTime.now());
         raceReportRepository.save(report);
@@ -171,21 +235,52 @@ public class RaceReportServiceImpl implements RaceReportService {
         race.setStatus(RoundStatus.FINISHED);
         race.setFinishedAt(LocalDateTime.now());
         raceRepository.save(race);
-        markRoundFinishedIfAllRacesFinished(round);
-
+        markRoundFinishedIfAllRacesFinished(race.getRound());
         return raceReportMapper.toRaceReportResponse(report);
     }
 
-    private boolean isAssignedRefereeOrHead(Race race, Referee referee) {
-        return isHeadReferee(race, referee)
-                || raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
-                        race.getRaceId(), referee.getRefereeId());
+    private void applyReportContent(RaceReport report, UpdateRaceReportRequest request) {
+        if (request.getSummary() != null) {
+            report.setSummary(request.getSummary().trim());
+        }
+        if (request.getAppealNote() != null) {
+            report.setAppealNote(request.getAppealNote().trim());
+        }
     }
 
-    private boolean isHeadReferee(Race race, Referee referee) {
-        return race.getRound() != null
-                && race.getRound().getHeadReferee() != null
-                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId());
+    private RaceReport getHeadManagedReport(UUID raceId, Referee referee) {
+        RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
+        validateHeadReferee(report.getRace().getRound(), referee);
+        return report;
+    }
+
+    private RaceReport getHeadManagedReportForUpdate(UUID raceId, Referee referee) {
+        RaceReport report = raceReportRepository.findForUpdateByRace_RaceId(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
+        validateHeadReferee(report.getRace().getRound(), referee);
+        return report;
+    }
+
+    private Referee getCurrentReferee() {
+        User currentUser = userCurrentService.getCurrentUser();
+        return refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+    }
+
+    private void validateAssignedRaceReferee(Race race, Referee referee) {
+        if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), referee.getRefereeId())) {
+            throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
+        }
+    }
+
+    private void validateHeadReferee(Round round, Referee referee) {
+        if (round == null
+                || round.getHeadReferee() == null
+                || !round.getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     private void validateRaceResultsBeforeSigning(UUID raceId) {
@@ -195,8 +290,10 @@ public class RaceReportServiceImpl implements RaceReportService {
         }
         
         List<RaceResult> results = raceResultRepository.findByRace_RaceId(raceId);
-        Map<UUID, RaceResult> resultMap = results.stream()
-                .collect(Collectors.toMap(r -> r.getEntry().getEntryId(), r -> r, (r1, r2) -> r1));
+        Map<UUID, RaceResult> resultMap = new HashMap<>();
+        for (RaceResult result : results) {
+            resultMap.putIfAbsent(result.getEntry().getEntryId(), result);
+        }
 
         for (RaceEntry entry : entries) {
             RaceEntryStatus status = entry.getStatus();
@@ -255,17 +352,17 @@ public class RaceReportServiceImpl implements RaceReportService {
         RaceReport report = raceReportRepository.findForUpdateByRace_RaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
 
-        if (report.getStatus() == ReportStatus.Published) {
+        if (report.getStatus() == ReportStatus.PUBLISHED) {
             throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
         }
 
-        if (report.getStatus() != ReportStatus.Signed) {
+        if (report.getStatus() != ReportStatus.SIGNED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_SIGNED);
         }
 
         User currentUser = userCurrentService.getCurrentUser();
 
-        report.setStatus(ReportStatus.Published);
+        report.setStatus(ReportStatus.PUBLISHED);
         report.setPublishedBy(currentUser);
         report.setPublishedAt(LocalDateTime.now());
         raceReportRepository.save(report);
@@ -463,7 +560,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         RaceReport report = raceReportRepository.findByRace_RaceId(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_REPORT_NOT_FOUND));
 
-        if (report.getStatus() != ReportStatus.Published) {
+        if (report.getStatus() != ReportStatus.PUBLISHED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_PUBLISHED);
         }
 
@@ -498,7 +595,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                 return;
             }
             RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
-            if (report == null || report.getStatus() != ReportStatus.Published) {
+            if (report == null || report.getStatus() != ReportStatus.PUBLISHED) {
                 lockedRound.setTransitionStatus(RoundTransitionStatus.NOT_READY);
                 roundRepository.save(lockedRound);
                 return;
@@ -621,7 +718,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                 return;
             }
             RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
-            if (report == null || report.getStatus() != ReportStatus.Published) {
+            if (report == null || report.getStatus() != ReportStatus.PUBLISHED) {
                 return;
             }
         }
@@ -728,7 +825,7 @@ public class RaceReportServiceImpl implements RaceReportService {
                 throw new AppException(ErrorCode.ROUND_REPORTS_NOT_FULLY_PUBLISHED);
             }
             RaceReport report = raceReportRepository.findByRace_RaceId(race.getRaceId()).orElse(null);
-            if (report == null || report.getStatus() != ReportStatus.Published) {
+            if (report == null || report.getStatus() != ReportStatus.PUBLISHED) {
                 throw new AppException(ErrorCode.ROUND_REPORTS_NOT_FULLY_PUBLISHED);
             }
         }
