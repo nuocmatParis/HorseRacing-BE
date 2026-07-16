@@ -2,7 +2,6 @@ package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.common.PageResponse;
-import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.medicalstaff.request.AssignInspectionStaffRequest;
 import com.swp391.horseracing.dto.medicalstaff.response.InspectionStaffAssignmentResponse;
@@ -267,13 +266,6 @@ public class AdminController {
         return ApiResponse.<Void>builder().build();
     }
 
-    @GetMapping("/contracts/pending")
-    public ApiResponse<List<ContractResponse>> getPendingContracts(){
-        return ApiResponse.<List<ContractResponse>>builder()
-                .result(contractService.getPendingContracts())
-                .build();
-    }
-
     @GetMapping("/contracts")
     public ApiResponse<PageResponse<ContractResponse>> getContractsByStatus(
             @RequestParam ContractStatus status,
@@ -298,20 +290,6 @@ public class AdminController {
     public ApiResponse<TournamentResponse> closeRegistration(@PathVariable UUID id) {
         return ApiResponse.<TournamentResponse>builder()
                 .result(tournamentService.closeRegistration(id))
-                .build();
-    }
-
-    @PostMapping("/contracts/{id}/approve")
-    public ApiResponse<ContractResponse> approveContract(@PathVariable UUID id){
-        return ApiResponse.<ContractResponse>builder()
-                .result(contractService.approveContract(id))
-                .build();
-    }
-
-    @PostMapping("/contracts/{id}/reject")
-    public ApiResponse<ContractResponse> rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
-        return ApiResponse.<ContractResponse>builder()
-                .result(contractService.rejectContractByAdmin(id, request.getReason()))
                 .build();
     }
 

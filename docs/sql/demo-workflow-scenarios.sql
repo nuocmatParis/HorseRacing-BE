@@ -28,10 +28,13 @@ INSERT INTO users
     (user_id, username, password, email, dob, gender, full_name, phone_number,
      image_url, status, created_at, last_login_at, role_id)
 VALUES
-    ('12000000-0000-0000-0000-000000000001', 'demo_ref2', @demo_password, 'demo.ref2@hrtms.local', '1988-01-01', 'MALE', 'Trọng tài Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_ref),
-    ('12000000-0000-0000-0000-000000000002', 'demo_vet2', @demo_password, 'demo.vet2@hrtms.local', '1987-02-02', 'FEMALE', 'Thú y Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_vet),
-    ('12000000-0000-0000-0000-000000000003', 'demo_med2', @demo_password, 'demo.med2@hrtms.local', '1989-03-03', 'MALE', 'Y tế Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_med)
-ON DUPLICATE KEY UPDATE password = VALUES(password), status = 'ACTIVE';
+    ('12000000-0000-0000-0000-000000000001', 'referee2', @demo_password, 'demo.ref2@hrtms.local', '1988-01-01', 'MALE', 'Trọng tài Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_ref),
+    ('12000000-0000-0000-0000-000000000002', 'vet2', @demo_password, 'demo.vet2@hrtms.local', '1987-02-02', 'FEMALE', 'Thú y Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_vet),
+    ('12000000-0000-0000-0000-000000000003', 'medical2', @demo_password, 'demo.med2@hrtms.local', '1989-03-03', 'MALE', 'Y tế Available Demo', NULL, NULL, 'ACTIVE', @now, @now, @role_med)
+ON DUPLICATE KEY UPDATE
+    username = VALUES(username),
+    password = VALUES(password),
+    status = 'ACTIVE';
 
 INSERT INTO referees
     (referee_id, user_id, certification_level, years_of_service, status, created_at)

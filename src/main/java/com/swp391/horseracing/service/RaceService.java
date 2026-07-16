@@ -3,6 +3,7 @@ package com.swp391.horseracing.service;
 import com.swp391.horseracing.dto.tournament.request.CreateRaceRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateRaceRequest;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
+import com.swp391.horseracing.dto.race.response.RaceStartReadinessResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +16,7 @@ public interface RaceService {
     List<RaceResponse> getRacesByRoundId(UUID roundId);
     RaceResponse publishSchedule(UUID raceId);
     RaceResponse startRace(UUID raceId);
+    RaceStartReadinessResponse getStartReadiness(UUID raceId);
     void finalizeRaceEntries(UUID raceId);
     RaceResponse rescheduleRace(UUID raceId, com.swp391.horseracing.dto.tournament.request.RescheduleRaceRequest request);
     void cancelRace(UUID raceId, com.swp391.horseracing.dto.tournament.request.CancelRaceRequest request);

@@ -19,6 +19,11 @@ public interface PredictionMapper {
     PredictionResponse toPredictionResponse(Prediction prediction);
 
     @Mapping(target = "entryId", source = "entry.entryId")
+    @Mapping(target = "horseId", source = "entry.contract.horse.horseId")
+    @Mapping(target = "horseName", source = "entry.contract.horse.name")
+    @Mapping(target = "jockeyId", source = "entry.contract.jockey.jockeyId")
+    @Mapping(target = "jockeyName", source = "entry.contract.jockey.user.fullName")
+    @Mapping(target = "laneNumber", source = "entry.laneNumber")
     PredictionDetailResponse toPredictionDetailResponse(PredictionDetail detail);
 
     List<PredictionDetailResponse> toPredictionDetailResponseList(List<PredictionDetail> details);

@@ -2,6 +2,7 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.RaceDistance;
 import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.AIPredictionPublicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -64,6 +65,24 @@ public class Race {
 
     @Column(name = "prediction_close_at")
     LocalDateTime predictionCloseAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_prediction_publication_status", length = 20)
+    AIPredictionPublicationStatus aiPredictionPublicationStatus;
+
+    @Column(name = "ai_prediction_generated_at")
+    LocalDateTime aiPredictionGeneratedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ai_prediction_generated_by")
+    User aiPredictionGeneratedBy;
+
+    @Column(name = "ai_prediction_published_at")
+    LocalDateTime aiPredictionPublishedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ai_prediction_published_by")
+    User aiPredictionPublishedBy;
 
     // ---- Relationships ----
 

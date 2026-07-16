@@ -444,6 +444,10 @@ public enum ErrorCode {
     RACE_REPORT_NOT_SIGNED(2614, HttpStatus.BAD_REQUEST, "Race report must be signed before publishing"),
     RACE_REPORT_NOT_IN_DRAFT(2615, HttpStatus.BAD_REQUEST, "Race report is not in draft status"),
     RACE_REPORT_NOT_IN_SIGNED(2616, HttpStatus.BAD_REQUEST, "Race report is not in signed status"),
+    RACE_REPORT_NOT_SUBMITTED(2617, HttpStatus.BAD_REQUEST, "Race report must be submitted to the head referee"),
+    RACE_REPORT_ALREADY_SUBMITTED(2618, HttpStatus.CONFLICT, "Race report has already been submitted to the head referee"),
+    RACE_REPORT_RETURN_REASON_REQUIRED(2619, HttpStatus.BAD_REQUEST, "Return reason is required"),
+    RACE_REPORT_PENDING_APPEAL(2623, HttpStatus.BAD_REQUEST, "Pending appeals must be resolved before signing"),
 
     // APPEAL CATEGORY
     APPEAL_CATEGORY_NOT_FOUND(2620, HttpStatus.NOT_FOUND, "Appeal category not found"),
@@ -502,6 +506,10 @@ public enum ErrorCode {
     // AI PREDICTION
     AI_PREDICTION_GENERATION_FAILED(1673, HttpStatus.INTERNAL_SERVER_ERROR, "AI prediction generation failed"),
     AI_PREDICTION_INVALID_RESPONSE(1674, HttpStatus.INTERNAL_SERVER_ERROR, "AI returned an invalid response format"),
+    AI_PREDICTION_NOT_FOUND(1675, HttpStatus.NOT_FOUND, "AI prediction has not been generated"),
+    AI_PREDICTION_NOT_PUBLISHED(1676, HttpStatus.NOT_FOUND, "AI prediction has not been published"),
+    AI_PREDICTION_RACE_NOT_ELIGIBLE(1677, HttpStatus.BAD_REQUEST, "Race is not eligible for AI prediction"),
+    AI_PREDICTION_ALREADY_PUBLISHED(1678, HttpStatus.CONFLICT, "AI prediction is already published"),
 
     // HORSE RATING
     RACE_ENTRY_DID_NOT_START(1815, HttpStatus.BAD_REQUEST, "Race result cannot be created for an entry that did not start"),
@@ -546,6 +554,10 @@ public enum ErrorCode {
     JOCKEY_MATCHING_PERIOD_TOO_SHORT(2125, HttpStatus.BAD_REQUEST, "Jockey matching period is shorter than the minimum required for the selected capacity"),
     SCHEDULING_PERIOD_TOO_SHORT(2126, HttpStatus.BAD_REQUEST, "Scheduling period must be at least 4 calendar days"),
     TOURNAMENT_START_DATE_IMMUTABLE(2127, HttpStatus.BAD_REQUEST, "Tournament start date cannot be changed after creation"),
+
+    // SPECTATOR HORSE FOLLOW
+    HORSE_ALREADY_FOLLOWED(2201, HttpStatus.CONFLICT, "Horse is already followed"),
+    HORSE_FOLLOW_NOT_FOUND(2202, HttpStatus.NOT_FOUND, "Horse follow not found"),
     ;
 
 

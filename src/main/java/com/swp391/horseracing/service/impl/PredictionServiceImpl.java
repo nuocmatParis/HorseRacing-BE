@@ -266,6 +266,11 @@ public class PredictionServiceImpl implements PredictionService {
     }
 
     private PredictionResponse attachAiPredictions(PredictionResponse response, UUID raceId) {
+        Race race = raceRepository.findById(raceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        if (race.getAiPredictionPublicationStatus() != AIPredictionPublicationStatus.PUBLISHED) {
+            return response;
+        }
         List<AIPrediction> aiPredictions = aiPredictionRepository.findByEntry_Race_RaceId(raceId);
         if (!aiPredictions.isEmpty()) {
             aiPredictions.sort(Comparator.comparing(AIPrediction::getTopNProbability, Comparator.reverseOrder()));
