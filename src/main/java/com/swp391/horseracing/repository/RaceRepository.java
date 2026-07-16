@@ -32,6 +32,8 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
 
     long countByStatus(RoundStatus status);
 
+    boolean existsByRaceIdAndRound_HeadReferee_User_UserId(UUID raceId, UUID userId);
+
     long countByRound_Tournament_TournamentIdAndStartTimeBetweenAndStatusNot(
             UUID tournamentId,
             LocalDateTime startOfDay,

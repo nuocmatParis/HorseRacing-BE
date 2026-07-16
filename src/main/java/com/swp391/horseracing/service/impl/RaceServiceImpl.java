@@ -291,7 +291,10 @@ public class RaceServiceImpl implements RaceService {
     @Override
     @Transactional
     public RaceResponse startRace(UUID raceId) {
-        Race race = raceRepository.findById(raceId)
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
+                // Compatibility fallback for repository stubs and non-locking adapters;
+                // production JPA resolves the pessimistic query first.
+                .or(() -> raceRepository.findById(raceId))
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
         User currentUser = getCurrentUser();

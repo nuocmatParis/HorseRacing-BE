@@ -558,6 +558,18 @@ public enum ErrorCode {
     // SPECTATOR HORSE FOLLOW
     HORSE_ALREADY_FOLLOWED(2201, HttpStatus.CONFLICT, "Horse is already followed"),
     HORSE_FOLLOW_NOT_FOUND(2202, HttpStatus.NOT_FOUND, "Horse follow not found"),
+
+    // REAL-TIME RACE SIMULATION
+    SIMULATION_SESSION_NOT_FOUND(2301, HttpStatus.NOT_FOUND, "Race simulation session not found"),
+    SIMULATION_SESSION_NOT_READY(2302, HttpStatus.CONFLICT, "Race simulation session is not ready"),
+    SIMULATION_SESSION_ALREADY_STARTED(2303, HttpStatus.CONFLICT, "Race simulation session has already started"),
+    SIMULATION_PREPARE_NOT_ALLOWED(2304, HttpStatus.BAD_REQUEST, "Race is not ready for simulation preparation"),
+    SIMULATION_WARNING_NOT_FOUND(2305, HttpStatus.NOT_FOUND, "Simulation warning not found"),
+    SIMULATION_WARNING_ALREADY_REVIEWED(2306, HttpStatus.CONFLICT, "Simulation warning has already been reviewed"),
+    SIMULATION_FLAG_NOT_FOUND(2307, HttpStatus.NOT_FOUND, "Simulation flag not found"),
+    SIMULATION_FLAG_ALREADY_REVIEWED(2308, HttpStatus.CONFLICT, "Simulation flag has already been reviewed"),
+    SIMULATION_ENTRY_NOT_FOUND(2309, HttpStatus.NOT_FOUND, "Entry is not part of this simulation"),
+    SIMULATION_START_FAILED(2310, HttpStatus.INTERNAL_SERVER_ERROR, "Race started but the live simulation could not be scheduled"),
     ;
 
 

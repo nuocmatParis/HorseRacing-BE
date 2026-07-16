@@ -4,6 +4,7 @@ import com.swp391.horseracing.dto.common.ApiResponse;
 import com.swp391.horseracing.dto.tournament.response.RaceResponse;
 import com.swp391.horseracing.dto.race.response.RaceStartReadinessResponse;
 import com.swp391.horseracing.service.RaceService;
+import com.swp391.horseracing.simulation.realtime.RaceSimulationOrchestrator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -20,11 +21,12 @@ import java.util.UUID;
 public class RefereeRaceController {
 
     RaceService raceService;
+    RaceSimulationOrchestrator raceSimulationOrchestrator;
 
     @PostMapping("/{raceId}/start")
     public ApiResponse<RaceResponse> startRace(@PathVariable UUID raceId) {
         return ApiResponse.<RaceResponse>builder()
-                .result(raceService.startRace(raceId))
+                .result(raceSimulationOrchestrator.startRace(raceId))
                 .build();
     }
 
