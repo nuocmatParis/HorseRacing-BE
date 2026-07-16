@@ -66,6 +66,8 @@ public class SecurityConfig {
                 -> request.requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINTS).permitAll()
                 .requestMatchers(SWAGGER_ENDPOINTS).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/public/home").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/public/races/live").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/races/*/live-snapshot").permitAll()
                 .requestMatchers(
                         "/api/payments/vnpay/return",
                         "/api/payments/vnpay/ipn",
