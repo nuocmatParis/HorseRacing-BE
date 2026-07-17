@@ -106,12 +106,22 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
             throw new AppException(ErrorCode.MEDICAL_STAFF_NOT_ASSIGNED_TO_RACE);
         }
 
+        if (request.getResult() == InspectionResult.PASS
+                && Boolean.TRUE.equals(request.getDopingDetected())) {
+            throw new AppException(ErrorCode.JOCKEY_INSPECTION_FINDINGS_REQUIRE_FAILURE);
+        }
+
+        Jockey jockey = raceEntry.getContract().getJockey();
+
         JockeyInspection inspection = JockeyInspection.builder()
                 .raceEntry(raceEntry)
                 .medicalStaff(medStaff)
                 .result(request.getResult())
                 .note(request.getNote())
                 .inspectedAt(LocalDateTime.now())
+                .registeredWeight(jockey.getWeight())
+                .actualWeight(request.getActualWeight())
+                .dopingDetected(request.getDopingDetected())
                 .status(InspectionStatus.CONFIRMED)
                 .build();
 

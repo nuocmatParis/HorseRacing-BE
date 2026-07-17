@@ -14,6 +14,7 @@ public class AssignedRaceResponse {
     private LocalDateTime assignedAt;
     private LocalDateTime inspectionOpenAt;
     private LocalDateTime inspectionCloseAt;
+    private TournamentInspectionConditionsResponse tournamentConditions;
     private int entryCount;
     private List<RaceEntryViewResponse> entries;
 }

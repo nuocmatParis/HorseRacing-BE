@@ -13,6 +13,7 @@ import com.swp391.horseracing.repository.HorseRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContextInitializer;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ContextConfiguration(initializers = BE2HorseRatingIntegrationTest.FlywayInitializer.class)
 @ActiveProfiles("test")
+@EnabledIfEnvironmentVariable(named = "RUN_MYSQL_INTEGRATION_TESTS", matches = "(?i)true")
 public class BE2HorseRatingIntegrationTest {
 
     static class FlywayInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {

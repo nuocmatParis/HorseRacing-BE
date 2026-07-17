@@ -1,5 +1,7 @@
 # Hướng dẫn demo HRTMS end-to-end
 
+> **Tài liệu cũ — không dùng để dựng database demo mới.** Luồng và các file SQL bên dưới đã lỗi thời. Hãy dùng [fresh-demo-test-guide.md](fresh-demo-test-guide.md) cùng file gốc [demo_sample_data.sql](../demo_sample_data.sql). Mật khẩu chung của bộ seed mới là `12345678`.
+
 ## 1. Chuẩn bị
 
 Chỉ dùng database local/test. Các seed có đặt lại số dư ví demo và không được chạy trên production.

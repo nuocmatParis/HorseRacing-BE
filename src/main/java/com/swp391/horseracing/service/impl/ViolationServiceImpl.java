@@ -54,17 +54,14 @@ public class ViolationServiceImpl implements ViolationService {
         Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
 
-        // Check if referee is Head Referee of the Round or assigned to this specific Race
-        boolean isAuthorized = false;
-        if (race.getRound().getHeadReferee() != null 
-                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
-            isAuthorized = true;
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
         }
-        if (!isAuthorized) {
-            isAuthorized = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
-                    race.getRaceId(), referee.getRefereeId());
-        }
-        if (!isAuthorized) {
+
+        // The Race Referee records on-track violations. The Round Head Referee
+        // remains an independent reviewer for appeals and the submitted report.
+        if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), referee.getRefereeId())) {
             throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
         }
 
@@ -79,13 +76,12 @@ public class ViolationServiceImpl implements ViolationService {
                 .type(request.getType())
                 .description(request.getDescription())
                 .penaltyType(request.getPenaltyType())
-                .penaltyValue(request.getPenaltyValue())
+                .penaltyValue(null)
                 .occurredAt(occurredAt)
                 .createdAt(LocalDateTime.now())
                 .status(ViolationStatus.ACTIVE)
                 .build();
 
-        // Handle DISQUALIFIED status update
         if (request.getPenaltyType() == PenaltyType.DISQUALIFIED) {
             raceEntry.setStatus(RaceEntryStatus.DISQUALIFIED);
             raceEntry.setDisqualifiedAt(LocalDateTime.now());
@@ -118,10 +114,12 @@ public class ViolationServiceImpl implements ViolationService {
                 throw new AppException(ErrorCode.INVALID_VIOLATION_TYPE_FOR_RACE_STATUS);
             }
         }
-        if (raceStatus == RoundStatus.FINISHED || raceStatus == RoundStatus.CANCELLED) {
-            // After results publication or finished/cancelled, direct violation reporting is closed
+        if (raceStatus == RoundStatus.FINISHED
+                || raceStatus == RoundStatus.COMPLETED
+                || raceStatus == RoundStatus.CANCELLED) {
+            // Violations must be recorded before the referee closes the race.
             throw new AppException(ErrorCode.RACE_VIOLATION_REPORTING_CLOSED);
         }
-        // RoundStatus.ONGOING (IN_PROGRESS) allows all types of violations
+        // RoundStatus.ONGOING allows all violation types.
     }
 }

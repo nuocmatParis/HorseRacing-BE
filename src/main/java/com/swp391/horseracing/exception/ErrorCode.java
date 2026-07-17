@@ -359,6 +359,12 @@ public enum ErrorCode {
     REGISTRATION_ALREADY_CLOSED(1584, HttpStatus.CONFLICT, "Tournament registration has already been closed"),
     INVALID_PAGE_REQUEST(1585, HttpStatus.BAD_REQUEST, "Page must be non-negative and size must be between 1 and 100"),
     INVALID_DATE_RANGE(1586, HttpStatus.BAD_REQUEST, "The from time must be before or equal to the to time"),
+    ROUND_MISSING_HEAD_REFEREE(1587, HttpStatus.BAD_REQUEST, "Round must have an active head referee before publishing schedule"),
+    REFEREE_ROLE_CONFLICT_IN_ROUND(1588, HttpStatus.CONFLICT, "A referee cannot be both head referee and race referee in the same round"),
+    REFEREE_NOT_AVAILABLE(1589, HttpStatus.BAD_REQUEST, "Referee is suspended or unavailable"),
+    HEAD_REFEREE_ASSIGNMENT_LOCKED(1590, HttpStatus.CONFLICT, "Head referee assignment is locked after the round schedule is published"),
+    RACE_LANES_INCOMPLETE(1591, HttpStatus.BAD_REQUEST, "Every race entry must have a unique valid lane before publishing schedule"),
+    RACE_REQUIRES_EXACTLY_ONE_REFEREE(1592, HttpStatus.CONFLICT, "Race must have exactly one direct referee"),
 
     //Contract
     TOURNAMENT_NOT_MATCH(1601, HttpStatus.BAD_REQUEST, "Tournament not match"),
@@ -425,6 +431,10 @@ public enum ErrorCode {
 
     JOCKEY_INSPECTION_NOT_FOUND(1722, HttpStatus.NOT_FOUND, "Jockey inspection not found for this entry"),
 
+    HORSE_INSPECTION_FINDINGS_REQUIRE_FAILURE(1723, HttpStatus.BAD_REQUEST, "Horse inspection must fail when doping is detected or actual breed does not match"),
+
+    JOCKEY_INSPECTION_FINDINGS_REQUIRE_FAILURE(1724, HttpStatus.BAD_REQUEST, "Jockey inspection must fail when doping is detected"),
+
     // RACE RESULT
     RACE_RESULT_NOT_FOUND(2601, HttpStatus.NOT_FOUND, "Race result not found"),
     RACE_RESULT_ALREADY_EXISTS(2602, HttpStatus.CONFLICT, "Race result already exists for this entry"),
@@ -447,7 +457,7 @@ public enum ErrorCode {
     RACE_REPORT_NOT_SUBMITTED(2617, HttpStatus.BAD_REQUEST, "Race report must be submitted to the head referee"),
     RACE_REPORT_ALREADY_SUBMITTED(2618, HttpStatus.CONFLICT, "Race report has already been submitted to the head referee"),
     RACE_REPORT_RETURN_REASON_REQUIRED(2619, HttpStatus.BAD_REQUEST, "Return reason is required"),
-    RACE_REPORT_PENDING_APPEAL(2623, HttpStatus.BAD_REQUEST, "Pending appeals must be resolved before signing"),
+    RACE_REPORT_PENDING_APPEAL(2623, HttpStatus.BAD_REQUEST, "Pending appeals must be resolved before signing or publishing the race report"),
 
     // APPEAL CATEGORY
     APPEAL_CATEGORY_NOT_FOUND(2620, HttpStatus.NOT_FOUND, "Appeal category not found"),
@@ -517,6 +527,7 @@ public enum ErrorCode {
     HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
     RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
     PREDICTION_RESULT_NOT_AVAILABLE(1818, HttpStatus.CONFLICT, "Prediction result is not available yet"),
+    RACE_HAS_NOT_FINISHED(1820, HttpStatus.BAD_REQUEST, "Race has not finished yet"),
 
     // NOTIFICATION
     NOTIFICATION_NOT_FOUND(1901, HttpStatus.NOT_FOUND, "Notification not found"),
@@ -554,22 +565,12 @@ public enum ErrorCode {
     JOCKEY_MATCHING_PERIOD_TOO_SHORT(2125, HttpStatus.BAD_REQUEST, "Jockey matching period is shorter than the minimum required for the selected capacity"),
     SCHEDULING_PERIOD_TOO_SHORT(2126, HttpStatus.BAD_REQUEST, "Scheduling period must be at least 4 calendar days"),
     TOURNAMENT_START_DATE_IMMUTABLE(2127, HttpStatus.BAD_REQUEST, "Tournament start date cannot be changed after creation"),
+    ADVANCED_ROUND_ENTRIES_MANAGED_BY_RESULTS(2128, HttpStatus.CONFLICT, "Entries after the first round are created only from official qualifiers"),
 
     // SPECTATOR HORSE FOLLOW
     HORSE_ALREADY_FOLLOWED(2201, HttpStatus.CONFLICT, "Horse is already followed"),
     HORSE_FOLLOW_NOT_FOUND(2202, HttpStatus.NOT_FOUND, "Horse follow not found"),
 
-    // REAL-TIME RACE SIMULATION
-    SIMULATION_SESSION_NOT_FOUND(2301, HttpStatus.NOT_FOUND, "Race simulation session not found"),
-    SIMULATION_SESSION_NOT_READY(2302, HttpStatus.CONFLICT, "Race simulation session is not ready"),
-    SIMULATION_SESSION_ALREADY_STARTED(2303, HttpStatus.CONFLICT, "Race simulation session has already started"),
-    SIMULATION_PREPARE_NOT_ALLOWED(2304, HttpStatus.BAD_REQUEST, "Race is not ready for simulation preparation"),
-    SIMULATION_WARNING_NOT_FOUND(2305, HttpStatus.NOT_FOUND, "Simulation warning not found"),
-    SIMULATION_WARNING_ALREADY_REVIEWED(2306, HttpStatus.CONFLICT, "Simulation warning has already been reviewed"),
-    SIMULATION_FLAG_NOT_FOUND(2307, HttpStatus.NOT_FOUND, "Simulation flag not found"),
-    SIMULATION_FLAG_ALREADY_REVIEWED(2308, HttpStatus.CONFLICT, "Simulation flag has already been reviewed"),
-    SIMULATION_ENTRY_NOT_FOUND(2309, HttpStatus.NOT_FOUND, "Entry is not part of this simulation"),
-    SIMULATION_START_FAILED(2310, HttpStatus.INTERNAL_SERVER_ERROR, "Race started but the live simulation could not be scheduled"),
     ;
 
 

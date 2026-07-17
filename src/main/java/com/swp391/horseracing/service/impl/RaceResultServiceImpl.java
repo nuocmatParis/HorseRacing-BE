@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -39,7 +40,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        if (race.getStatus() != RoundStatus.ONGOING) {
+        if (!isResultEditableRaceStatus(race.getStatus())) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
@@ -143,7 +144,7 @@ public class RaceResultServiceImpl implements RaceResultService {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        if (race.getStatus() != RoundStatus.ONGOING) {
+        if (!isResultEditableRaceStatus(race.getStatus())) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
@@ -248,6 +249,117 @@ public class RaceResultServiceImpl implements RaceResultService {
     }
 
     @Override
+    @Transactional
+    public List<RaceResultResponse> finishRaceWithRandomResults(UUID raceId) {
+        Race race = raceRepository.findForUpdateByRaceId(raceId)
+                .or(() -> raceRepository.findById(raceId))
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        if (race.getStatus() != RoundStatus.ONGOING) {
+            throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
+        }
+
+        Referee referee = validateAndGetReferee(raceId);
+        List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
+        List<RaceResult> existingResults = raceResultRepository.findByRace_RaceId(raceId);
+        Map<UUID, RaceResult> existingByEntryId = new HashMap<>();
+        Set<Integer> usedRanks = new HashSet<>();
+        for (RaceResult existingResult : existingResults) {
+            existingByEntryId.put(existingResult.getEntry().getEntryId(), existingResult);
+            if (existingResult.getStatus() == RaceResultStatus.FINISHED
+                    && existingResult.getRank() != null) {
+                usedRanks.add(existingResult.getRank());
+            }
+        }
+
+        List<RaceEntry> finishers = new ArrayList<>();
+        boolean hasDisqualifiedEntryWithoutResult = false;
+        for (RaceEntry entry : entries) {
+            if (!isActualStarter(entry)) {
+                continue;
+            }
+            if (existingByEntryId.containsKey(entry.getEntryId())) {
+                continue;
+            }
+            if (entry.getStatus() == RaceEntryStatus.DISQUALIFIED) {
+                hasDisqualifiedEntryWithoutResult = true;
+            } else {
+                finishers.add(entry);
+            }
+        }
+        if (finishers.isEmpty() && existingResults.isEmpty() && !hasDisqualifiedEntryWithoutResult) {
+            throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ACTIVE_ENTRIES);
+        }
+
+        double distanceMeters = race.getDistance().getMeters();
+        List<GeneratedTiming> generatedTimings = new ArrayList<>();
+        for (RaceEntry entry : finishers) {
+            double speedMetersPerSecond = ThreadLocalRandom.current().nextDouble(15.0, 18.0);
+            double generatedTime = distanceMeters / speedMetersPerSecond;
+            generatedTimings.add(new GeneratedTiming(entry, generatedTime));
+        }
+        generatedTimings.sort(Comparator.comparingDouble(GeneratedTiming::finishTime));
+
+        float previousFinishTime = 0f;
+        int rank = 1;
+        List<RaceResult> newResults = new ArrayList<>();
+
+        for (GeneratedTiming generatedTiming : generatedTimings) {
+            float roundedTime = roundToHundredth(generatedTiming.finishTime());
+            if (roundedTime <= previousFinishTime) {
+                roundedTime = roundToHundredth(previousFinishTime + 0.01d);
+            }
+            while (usedRanks.contains(rank)) {
+                rank++;
+            }
+            RaceEntry entry = generatedTiming.entry();
+            entry.setStatus(RaceEntryStatus.FINISHED);
+            newResults.add(RaceResult.builder()
+                    .race(race)
+                    .entry(entry)
+                    .finishTime(roundedTime)
+                    .rank(rank)
+                    .status(RaceResultStatus.FINISHED)
+                    .recordedBy(referee.getUser())
+                    .build());
+            previousFinishTime = roundedTime;
+            rank++;
+        }
+
+        for (RaceEntry entry : entries) {
+            if (entry.getStatus() == RaceEntryStatus.DISQUALIFIED
+                    && !existingByEntryId.containsKey(entry.getEntryId())) {
+                newResults.add(RaceResult.builder()
+                        .race(race)
+                        .entry(entry)
+                        .finishTime(null)
+                        .rank(null)
+                        .status(RaceResultStatus.DISQUALIFIED)
+                        .recordedBy(referee.getUser())
+                        .build());
+            }
+        }
+
+        raceEntryRepository.saveAll(entries);
+        race.setStatus(RoundStatus.FINISHED);
+        race.setFinishedAt(java.time.LocalDateTime.now());
+        raceRepository.save(race);
+
+        List<RaceResult> allResults = new ArrayList<>(existingResults);
+        if (!newResults.isEmpty()) {
+            allResults.addAll(raceResultRepository.saveAll(newResults));
+        }
+        allResults.sort(Comparator.comparing(
+                RaceResult::getRank,
+                Comparator.nullsLast(Comparator.naturalOrder())));
+        List<RaceResultResponse> responses = new ArrayList<>();
+        for (RaceResult result : allResults) {
+            responses.add(raceResultMapper.toRaceResultResponse(result));
+        }
+        return responses;
+    }
+
+    @Override
     public List<RaceResultResponse> getRefereeResultsByRaceId(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
@@ -281,5 +393,16 @@ public class RaceResultServiceImpl implements RaceResultService {
         return entry.getStatus() != RaceEntryStatus.SCRATCHED
                 && entry.getStatus() != RaceEntryStatus.WITHDRAWN_BEFORE_SCHEDULE
                 && entry.getStatus() != RaceEntryStatus.WITHDRAWN_AFTER_SCHEDULE;
+    }
+
+    private boolean isResultEditableRaceStatus(RoundStatus status) {
+        return status == RoundStatus.ONGOING || status == RoundStatus.FINISHED;
+    }
+
+    private float roundToHundredth(double value) {
+        return (float) (Math.round(value * 100d) / 100d);
+    }
+
+    private record GeneratedTiming(RaceEntry entry, double finishTime) {
     }
 }

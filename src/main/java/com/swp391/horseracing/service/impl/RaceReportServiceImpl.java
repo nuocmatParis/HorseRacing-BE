@@ -120,6 +120,9 @@ public class RaceReportServiceImpl implements RaceReportService {
     public RaceReportResponse submitReport(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        if (race.getStatus() != RoundStatus.FINISHED) {
+            throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
+        }
         Referee referee = getCurrentReferee();
         validateAssignedRaceReferee(race, referee);
         validateRaceResultsBeforeSigning(raceId);
@@ -210,7 +213,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     public RaceReportResponse signReport(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
-        if (race.getStatus() != RoundStatus.FINISHED && race.getStatus() != RoundStatus.ONGOING) {
+        if (race.getStatus() != RoundStatus.FINISHED) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
 
@@ -233,7 +236,9 @@ public class RaceReportServiceImpl implements RaceReportService {
         raceReportRepository.save(report);
 
         race.setStatus(RoundStatus.FINISHED);
-        race.setFinishedAt(LocalDateTime.now());
+        if (race.getFinishedAt() == null) {
+            race.setFinishedAt(LocalDateTime.now());
+        }
         raceRepository.save(race);
         markRoundFinishedIfAllRacesFinished(race.getRound());
         return raceReportMapper.toRaceReportResponse(report);
@@ -264,8 +269,12 @@ public class RaceReportServiceImpl implements RaceReportService {
 
     private Referee getCurrentReferee() {
         User currentUser = userCurrentService.getCurrentUser();
-        return refereeRepository.findByUser_UserId(currentUser.getUserId())
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+        }
+        return referee;
     }
 
     private void validateAssignedRaceReferee(Race race, Referee referee) {
@@ -358,6 +367,13 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         if (report.getStatus() != ReportStatus.SIGNED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_SIGNED);
+        }
+
+        // Owners and jockeys may still submit an appeal after the Head Referee
+        // signs and before Admin publishes the official report. Re-check here
+        // so a late pending appeal cannot be silently bypassed.
+        if (appealRepository.existsByEntry_Race_RaceIdAndStatus(raceId, AppealStatus.Pending)) {
+            throw new AppException(ErrorCode.RACE_REPORT_PENDING_APPEAL);
         }
 
         User currentUser = userCurrentService.getCurrentUser();
@@ -647,9 +663,9 @@ public class RaceReportServiceImpl implements RaceReportService {
             List<JockeyHorseContract> rightQualifiers = qualifiersByRace.get(targetIndex * 2 + 1);
             for (int qualifierIndex = 0; qualifierIndex < 4; qualifierIndex++) {
                 raceEntryRepository.save(buildAdvancedEntry(
-                        targetRace, leftQualifiers.get(qualifierIndex), qualifierIndex + 1, admin));
+                        targetRace, leftQualifiers.get(qualifierIndex), admin));
                 raceEntryRepository.save(buildAdvancedEntry(
-                        targetRace, rightQualifiers.get(qualifierIndex), qualifierIndex + 5, admin));
+                        targetRace, rightQualifiers.get(qualifierIndex), admin));
             }
         }
 
@@ -728,11 +744,11 @@ public class RaceReportServiceImpl implements RaceReportService {
     }
 
     private RaceEntry buildAdvancedEntry(Race race, JockeyHorseContract contract,
-                                         int laneNumber, User assignedBy) {
+                                          User assignedBy) {
         return RaceEntry.builder()
                 .race(race)
                 .contract(contract)
-                .laneNumber(laneNumber)
+                .laneNumber(null)
                 .status(RaceEntryStatus.CONFIRMED)
                 .assignedBy(assignedBy)
                 .assignedAt(LocalDateTime.now())

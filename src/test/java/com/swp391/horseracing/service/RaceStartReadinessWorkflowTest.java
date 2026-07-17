@@ -1,6 +1,8 @@
 package com.swp391.horseracing.service;
 
 import com.swp391.horseracing.entity.*;
+import com.swp391.horseracing.enums.InspectionResult;
+import com.swp391.horseracing.enums.InspectionStatus;
 import com.swp391.horseracing.enums.RaceEntryStatus;
 import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
@@ -19,12 +21,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
@@ -93,6 +97,102 @@ class RaceStartReadinessWorkflowTest {
         assertEquals(ErrorCode.ENTRY_MISSING_HORSE_INSPECTION, exception.getErrorCode());
     }
 
+    @Test
+    void fiveEligibleStartersCanRunAfterThreeEntriesFailInspection() {
+        fixture.race.getRound().setMinEntries(8);
+        fixture.race.setInspectionFinalizedAt(LocalDateTime.now());
+        List<RaceEntry> entries = createEntries(fixture.race, 5);
+        when(raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(fixture.race.getRaceId()))
+                .thenReturn(entries);
+        mockPassedInspections(entries);
+
+        var readiness = service.getStartReadiness(fixture.race.getRaceId());
+
+        assertTrue(readiness.isCanStart());
+        assertEquals(5, readiness.getActiveEntryCount());
+        assertEquals(8, readiness.getMinEntries());
+        assertEquals(2, readiness.getRuntimeMinEntries());
+
+        when(raceRepository.findForUpdateByRaceId(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.race));
+        when(raceRepository.save(fixture.race)).thenReturn(fixture.race);
+        service.startRace(fixture.race.getRaceId());
+
+        assertEquals(RoundStatus.ONGOING, fixture.race.getStatus());
+    }
+
+    @Test
+    void aSingleEligibleStarterCannotRun() {
+        fixture.race.getRound().setMinEntries(8);
+        fixture.race.setInspectionFinalizedAt(LocalDateTime.now());
+        List<RaceEntry> entries = List.of(fixture.entry);
+        mockPassedInspections(entries);
+
+        var readiness = service.getStartReadiness(fixture.race.getRaceId());
+
+        assertFalse(readiness.isCanStart());
+        assertEquals(2, readiness.getRuntimeMinEntries());
+
+        when(raceRepository.findForUpdateByRaceId(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.race));
+        AppException exception = assertThrows(AppException.class,
+                () -> service.startRace(fixture.race.getRaceId()));
+        assertEquals(ErrorCode.RACE_NOT_ENOUGH_ACTIVE_ENTRIES, exception.getErrorCode());
+    }
+
+    @Test
+    void nonFinalRoundKeepsEnoughStartersToProduceTopFour() {
+        fixture.race.getRound().setFinal(false);
+        fixture.race.getRound().setQualifiersPerRace(4);
+        fixture.race.setInspectionFinalizedAt(LocalDateTime.now());
+        List<RaceEntry> entries = createEntries(fixture.race, 3);
+        when(raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(fixture.race.getRaceId()))
+                .thenReturn(entries);
+        mockPassedInspections(entries);
+
+        var readiness = service.getStartReadiness(fixture.race.getRaceId());
+
+        assertFalse(readiness.isCanStart());
+        assertEquals(4, readiness.getRuntimeMinEntries());
+    }
+
+    private void mockPassedInspections(List<RaceEntry> entries) {
+        for (RaceEntry entry : entries) {
+            HorseInspection horseInspection = new HorseInspection();
+            horseInspection.setStatus(InspectionStatus.CONFIRMED);
+            horseInspection.setResult(InspectionResult.PASS);
+            JockeyInspection jockeyInspection = new JockeyInspection();
+            jockeyInspection.setStatus(InspectionStatus.CONFIRMED);
+            jockeyInspection.setResult(InspectionResult.PASS);
+            when(horseInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId()))
+                    .thenReturn(Optional.of(horseInspection));
+            when(jockeyInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId()))
+                    .thenReturn(Optional.of(jockeyInspection));
+        }
+    }
+
+    private List<RaceEntry> createEntries(Race race, int count) {
+        List<RaceEntry> entries = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            Horse horse = new Horse();
+            horse.setName("Horse " + (index + 1));
+            Jockey jockey = new Jockey();
+            User jockeyUser = new User();
+            jockeyUser.setFullName("Jockey " + (index + 1));
+            jockey.setUser(jockeyUser);
+            JockeyHorseContract contract = new JockeyHorseContract();
+            contract.setHorse(horse);
+            contract.setJockey(jockey);
+            RaceEntry entry = new RaceEntry();
+            entry.setEntryId(UUID.randomUUID());
+            entry.setRace(race);
+            entry.setContract(contract);
+            entry.setStatus(RaceEntryStatus.CONFIRMED);
+            entries.add(entry);
+        }
+        return entries;
+    }
+
     private Fixture fixture() {
         User user = new User();
         user.setUserId(UUID.randomUUID());
@@ -105,7 +205,7 @@ class RaceStartReadinessWorkflowTest {
         Round round = new Round();
         round.setRoundId(UUID.randomUUID());
         round.setTournament(tournament);
-        round.setMinEntries(1);
+        round.setMinEntries(8);
         Race race = new Race();
         race.setRaceId(UUID.randomUUID());
         race.setRound(round);
