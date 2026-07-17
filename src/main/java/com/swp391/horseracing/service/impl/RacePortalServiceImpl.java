@@ -8,6 +8,8 @@ import com.swp391.horseracing.dto.race_portal.RaceResultsResponse;
 import com.swp391.horseracing.dto.race_portal.RaceScheduleResponse;
 import com.swp391.horseracing.dto.race_portal.RaceSummaryResponse;
 import com.swp391.horseracing.dto.race_portal.SpectatorRaceDetailResponse;
+import com.swp391.horseracing.dto.race_portal.TournamentInspectionConditionsResponse;
+import com.swp391.horseracing.dto.tournament.response.TournamentEligibilityResponse;
 import com.swp391.horseracing.entity.MedicalStaff;
 import com.swp391.horseracing.entity.AIPrediction;
 import com.swp391.horseracing.entity.Race;
@@ -18,6 +20,7 @@ import com.swp391.horseracing.entity.RaceReport;
 import com.swp391.horseracing.entity.RaceResult;
 import com.swp391.horseracing.entity.Referee;
 import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.entity.TournamentEligibility;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.entity.Veterinarian;
 import com.swp391.horseracing.entity.HorseInspection;
@@ -386,8 +389,41 @@ public class RacePortalServiceImpl implements RacePortalService {
                 .assignedAt(assignedAt)
                 .inspectionOpenAt(race.getStartTime().minusMinutes(tournament.getInspectionOpenMinutesBefore()))
                 .inspectionCloseAt(race.getStartTime().minusMinutes(tournament.getInspectionCloseMinutesBefore()))
+                .tournamentConditions(toInspectionConditions(tournament))
                 .entryCount(entries.size())
                 .entries(toEntryResponses(entries))
+                .build();
+    }
+
+    private TournamentInspectionConditionsResponse toInspectionConditions(Tournament tournament) {
+        List<TournamentEligibilityResponse> rules = new ArrayList<>();
+        if (tournament.getEligibilityRules() != null) {
+            for (TournamentEligibility rule : tournament.getEligibilityRules()) {
+                if (!rule.isActive()) {
+                    continue;
+                }
+                rules.add(TournamentEligibilityResponse.builder()
+                        .eligibilityId(rule.getEligibilityId())
+                        .targetType(rule.getTargetType())
+                        .conditionName(rule.getConditionName())
+                        .conditionOperator(rule.getConditionOperator())
+                        .conditionValue(rule.getConditionValue())
+                        .isActive(rule.isActive())
+                        .tournamentId(tournament.getTournamentId())
+                        .build());
+            }
+        }
+        return TournamentInspectionConditionsResponse.builder()
+                .allowedBreed(tournament.getAllowedBreed())
+                .minHorseAge(tournament.getMinHorseAge())
+                .maxHorseAge(tournament.getMaxHorseAge())
+                .raceClass(tournament.getRaceClass())
+                .distance(tournament.getDistance())
+                .handicapEnabled(tournament.isHandicapEnabled())
+                .topWeightLbs(tournament.getTopWeightLbs())
+                .minWeightLbs(tournament.getMinWeightLbs())
+                .equipmentWeightKg(tournament.getEquipmentWeightKg())
+                .eligibilityRules(rules)
                 .build();
     }
 
@@ -444,8 +480,11 @@ public class RacePortalServiceImpl implements RacePortalService {
                 .status(entry.getStatus())
                 .horseId(entry.getContract().getHorse().getHorseId())
                 .horseName(entry.getContract().getHorse().getName())
+                .horseBreed(entry.getContract().getHorse().getBreed())
+                .horseRegisteredWeight(entry.getContract().getHorse().getWeight())
                 .jockeyId(entry.getContract().getJockey().getJockeyId())
                 .jockeyName(entry.getContract().getJockey().getUser().getFullName())
+                .jockeyRegisteredWeight(entry.getContract().getJockey().getWeight())
                 .scratchedReason(entry.getScratchedReason())
                 .disqualifiedReason(entry.getDisqualifiedReason());
 

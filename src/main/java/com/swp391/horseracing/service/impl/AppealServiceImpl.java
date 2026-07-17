@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -69,8 +70,10 @@ public class AppealServiceImpl implements AppealService {
         }
 
         Race race = entry.getRace();
-        if (race.getStartedAt() == null || race.getStatus() == RoundStatus.SCHEDULED) {
-            throw new AppException(ErrorCode.RACE_HAS_NOT_STARTED);
+        boolean raceFinished = race.getFinishedAt() != null
+                && (race.getStatus() == RoundStatus.FINISHED || race.getStatus() == RoundStatus.COMPLETED);
+        if (!raceFinished) {
+            throw new AppException(ErrorCode.RACE_HAS_NOT_FINISHED);
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -78,8 +81,12 @@ public class AppealServiceImpl implements AppealService {
             throw new AppException(ErrorCode.APPEAL_SUBMISSION_CLOSED);
         }
 
-        if (raceReportRepository.existsByRace_RaceId(entry.getRace().getRaceId())) {
-            RaceReport report = raceReportRepository.findByRace_RaceId(entry.getRace().getRaceId()).get();
+        // Serialize appeal creation with report publication. If Admin publishes
+        // first, this transaction observes PUBLISHED and rejects the appeal; if
+        // this transaction commits first, publish sees the pending appeal.
+        Optional<RaceReport> reportOptional = raceReportRepository.findForUpdateByRace_RaceId(race.getRaceId());
+        if (reportOptional.isPresent()) {
+            RaceReport report = reportOptional.get();
             if (report.getStatus() == ReportStatus.PUBLISHED) {
                 throw new AppException(ErrorCode.RACE_REPORT_ALREADY_PUBLISHED);
             }
@@ -111,12 +118,20 @@ public class AppealServiceImpl implements AppealService {
         if (request.getRaceResultId() != null) {
             RaceResult raceResult = raceResultRepository.findById(request.getRaceResultId())
                     .orElseThrow(() -> new AppException(ErrorCode.RACE_RESULT_NOT_FOUND));
+            if (!raceResult.getEntry().getEntryId().equals(entry.getEntryId())
+                    || !raceResult.getRace().getRaceId().equals(race.getRaceId())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
             appeal.setRaceResult(raceResult);
         }
 
         if (request.getRelatedViolationId() != null) {
             Violation violation = violationRepository.findById(request.getRelatedViolationId())
                     .orElseThrow(() -> new AppException(ErrorCode.VIOLATION_NOT_FOUND));
+            if (!violation.getRaceEntry().getEntryId().equals(entry.getEntryId())
+                    || !violation.getRaceEntry().getRace().getRaceId().equals(race.getRaceId())) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
             appeal.setRelatedViolation(violation);
         }
 
@@ -178,6 +193,7 @@ public class AppealServiceImpl implements AppealService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AppealResponse> getMyAppeals() {
         User currentUser = userCurrentService.getCurrentUser();
         return appealRepository.findBySubmittedBy_UserId(currentUser.getUserId())
@@ -187,6 +203,7 @@ public class AppealServiceImpl implements AppealService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<AppealResponse> getAllAppeals() {
         return appealRepository.findAll()
                 .stream()
@@ -195,6 +212,7 @@ public class AppealServiceImpl implements AppealService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public AppealResponse getAppealDetail(UUID appealId) {
         return appealMapper.toAppealResponse(
                 appealRepository.findById(appealId)

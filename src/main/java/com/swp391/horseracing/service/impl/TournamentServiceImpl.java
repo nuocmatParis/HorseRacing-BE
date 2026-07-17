@@ -450,6 +450,18 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
         }
 
+        if (activeRound.getHeadReferee() == null) {
+            throw new AppException(ErrorCode.ROUND_MISSING_HEAD_REFEREE);
+        }
+        if (activeRound.getHeadReferee().getStatus()
+                == com.swp391.horseracing.enums.RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+        }
+        if (raceRefereeRepository.existsByRace_Round_RoundIdAndReferee_RefereeId(
+                activeRound.getRoundId(), activeRound.getHeadReferee().getRefereeId())) {
+            throw new AppException(ErrorCode.REFEREE_ROLE_CONFLICT_IN_ROUND);
+        }
+
         List<Race> racesToPublish = raceRepository.findByRound_RoundId(activeRound.getRoundId());
         if (racesToPublish.isEmpty()) {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
@@ -461,13 +473,25 @@ public class TournamentServiceImpl implements TournamentService {
             if (race.getStatus() != RoundStatus.SCHEDULING && race.getStatus() != RoundStatus.SCHEDULED) {
                 throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
             }
-            int entryCount = raceEntryRepository.countByRace_RaceId(race.getRaceId());
+            List<RaceEntry> raceEntries = raceEntryRepository
+                    .findByRace_RaceIdOrderByCreatedAtAsc(race.getRaceId());
+            int entryCount = raceEntries.size();
             if (entryCount < race.getRound().getMinEntries()) {
                 throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ENTRIES);
             }
+            Set<Integer> assignedLanes = new HashSet<>();
+            for (RaceEntry entry : raceEntries) {
+                Integer laneNumber = entry.getLaneNumber();
+                if (laneNumber == null
+                        || laneNumber < 1
+                        || laneNumber > race.getRound().getMaxEntries()
+                        || !assignedLanes.add(laneNumber)) {
+                    throw new AppException(ErrorCode.RACE_LANES_INCOMPLETE);
+                }
+            }
             int refereeCount = raceRefereeRepository.countByRace_RaceId(race.getRaceId());
-            if (refereeCount < 1) {
-                throw new AppException(ErrorCode.RACE_MISSING_REFEREES);
+            if (refereeCount != 1) {
+                throw new AppException(ErrorCode.RACE_REQUIRES_EXACTLY_ONE_REFEREE);
             }
         }
 
@@ -1144,7 +1168,7 @@ public class TournamentServiceImpl implements TournamentService {
         Set<UUID> horseIds = new HashSet<>();
         Set<UUID> jockeyIds = new HashSet<>();
         Set<UUID> contractIds = new HashSet<>();
-        int[] laneNumbers = new int[round1Races.size()];
+        int[] entryCounts = new int[round1Races.size()];
         for (int index = 0; index < approvedContracts.size(); index++) {
             JockeyHorseContract contract = approvedContracts.get(index);
             if (!horseIds.add(contract.getHorse().getHorseId())
@@ -1156,11 +1180,11 @@ public class TournamentServiceImpl implements TournamentService {
             int cycle = index / round1Races.size();
             int offset = index % round1Races.size();
             int raceIndex = cycle % 2 == 0 ? offset : round1Races.size() - 1 - offset;
-            laneNumbers[raceIndex]++;
+            entryCounts[raceIndex]++;
             RaceEntry entry = RaceEntry.builder()
                     .race(round1Races.get(raceIndex))
                     .contract(contract)
-                    .laneNumber(laneNumbers[raceIndex])
+                    .laneNumber(null)
                     .status(RaceEntryStatus.CONFIRMED)
                     .assignedBy(tournament.getCreatedBy())
                     .assignedAt(LocalDateTime.now())
@@ -1168,7 +1192,7 @@ public class TournamentServiceImpl implements TournamentService {
             raceEntryRepository.save(entry);
         }
 
-        for (int entryCount : laneNumbers) {
+        for (int entryCount : entryCounts) {
             if (entryCount < MIN_ENTRIES_PER_RACE || entryCount > MAX_ENTRIES_PER_RACE) {
                 throw new AppException(ErrorCode.RACE_ENTRIES_OUT_OF_RANGE);
             }

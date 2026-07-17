@@ -3,9 +3,6 @@ package com.swp391.horseracing.config;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AccountStatus;
 import com.swp391.horseracing.repository.UserRepository;
-import com.swp391.horseracing.repository.RefereeRepository;
-import com.swp391.horseracing.repository.RaceRefereeRepository;
-import com.swp391.horseracing.repository.RaceRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,22 +20,13 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
-    private static final Pattern PUBLIC_RACE_TOPIC = Pattern.compile("^/topic/races/[0-9a-fA-F-]{36}/live$");
-    private static final Pattern PRIVATE_RACE_QUEUE = Pattern.compile("^/user/queue/races/([0-9a-fA-F-]{36})/control$");
-
     JwtDecoder jwtDecoder;
     UserRepository userRepository;
-    RefereeRepository refereeRepository;
-    RaceRefereeRepository raceRefereeRepository;
-    RaceRepository raceRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
@@ -49,8 +37,8 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             String authorization = accessor.getFirstNativeHeader("Authorization");
             if (authorization == null || !authorization.startsWith("Bearer ")) {
-                // Anonymous connections are valid for public live-race topics.
-                return message;
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Authentication is required for WebSocket connections");
             }
             Jwt jwt = jwtDecoder.decode(authorization.substring(7));
             User user = userRepository.findByUsername(jwt.getSubject())
@@ -74,9 +62,6 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
 
     private void validateSubscription(StompHeaderAccessor accessor) {
         String destination = accessor.getDestination();
-        if (destination != null && PUBLIC_RACE_TOPIC.matcher(destination).matches()) {
-            return;
-        }
         if (accessor.getUser() == null) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Authentication is required for private WebSocket destinations");
@@ -84,24 +69,7 @@ public class WebSocketJwtChannelInterceptor implements ChannelInterceptor {
         if ("/user/queue/notifications".equals(destination)) {
             return;
         }
-        Matcher matcher = PRIVATE_RACE_QUEUE.matcher(destination == null ? "" : destination);
-        if (!matcher.matches() || !(accessor.getUser() instanceof Authentication authentication)
-                || authentication.getAuthorities().stream()
-                .noneMatch(authority -> "ROLE_REFEREE".equals(authority.getAuthority()))) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "This WebSocket destination is not allowed");
-        }
-        UUID raceId = UUID.fromString(matcher.group(1));
-        UUID userId = UUID.fromString(accessor.getUser().getName());
-        var referee = refereeRepository.findByUser_UserId(userId)
-                .orElseThrow(() -> new org.springframework.security.access.AccessDeniedException(
-                        "Referee profile not found"));
-        boolean assigned = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
-                raceId, referee.getRefereeId());
-        boolean headReferee = raceRepository.existsByRaceIdAndRound_HeadReferee_User_UserId(raceId, userId);
-        if (!assigned && !headReferee) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Referee is not assigned to this race");
-        }
+        throw new org.springframework.security.access.AccessDeniedException(
+                "This WebSocket destination is not allowed");
     }
 }

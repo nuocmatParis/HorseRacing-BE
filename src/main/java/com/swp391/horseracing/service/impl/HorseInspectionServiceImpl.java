@@ -110,11 +110,21 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
             throw new AppException(ErrorCode.VET_NOT_ASSIGNED_TO_RACE);
         }
 
+        Horse horse = raceEntry.getContract().getHorse();
+        boolean findingsRequireFailure = Boolean.TRUE.equals(request.getDopingDetected())
+                || request.getActualBreed() != horse.getBreed();
+        if (request.getResult() == InspectionResult.PASS && findingsRequireFailure) {
+            throw new AppException(ErrorCode.HORSE_INSPECTION_FINDINGS_REQUIRE_FAILURE);
+        }
+
         Float handicapWeight = null;
         boolean handicapConfirmed = Boolean.TRUE.equals(request.getHandicapConfirmed());
         LocalDateTime confirmedAt = null;
 
         if (tournament.isHandicapEnabled()) {
+            if (request.getResult() == InspectionResult.PASS && !handicapConfirmed) {
+                throw new AppException(ErrorCode.ENTRY_HANDICAP_NOT_CONFIRMED);
+            }
             List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(race.getRaceId());
             int topRatingInRace = 0;
             for (RaceEntry entry : entries) {
@@ -146,6 +156,11 @@ public class HorseInspectionServiceImpl implements HorseInspectionService {
                 .note(request.getNote())
                 .inspectedAt(LocalDateTime.now())
                 .handicapWeight(handicapWeight)
+                .registeredWeight(horse.getWeight())
+                .registeredBreed(horse.getBreed())
+                .actualWeight(request.getActualWeight())
+                .actualBreed(request.getActualBreed())
+                .dopingDetected(request.getDopingDetected())
                 .isHandicapConfirmed(handicapConfirmed)
                 .confirmedAt(confirmedAt)
                 .status(InspectionStatus.CONFIRMED)

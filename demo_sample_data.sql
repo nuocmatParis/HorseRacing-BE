@@ -1,1052 +1,1229 @@
-USE SWP391_Project_HRTMS;
+-- ============================================================================
+-- HRTMS - FRESH DEMO DATA CHO LUỒNG 06 -> 11
+--
+-- Kịch bản A: DEMO FULL 8
+--   8 ngựa, một Final Race, dùng để test xuyên suốt:
+--   Inspection -> Prediction -> Start -> Violation -> Finish -> Appeal
+--   -> Race Report -> Head Referee ký -> Admin publish -> Rating/Prize/Payout.
+--
+-- Kịch bản B: DEMO BRACKET 16
+--   16 ngựa thực tế, 2 Race vòng 1 (8 + 8), Top 4 mỗi Race vào Final 8.
+--   Theo thuật toán BE hiện tại, maxApprovedEntries <= 16 chỉ sinh một Final.
+--   Vì vậy tournament này cấu hình sức chứa 32 nhưng chỉ có 16 contract APPROVED.
+--   Đây là cấu trúc hợp lệ: 2 Race x tối thiểu 8 entry -> 1 Final x 8 entry.
+--
+-- Cách chạy:
+--   1. Dừng BE để scheduler không thay đổi dữ liệu khi đang seed.
+--   2. Schema phải tồn tại và đã ở migration mới nhất.
+--   3. Chạy TOÀN BỘ file bằng chế độ Run Script của MySQL 8+/DataGrip.
+--   4. Khởi động BE và test theo docs/fresh-demo-test-guide.md.
+--
+-- File này xóa toàn bộ dữ liệu nghiệp vụ nhưng giữ nguyên schema và
+-- flyway_schema_history. Không dùng TRUNCATE nên không gặp MySQL error 1701.
+-- Mọi cửa sổ demo được tính lại từ NOW() mỗi lần chạy file.
+-- ============================================================================
 
--- Vô hiệu hóa kiểm tra khóa ngoại tạm thời để tránh lỗi ràng buộc khi làm sạch/chèn dữ liệu
+USE SWP391_Project_HRTMS;
+SET NAMES utf8mb4;
+
 SET @OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS;
 SET @OLD_SQL_SAFE_UPDATES = @@SQL_SAFE_UPDATES;
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_SAFE_UPDATES = 0;
 
--- 1. Xóa dữ liệu cũ theo thứ tự phụ thuộc.
--- Không dùng TRUNCATE cho các bảng có foreign key vì MySQL có thể trả lỗi 1701
--- ngay cả khi FOREIGN_KEY_CHECKS đã tắt.
-DELETE FROM notification_deliveries;
-DELETE FROM notifications;
-DELETE FROM notification_events;
-DELETE FROM notification_preferences;
+-- --------------------------------------------------------------------------
+-- 1. XÓA SẠCH DỮ LIỆU CŨ, GIỮ LẠI FLYWAY HISTORY
+-- --------------------------------------------------------------------------
 
-DELETE FROM appeal_evidences;
-DELETE FROM appeals;
-DELETE FROM violations;
+DROP PROCEDURE IF EXISTS ResetAllDemoData;
+DELIMITER $$
+CREATE PROCEDURE ResetAllDemoData()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE table_to_clear VARCHAR(128);
+    DECLARE table_cursor CURSOR FOR
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_type = 'BASE TABLE'
+          AND table_name <> 'flyway_schema_history';
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
-DELETE FROM payment_transactions;
-DELETE FROM wallet_transactions;
-DELETE FROM invoices;
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE() AND table_name = 'users'
+    ) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Schema chưa tồn tại. Hãy chạy BE/Hibernate/Flyway tạo bảng trước khi chạy seed.';
+    END IF;
 
-DELETE FROM horse_rating_histories;
-DELETE FROM prediction_detail;
-DELETE FROM predictions;
-DELETE FROM ai_predictions;
-DELETE FROM horse_inspections;
-DELETE FROM jockey_inspections;
-DELETE FROM race_reports;
-DELETE FROM race_results;
-DELETE FROM race_referees;
-DELETE FROM race_inspection_staff_assignments;
-DELETE FROM race_entries;
-DELETE FROM races;
-DELETE FROM rounds;
+    OPEN table_cursor;
+    clear_loop: LOOP
+        FETCH table_cursor INTO table_to_clear;
+        IF done = 1 THEN
+            LEAVE clear_loop;
+        END IF;
+        SET @delete_sql = CONCAT('DELETE FROM `', table_to_clear, '`');
+        PREPARE delete_statement FROM @delete_sql;
+        EXECUTE delete_statement;
+        DEALLOCATE PREPARE delete_statement;
+    END LOOP;
+    CLOSE table_cursor;
+END$$
+DELIMITER ;
 
-DELETE FROM jockey_horse_contracts;
-DELETE FROM horse_tournament_registrations;
-DELETE FROM jockey_tournament_registrations;
-DELETE FROM tournament_eligibility;
-DELETE FROM prize_structures;
-DELETE FROM tournaments;
-DELETE FROM horses;
+CALL ResetAllDemoData();
+DROP PROCEDURE ResetAllDemoData;
 
-DELETE FROM wallets;
-DELETE FROM horse_owners;
-DELETE FROM jockeys;
-DELETE FROM spectators;
-DELETE FROM referees;
-DELETE FROM veterinarians;
-DELETE FROM medical_staffs;
-DELETE FROM users;
+-- Bật lại FK ngay sau khi dọn sạch để mọi INSERT phía dưới được MySQL kiểm tra.
+SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;
 
--- Cấu hình mặc định cho các cột trong bảng jockeys để tránh lỗi insert khi có trigger tự động tạo profile
-ALTER TABLE jockeys MODIFY COLUMN total_races INT NOT NULL DEFAULT 0;
-ALTER TABLE jockeys MODIFY COLUMN total_wins INT NOT NULL DEFAULT 0;
-ALTER TABLE jockeys MODIFY COLUMN experience_years INT NOT NULL DEFAULT 0;
+SET @seed_now = NOW();
+SET @account_created_at = DATE_SUB(@seed_now, INTERVAL 45 DAY);
+SET @demo_password = '$2a$12$ZGrUyKDU0UvqY0kpswOtoO58uurKVC2yVAA0iTlcnYI4pmPb18mBS';
 
--- Cấu hình mặc định cho các cột trong bảng horses
-ALTER TABLE horses MODIFY COLUMN current_rating INT NOT NULL DEFAULT 0;
-ALTER TABLE horses MODIFY COLUMN highest_rating INT NOT NULL DEFAULT 0;
-ALTER TABLE horses MODIFY COLUMN total_races INT NOT NULL DEFAULT 0;
-ALTER TABLE horses MODIFY COLUMN total_wins INT NOT NULL DEFAULT 0;
-ALTER TABLE horses MODIFY COLUMN total_places INT NOT NULL DEFAULT 0;
-ALTER TABLE horses MODIFY COLUMN win_rate DOUBLE NOT NULL DEFAULT 0.0;
+SET @admin_user_id = '11111111-1111-1111-1111-111111111111';
+SET @owner1_user_id = '11111111-1111-1111-1111-111111111121';
+SET @owner2_user_id = '11111111-1111-1111-1111-111111111122';
+SET @owner1_id = '12111111-1111-1111-1111-111111111121';
+SET @owner2_id = '12111111-1111-1111-1111-111111111122';
 
--- Cấu hình mặc định cho bảng spectators
-ALTER TABLE spectators MODIFY COLUMN total_points INT NOT NULL DEFAULT 0;
+SET @full_tournament_id = '10000000-0000-0000-0000-000000000001';
+SET @bracket_tournament_id = '10000000-0000-0000-0000-000000000002';
 
--- Cấu hình mặc định cho bảng tournaments để tránh lỗi insert khi thiếu trường mặc định của Hibernate
-ALTER TABLE tournaments MODIFY COLUMN prediction_top1_correct_points INT NOT NULL DEFAULT 100;
-ALTER TABLE tournaments MODIFY COLUMN prediction_top3_exact_position_points INT NOT NULL DEFAULT 30;
-ALTER TABLE tournaments MODIFY COLUMN prediction_top3_correct_horse_points INT NOT NULL DEFAULT 10;
-ALTER TABLE tournaments MODIFY COLUMN prediction_top3_perfect_bonus_points INT NOT NULL DEFAULT 50;
-ALTER TABLE tournaments MODIFY COLUMN prediction_open_minutes_before INT NOT NULL DEFAULT 120;
-ALTER TABLE tournaments MODIFY COLUMN prediction_close_minutes_before INT NOT NULL DEFAULT 5;
-ALTER TABLE tournaments MODIFY COLUMN prediction_card_open_hours_before_first_race INT NOT NULL DEFAULT 24;
-ALTER TABLE tournaments MODIFY COLUMN inspection_open_minutes_before INT NOT NULL DEFAULT 90;
-ALTER TABLE tournaments MODIFY COLUMN inspection_close_minutes_before INT NOT NULL DEFAULT 30;
-ALTER TABLE tournaments MODIFY COLUMN max_races_per_day INT NOT NULL DEFAULT 9;
-ALTER TABLE tournaments MODIFY COLUMN min_race_interval_minutes INT NOT NULL DEFAULT 35;
-ALTER TABLE tournaments MODIFY COLUMN start_early_tolerance_minutes INT NOT NULL DEFAULT 0;
-ALTER TABLE tournaments MODIFY COLUMN start_late_tolerance_minutes INT NOT NULL DEFAULT 30;
-ALTER TABLE tournaments MODIFY COLUMN default_race_operational_minutes INT NOT NULL DEFAULT 30;
-ALTER TABLE tournaments MODIFY COLUMN race_day_start_time TIME NOT NULL DEFAULT '08:00:00';
-ALTER TABLE tournaments MODIFY COLUMN race_day_end_time TIME NOT NULL DEFAULT '18:00:00';
-ALTER TABLE tournaments MODIFY COLUMN apply_break_time BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE tournaments MODIFY COLUMN min_round_gap_days INT NOT NULL DEFAULT 7;
-ALTER TABLE tournaments MODIFY COLUMN handicap_enabled BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE tournaments MODIFY COLUMN bracket_plan_status VARCHAR(50) NOT NULL DEFAULT 'NOT_GENERATED';
-ALTER TABLE tournaments MODIFY COLUMN bracket_plan_version INT NOT NULL DEFAULT 1;
-ALTER TABLE tournaments MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE tournaments MODIFY COLUMN top_weight_lbs INT NOT NULL DEFAULT 135;
-ALTER TABLE tournaments MODIFY COLUMN min_weight_lbs INT NOT NULL DEFAULT 115;
-ALTER TABLE tournaments MODIFY COLUMN equipment_weight_kg DOUBLE NOT NULL DEFAULT 1.5;
+SET @full_round_id = '20000000-0000-0000-0000-000000000001';
+SET @bracket_round1_id = '20000000-0000-0000-0000-000000000021';
+SET @bracket_final_round_id = '20000000-0000-0000-0000-000000000022';
 
--- Cấu hình mặc định cho bảng race_entries
-ALTER TABLE race_entries MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'CONFIRMED';
+SET @full_race_id = '30000000-0000-0000-0000-000000000001';
+SET @bracket_race1_id = '30000000-0000-0000-0000-000000000021';
+SET @bracket_race2_id = '30000000-0000-0000-0000-000000000022';
+SET @bracket_final_race_id = '30000000-0000-0000-0000-000000000023';
 
-select * from users where username like '%admin%';
-select * from tournaments;
--- 2. Đảm bảo các vai trò (roles) đã được chèn với UUID cố định
+-- --------------------------------------------------------------------------
+-- 2. ROLE, TÀI KHOẢN, PROFILE VÀ VÍ
+-- --------------------------------------------------------------------------
+
 INSERT INTO roles (role_id, role_name, description, is_active, created_at)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'ADMIN', 'System Administrator', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000002', 'HORSE_OWNER', 'Owner of the racing horses', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000003', 'JOCKEY', 'Professional horse rider', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000004', 'SPECTATOR', 'Audience / Spectator of the race', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000005', 'REFEREE', 'Official referee of the race', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000006', 'VETERINARIAN', 'Veterinarian checking horse health', 1, NOW()),
-    ('00000000-0000-0000-0000-000000000007', 'MEDICAL_STAFF', 'Medical staff checking jockey health', 1, NOW())
-ON DUPLICATE KEY UPDATE description = VALUES(description);
+('00000000-0000-0000-0000-000000000001', 'ADMIN', 'Quản trị hệ thống', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000002', 'HORSE_OWNER', 'Chủ ngựa', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000003', 'JOCKEY', 'Kỵ sĩ', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000004', 'SPECTATOR', 'Khán giả', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000005', 'REFEREE', 'Trọng tài', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000006', 'VETERINARIAN', 'Bác sĩ thú y', 1, @account_created_at),
+('00000000-0000-0000-0000-000000000007', 'MEDICAL_STAFF', 'Nhân viên y tế', 1, @account_created_at);
 
--- Lấy role_id thực tế theo role_name. Nếu database đã có role với UUID khác,
--- INSERT ... ON DUPLICATE KEY chỉ cập nhật dòng cũ chứ không tạo UUID cố định trên.
-SET @admin_role = (SELECT role_id FROM roles WHERE role_name = 'ADMIN' LIMIT 1);
-SET @owner_role = (SELECT role_id FROM roles WHERE role_name = 'HORSE_OWNER' LIMIT 1);
-SET @jockey_role = (SELECT role_id FROM roles WHERE role_name = 'JOCKEY' LIMIT 1);
-SET @spectator_role = (SELECT role_id FROM roles WHERE role_name = 'SPECTATOR' LIMIT 1);
-SET @referee_role = (SELECT role_id FROM roles WHERE role_name = 'REFEREE' LIMIT 1);
-SET @vet_role = (SELECT role_id FROM roles WHERE role_name = 'VETERINARIAN' LIMIT 1);
-SET @medical_role = (SELECT role_id FROM roles WHERE role_name = 'MEDICAL_STAFF' LIMIT 1);
-
--- 3. Tạo tài khoản người dùng (Users) - Mật khẩu chung
-SET @demo_password = '$2a$12$55CXrg2hHP6dBaN2i9FEcOSA1hADvKDeVOVHGfH55ojDXQ/mWEHyW';
-
-INSERT INTO users (user_id, username, password, email, dob, gender, full_name, phone_number, status, role_id, created_at)
+INSERT INTO users
+    (user_id, username, password, email, dob, gender, full_name,
+     phone_number, image_url, status, role_id, created_at)
 VALUES
-    -- Admin (admin1 theo flow.md)
-    ('11111111-1111-1111-1111-111111111111', 'admin1', @demo_password, 'admin1@horseracing.com', '1995-01-01', 'MALE', 'System Admin', '0901234560', 'ACTIVE', @admin_role, NOW()),
-    
-    -- 6 Chủ ngựa (Owners: owner1 -> owner6)
-    ('22222222-2222-2222-2222-222222222201', 'owner1', @demo_password, 'owner1@horseracing.com', '1990-05-15', 'MALE', 'Nguyen Van Owner One', '0901234561', 'ACTIVE', @owner_role, NOW()),
-    ('22222222-2222-2222-2222-222222222202', 'owner2', @demo_password, 'owner2@horseracing.com', '1988-10-25', 'MALE', 'Tran Dan Owner Two', '0901234572', 'ACTIVE', @owner_role, NOW()),
-    ('22222222-2222-2222-2222-222222222203', 'owner3', @demo_password, 'owner3@horseracing.com', '1991-03-14', 'FEMALE', 'Le Thi Owner Three', '0901234573', 'ACTIVE', @owner_role, NOW()),
-    ('22222222-2222-2222-2222-222222222204', 'owner4', @demo_password, 'owner4@horseracing.com', '1985-07-30', 'MALE', 'Pham Minh Owner Four', '0901234574', 'ACTIVE', @owner_role, NOW()),
-    ('22222222-2222-2222-2222-222222222205', 'owner5', @demo_password, 'owner5@horseracing.com', '1992-12-05', 'MALE', 'Hoang Gia Owner Five', '0901234575', 'ACTIVE', @owner_role, NOW()),
-    ('22222222-2222-2222-2222-222222222206', 'owner6', @demo_password, 'owner6@horseracing.com', '1993-01-20', 'FEMALE', 'Bui Thi Owner Six', '0901234576', 'ACTIVE', @owner_role, NOW()),
+(@admin_user_id, 'admin1', @demo_password, 'admin1@hrtms.test', '1990-01-01',
+ 'MALE', 'Quản trị viên Demo', '0900000001', NULL, 'ACTIVE',
+ '00000000-0000-0000-0000-000000000001', @account_created_at),
+(@owner1_user_id, 'owner1', @demo_password, 'owner1@hrtms.test', '1988-05-15',
+ 'MALE', 'Chủ ngựa Full Flow', '0900000011', NULL, 'ACTIVE',
+ '00000000-0000-0000-0000-000000000002', @account_created_at),
+(@owner2_user_id, 'owner2', @demo_password, 'owner2@hrtms.test', '1987-06-20',
+ 'FEMALE', 'Chủ ngựa Bracket', '0900000012', NULL, 'ACTIVE',
+ '00000000-0000-0000-0000-000000000002', @account_created_at),
+('11111111-1111-1111-1111-111111111131', 'spectator1', @demo_password,
+ 'spectator1@hrtms.test', '1998-01-01', 'MALE', 'Khán giả 1', '0900000021',
+ NULL, 'ACTIVE', '00000000-0000-0000-0000-000000000004', @account_created_at),
+('11111111-1111-1111-1111-111111111132', 'spectator2', @demo_password,
+ 'spectator2@hrtms.test', '1999-02-02', 'FEMALE', 'Khán giả 2', '0900000022',
+ NULL, 'ACTIVE', '00000000-0000-0000-0000-000000000004', @account_created_at);
 
-    -- 2 Khán giả (spectator1: tạo cược, spectator2: xem cược đã chấm)
-    ('44444444-4444-4444-4444-444444444401', 'spectator1', @demo_password, 'spectator1@horseracing.com', '1999-09-09', 'FEMALE', 'Bui Thi Spectator One', '0901234566', 'ACTIVE', @spectator_role, NOW()),
-    ('44444444-4444-4444-4444-444444444402', 'spectator2', @demo_password, 'spectator2@horseracing.com', '1998-05-15', 'MALE', 'Tran Hung Spectator Two', '0901234567', 'ACTIVE', @spectator_role, NOW()),
-
-    -- 5 Trọng tài (referee1 đến referee5)
-    ('55555555-5555-5555-5555-555555555501', 'referee1', @demo_password, 'referee1@horseracing.com', '1985-02-14', 'MALE', 'Ngo Quyen Referee One', '0901234581', 'ACTIVE', @referee_role, NOW()),
-    ('55555555-5555-5555-5555-555555555502', 'referee2', @demo_password, 'referee2@horseracing.com', '1982-11-20', 'MALE', 'Le Loi Referee Two', '0901234582', 'ACTIVE', @referee_role, NOW()),
-    ('55555555-5555-5555-5555-555555555503', 'referee3', @demo_password, 'referee3@horseracing.com', '1980-05-15', 'MALE', 'Tran Hung Dao Referee Three', '0901234583', 'ACTIVE', @referee_role, NOW()),
-    ('55555555-5555-5555-5555-555555555504', 'referee4', @demo_password, 'referee4@horseracing.com', '1987-08-22', 'MALE', 'Ly Thuong Kiet Referee Four', '0901234584', 'ACTIVE', @referee_role, NOW()),
-    ('55555555-5555-5555-5555-555555555505', 'referee5', @demo_password, 'referee5@horseracing.com', '1984-04-12', 'MALE', 'Quang Trung Referee Five', '0901234585', 'ACTIVE', @referee_role, NOW()),
-
-    -- 5 Bác sĩ thú y (vet1 đến vet5)
-    ('66666666-6666-6666-6666-666666666601', 'vet1', @demo_password, 'vet1@horseracing.com', '1988-06-30', 'FEMALE', 'Dr. Nguyen Vet One', '0901234591', 'ACTIVE', @vet_role, NOW()),
-    ('66666666-6666-6666-6666-666666666602', 'vet2', @demo_password, 'vet2@horseracing.com', '1985-09-12', 'MALE', 'Dr. Pham Vet Two', '0901234592', 'ACTIVE', @vet_role, NOW()),
-    ('66666666-6666-6666-6666-666666666603', 'vet3', @demo_password, 'vet3@horseracing.com', '1987-12-05', 'FEMALE', 'Dr. Le Vet Three', '0901234593', 'ACTIVE', @vet_role, NOW()),
-    ('66666666-6666-6666-6666-666666666604', 'vet4', @demo_password, 'vet4@horseracing.com', '1989-01-25', 'MALE', 'Dr. Hoang Vet Four', '0901234594', 'ACTIVE', @vet_role, NOW()),
-    ('66666666-6666-6666-6666-666666666605', 'vet5', @demo_password, 'vet5@horseracing.com', '1986-04-15', 'FEMALE', 'Dr. Vu Vet Five', '0901234595', 'ACTIVE', @vet_role, NOW()),
-
-    -- 5 Nhân viên y tế (medical1 đến medical5)
-    ('77777777-7777-7777-7777-777777777701', 'medical1', @demo_password, 'medical1@horseracing.com', '1992-04-04', 'FEMALE', 'Dr. Tran Medical One', '0901234601', 'ACTIVE', @medical_role, NOW()),
-    ('77777777-7777-7777-7777-777777777702', 'medical2', @demo_password, 'medical2@horseracing.com', '1990-10-18', 'MALE', 'Dr. Bui Medical Two', '0901234602', 'ACTIVE', @medical_role, NOW()),
-    ('77777777-7777-7777-7777-777777777703', 'medical3', @demo_password, 'medical3@horseracing.com', '1991-05-12', 'FEMALE', 'Dr. Ngo Medical Three', '0901234603', 'ACTIVE', @medical_role, NOW()),
-    ('77777777-7777-7777-7777-777777777704', 'medical4', @demo_password, 'medical4@horseracing.com', '1993-09-28', 'MALE', 'Dr. Dang Medical Four', '0901234604', 'ACTIVE', @medical_role, NOW()),
-    ('77777777-7777-7777-7777-777777777705', 'medical5', @demo_password, 'medical5@horseracing.com', '1992-02-15', 'FEMALE', 'Dr. Do Medical Five', '0901234605', 'ACTIVE', @medical_role, NOW());
-
--- Chèn 40 Nài ngựa (jockey1 đến jockey40) bằng thủ công để đáp ứng luồng Bracket 32
-INSERT INTO users (user_id, username, password, email, dob, gender, full_name, phone_number, status, role_id, created_at)
+INSERT INTO horse_owners
+    (owner_id, user_id, farm_name, address, license_number, created_at)
 VALUES
-    ('33333333-3333-3333-3333-333333333301', 'jockey1', @demo_password, 'jockey1@horseracing.com', '1996-08-20', 'MALE', 'Nai Ngua One', '0901234501', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333302', 'jockey2', @demo_password, 'jockey2@horseracing.com', '1998-03-12', 'MALE', 'Nai Ngua Two', '0901234502', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333303', 'jockey3', @demo_password, 'jockey3@horseracing.com', '1997-11-05', 'MALE', 'Nai Ngua Three', '0901234503', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333304', 'jockey4', @demo_password, 'jockey4@horseracing.com', '1995-12-25', 'MALE', 'Nai Ngua Four', '0901234504', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333305', 'jockey5', @demo_password, 'jockey5@horseracing.com', '1996-01-15', 'MALE', 'Nai Ngua Five', '0901234505', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333306', 'jockey6', @demo_password, 'jockey6@horseracing.com', '1994-04-18', 'MALE', 'Nai Ngua Six', '0901234506', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333307', 'jockey7', @demo_password, 'jockey7@horseracing.com', '1995-09-22', 'MALE', 'Nai Ngua Seven', '0901234507', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333308', 'jockey8', @demo_password, 'jockey8@horseracing.com', '1997-02-10', 'MALE', 'Nai Ngua Eight', '0901234508', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333309', 'jockey9', @demo_password, 'jockey9@horseracing.com', '1998-05-11', 'MALE', 'Nai Ngua Nine', '0901234509', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333310', 'jockey10', @demo_password, 'jockey10@horseracing.com', '1999-07-15', 'MALE', 'Nai Ngua Ten', '0901234510', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333311', 'jockey11', @demo_password, 'jockey11@horseracing.com', '1996-10-30', 'MALE', 'Nai Ngua Eleven', '0901234511', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333312', 'jockey12', @demo_password, 'jockey12@horseracing.com', '1997-03-05', 'MALE', 'Nai Ngua Twelve', '0901234512', 'ACTIVE', @jockey_role, NOW()),
-    ('33333333-3333-3333-3333-333333333313', 'jockey13', @demo_password, 'jockey13@horseracing.com', '1995-11-12', 'MALE', 'Nai Ngua Thirteen', '0901234513', 'ACTIVE', @jockey_role, NOW());
+(@owner1_id, @owner1_user_id, 'Trang trại Full Flow', 'TP. Hồ Chí Minh', 'OWN-0001', @account_created_at),
+(@owner2_id, @owner2_user_id, 'Trang trại Bracket', 'Đà Nẵng', 'OWN-0002', @account_created_at);
 
--- Tạo tiếp các Jockey từ 14 đến 40 để làm phong phú dữ liệu khớp nài ngựa
-DELIMITER //
-CREATE PROCEDURE CreateRemainingJockeys()
-BEGIN
-    DECLARE i INT DEFAULT 14;
-    DECLARE phone VARCHAR(20);
-    DECLARE u_id VARCHAR(36);
-    WHILE i <= 40 DO
-        SET phone = CONCAT('09012345', i);
-        SET u_id = CONCAT('33333333-3333-3333-3333-3333333333', LPAD(i, 2, '0'));
-        INSERT INTO users (user_id, username, password, email, dob, gender, full_name, phone_number, status, role_id, created_at)
-        VALUES (u_id, CONCAT('jockey', i), @demo_password, CONCAT('jockey', i, '@horseracing.com'), '1997-01-01', 'MALE', CONCAT('Nai Ngua ', i), phone, 'ACTIVE', @jockey_role, NOW());
-        SET i = i + 1;
-    END WHILE;
-END //
-DELIMITER ;
-CALL CreateRemainingJockeys();
-DROP PROCEDURE CreateRemainingJockeys;
-
--- 4. Tạo Ví điện tử (Wallets) tương ứng với tất cả tài khoản
-INSERT INTO wallets (wallet_id, owner_type, balance, currency, status, wallet_purpose, user_id, created_at, updated_at)
-VALUES
-    -- Admin & Spectators
-    ('a0000000-1111-1111-1111-111111111111', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '11111111-1111-1111-1111-111111111111', NOW(), NOW()),
-    ('a0000000-4444-4444-4444-444444444401', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '44444444-4444-4444-4444-444444444401', NOW(), NOW()),
-    ('a0000000-4444-4444-4444-444444444402', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '44444444-4444-4444-4444-444444444402', NOW(), NOW()),
-    
-    -- 6 Owners
-    ('a0000000-2222-2222-2222-222222222201', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222201', NOW(), NOW()),
-    ('a0000000-2222-2222-2222-222222222202', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222202', NOW(), NOW()),
-    ('a0000000-2222-2222-2222-222222222203', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222203', NOW(), NOW()),
-    ('a0000000-2222-2222-2222-222222222204', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222204', NOW(), NOW()),
-    ('a0000000-2222-2222-2222-222222222205', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222205', NOW(), NOW()),
-    ('a0000000-2222-2222-2222-222222222206', 'USER', 50000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '22222222-2222-2222-2222-222222222206', NOW(), NOW()),
-
-    -- 5 Referees
-    ('a0000000-5555-5555-5555-555555555501', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '55555555-5555-5555-5555-555555555501', NOW(), NOW()),
-    ('a0000000-5555-5555-5555-555555555502', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '55555555-5555-5555-5555-555555555502', NOW(), NOW()),
-    ('a0000000-5555-5555-5555-555555555503', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '55555555-5555-5555-5555-555555555503', NOW(), NOW()),
-    ('a0000000-5555-5555-5555-555555555504', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '55555555-5555-5555-5555-555555555504', NOW(), NOW()),
-    ('a0000000-5555-5555-5555-555555555505', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '55555555-5555-5555-5555-555555555505', NOW(), NOW()),
-
-    -- 5 Vets
-    ('a0000000-6666-6666-6666-666666666601', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '66666666-6666-6666-6666-666666666601', NOW(), NOW()),
-    ('a0000000-6666-6666-6666-666666666602', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '66666666-6666-6666-6666-666666666602', NOW(), NOW()),
-    ('a0000000-6666-6666-6666-666666666603', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '66666666-6666-6666-6666-666666666603', NOW(), NOW()),
-    ('a0000000-6666-6666-6666-666666666604', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '66666666-6666-6666-6666-666666666604', NOW(), NOW()),
-    ('a0000000-6666-6666-6666-666666666605', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '66666666-6666-6666-6666-666666666605', NOW(), NOW()),
-
-    -- 5 Medical Staffs
-    ('a0000000-7777-7777-7777-777777777701', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '77777777-7777-7777-7777-777777777701', NOW(), NOW()),
-    ('a0000000-7777-7777-7777-777777777702', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '77777777-7777-7777-7777-777777777702', NOW(), NOW()),
-    ('a0000000-7777-7777-7777-777777777703', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '77777777-7777-7777-7777-777777777703', NOW(), NOW()),
-    ('a0000000-7777-7777-7777-777777777704', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '77777777-7777-7777-7777-777777777704', NOW(), NOW()),
-    ('a0000000-7777-7777-7777-777777777705', 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', '77777777-7777-7777-7777-777777777705', NOW(), NOW());
-
--- Tạo ví cho 40 Jockeys
-DELIMITER //
-CREATE PROCEDURE CreateJockeyWallets()
-BEGIN
-    DECLARE i INT DEFAULT 1;
-    DECLARE u_id VARCHAR(36);
-    DECLARE w_id VARCHAR(36);
-    WHILE i <= 40 DO
-        SET u_id = CONCAT('33333333-3333-3333-3333-3333333333', LPAD(i, 2, '0'));
-        SET w_id = CONCAT('a0000000-3333-3333-3333-3333333333', LPAD(i, 2, '0'));
-        INSERT INTO wallets (wallet_id, owner_type, balance, currency, status, wallet_purpose, user_id, created_at, updated_at)
-        VALUES (w_id, 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN', u_id, NOW(), NOW());
-        SET i = i + 1;
-    END WHILE;
-END //
-DELIMITER ;
-CALL CreateJockeyWallets();
-DROP PROCEDURE CreateJockeyWallets;
-
--- 5. Tạo thông tin chi tiết cho từng Vai Trò (Profiles)
--- 6 Chủ Ngựa (Horse Owners)
-INSERT INTO horse_owners (owner_id, user_id, farm_name, address, license_number, created_at)
-VALUES
-    ('aaaaaaaa-1111-1111-1111-111111111101', '22222222-2222-2222-2222-222222222201', 'Golden Fields Farm', '123 Ba Dinh, Hanoi', 'LIC-OWN-0001', NOW()),
-    ('aaaaaaaa-1111-1111-1111-111111111102', '22222222-2222-2222-2222-222222222202', 'Silver Valleys Stud', '456 District 1, HCMC', 'LIC-OWN-0002', NOW()),
-    ('aaaaaaaa-1111-1111-1111-111111111103', '22222222-2222-2222-2222-222222222203', 'Breeze Hills Farm', '789 Son Tra, Da Nang', 'LIC-OWN-0003', NOW()),
-    ('aaaaaaaa-1111-1111-1111-111111111104', '22222222-2222-2222-2222-222222222204', 'Red River Meadows', '101 Hoan Kiem, Hanoi', 'LIC-OWN-0004', NOW()),
-    ('aaaaaaaa-1111-1111-1111-111111111105', '22222222-2222-2222-2222-222222222205', 'Blue Oceans Ranch', '202 Nha Trang, Khanh Hoa', 'LIC-OWN-0005', NOW()),
-    ('aaaaaaaa-1111-1111-1111-111111111106', '22222222-2222-2222-2222-222222222206', 'Green Hills Farm', '303 Da Lat, Lam Dong', 'LIC-OWN-0006', NOW());
-
--- 40 Nài Ngựa (Jockeys)
-DELIMITER //
-CREATE PROCEDURE CreateJockeyProfiles()
-BEGIN
-    DECLARE i INT DEFAULT 1;
-    DECLARE u_id VARCHAR(36);
-    DECLARE j_id VARCHAR(36);
-    DECLARE tier VARCHAR(30);
-    DECLARE spec VARCHAR(30);
-    
-    WHILE i <= 40 DO
-        SET u_id = CONCAT('33333333-3333-3333-3333-3333333333', LPAD(i, 2, '0'));
-        SET j_id = CONCAT('bbbbbbbb-3333-3333-3333-3333333333', LPAD(i, 2, '0'));
-        
-        -- Chia đều phân hạng cho nài ngựa
-        IF i % 4 = 0 THEN SET tier = 'ELITE';
-        ELSEIF i % 3 = 0 THEN SET tier = 'PROFESSIONAL';
-        ELSEIF i % 2 = 0 THEN SET tier = 'JUNIOR';
-        ELSE SET tier = 'APPRENTICE';
-        END IF;
-
-        -- Chia đều chuyên môn
-        IF i % 3 = 0 THEN SET spec = 'SPRINT';
-        ELSEIF i % 2 = 0 THEN SET spec = 'MILE';
-        ELSE SET spec = 'INTERMEDIATE';
-        END IF;
-
-        INSERT INTO jockeys (jockey_id, user_id, height, weight, experience_years, license_number, specialization, status, total_races, total_wins, jockey_tier, tier_updated_at, created_at)
-        VALUES (j_id, u_id, 1.60 + (i%5)*0.01, 50.0 + (i%3), 1 + (i%10), CONCAT('LIC-JOC-', LPAD(i, 4, '0')), spec, 'AVAILABLE', 5 + i, i%3, tier, NOW(), NOW());
-        SET i = i + 1;
-    END WHILE;
-END //
-DELIMITER ;
-CALL CreateJockeyProfiles();
-DROP PROCEDURE CreateJockeyProfiles;
-
--- Khán Giả (Spectators)
 INSERT INTO spectators (spectator_id, user_id, total_points, created_at)
-VALUES 
-    ('cccccccc-1111-1111-1111-111111111101', '44444444-4444-4444-4444-444444444401', 30000, NOW()),
-    ('cccccccc-1111-1111-1111-111111111102', '44444444-4444-4444-4444-444444444402', 15000, NOW());
-
--- 5 Trọng Tài (Referees)
-INSERT INTO referees (referee_id, user_id, certification_level, years_of_service, status, created_at)
-VALUES 
-    ('dddddddd-5555-5555-5555-555555555501', '55555555-5555-5555-5555-555555555501', 'International Class A', 10, 'AVAILABLE', NOW()),
-    ('dddddddd-5555-5555-5555-555555555502', '55555555-5555-5555-5555-555555555502', 'National Level 1', 6, 'AVAILABLE', NOW()),
-    ('dddddddd-5555-5555-5555-555555555503', '55555555-5555-5555-5555-555555555503', 'Regional Class B', 4, 'AVAILABLE', NOW()),
-    ('dddddddd-5555-5555-5555-555555555504', '55555555-5555-5555-5555-555555555504', 'International Class A', 8, 'AVAILABLE', NOW()),
-    ('dddddddd-5555-5555-5555-555555555505', '55555555-5555-5555-5555-555555555505', 'National Level 1', 5, 'AVAILABLE', NOW());
-
--- 5 Bác Sĩ Thú Y (Veterinarians)
-INSERT INTO veterinarians (vet_id, user_id, license_number, specialization, years_of_service, status, created_at)
-VALUES 
-    ('eeeeeeee-6666-6666-6666-666666666601', '66666666-6666-6666-6666-666666666601', 'LIC-VET-0001', 'Equine Surgery', 8, 'AVAILABLE', NOW()),
-    ('eeeeeeee-6666-6666-6666-666666666602', '66666666-6666-6666-6666-666666666602', 'LIC-VET-0002', 'Equine Orthopedics', 6, 'AVAILABLE', NOW()),
-    ('eeeeeeee-6666-6666-6666-666666666603', '66666666-6666-6666-6666-666666666603', 'LIC-VET-0003', 'Equine Nutrition', 4, 'AVAILABLE', NOW()),
-    ('eeeeeeee-6666-6666-6666-666666666604', '66666666-6666-6666-6666-666666666604', 'LIC-VET-0004', 'Equine Cardiology', 10, 'AVAILABLE', NOW()),
-    ('eeeeeeee-6666-6666-6666-666666666605', '66666666-6666-6666-6666-666666666605', 'LIC-VET-0005', 'Equine Rehabilitation', 5, 'AVAILABLE', NOW());
-
--- 5 Nhân Viên Y Tế (Medical Staff)
-INSERT INTO medical_staffs (med_staff_id, user_id, certification, years_of_service, status, created_at)
-VALUES 
-    ('ffffffff-7777-7777-7777-777777777701', '77777777-7777-7777-7777-777777777701', 'CERT-MED-0001', 5, 'AVAILABLE', NOW()),
-    ('ffffffff-7777-7777-7777-777777777702', '77777777-7777-7777-7777-777777777702', 'CERT-MED-0002', 7, 'AVAILABLE', NOW()),
-    ('ffffffff-7777-7777-7777-777777777703', '77777777-7777-7777-7777-777777777703', 'CERT-MED-0003', 3, 'AVAILABLE', NOW()),
-    ('ffffffff-7777-7777-7777-777777777704', '77777777-7777-7777-7777-777777777704', 'CERT-MED-0004', 12, 'AVAILABLE', NOW()),
-    ('ffffffff-7777-7777-7777-777777777705', '77777777-7777-7777-7777-777777777705', 'CERT-MED-0005', 4, 'AVAILABLE', NOW());
-
-
--- 6. Tạo 16 ngựa (Horses) phân bố cho các Chủ ngựa
-INSERT INTO horses (horse_id, name, breed, gender, age, weight, color, health_status, current_rating, highest_rating, race_class, created_at, owner_id)
 VALUES
-    -- Owner 1 (3 ngựa)
-    ('99999999-9999-9999-9999-999999999901', 'Thunderbolt', 'THOROUGHBRED', 'MALE', 5, 455.0, 'Bay', 'HEALTHY', 45, 50, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111101'),
-    ('99999999-9999-9999-9999-999999999902', 'Wind Runner', 'THOROUGHBRED', 'FEMALE', 4, 430.0, 'Chestnut', 'HEALTHY', 55, 55, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111101'),
-    ('99999999-9999-9999-9999-999999999903', 'Silver Streak', 'THOROUGHBRED', 'MALE', 6, 470.0, 'Gray', 'HEALTHY', 35, 40, 'CLASS_5', NOW(), 'aaaaaaaa-1111-1111-1111-111111111101'),
-    
-    -- Owner 2 (3 ngựa)
-    ('99999999-9999-9999-9999-999999999904', 'Black Beauty', 'THOROUGHBRED', 'FEMALE', 5, 460.0, 'Black', 'HEALTHY', 62, 65, 'CLASS_3', NOW(), 'aaaaaaaa-1111-1111-1111-111111111102'),
-    ('99999999-9999-9999-9999-999999999905', 'Golden Mane', 'THOROUGHBRED', 'MALE', 4, 440.0, 'Palomino', 'HEALTHY', 42, 45, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111102'),
-    ('99999999-9999-9999-9999-999999999906', 'Crimson Flash', 'THOROUGHBRED', 'MALE', 5, 458.0, 'Red Bay', 'HEALTHY', 48, 50, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111102'),
+('13111111-1111-1111-1111-111111111131',
+ '11111111-1111-1111-1111-111111111131', 0, @account_created_at),
+('13111111-1111-1111-1111-111111111132',
+ '11111111-1111-1111-1111-111111111132', 0, @account_created_at);
 
-    -- Owner 3 (3 ngựa)
-    ('99999999-9999-9999-9999-999999999907', 'Midnight Star', 'THOROUGHBRED', 'FEMALE', 6, 448.0, 'Black', 'HEALTHY', 52, 54, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111103'),
-    ('99999999-9999-9999-9999-999999999908', 'Pegasus', 'THOROUGHBRED', 'MALE', 4, 452.0, 'White', 'HEALTHY', 50, 50, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111103'),
-    ('99999999-9999-9999-9999-999999999909', 'Desert Wind', 'THOROUGHBRED', 'MALE', 5, 435.0, 'Grey', 'HEALTHY', 38, 40, 'CLASS_5', NOW(), 'aaaaaaaa-1111-1111-1111-111111111103'),
+INSERT INTO wallets
+    (wallet_id, owner_type, balance, currency, status, wallet_purpose,
+     user_id, created_at, updated_at)
+VALUES
+('aaaa0000-0000-0000-0000-000000000011', 'USER', 100000000.00,
+ 'VND', 'ACTIVE', 'USER_MAIN', @owner1_user_id, @account_created_at, NOW()),
+('aaaa0000-0000-0000-0000-000000000012', 'USER', 100000000.00,
+ 'VND', 'ACTIVE', 'USER_MAIN', @owner2_user_id, @account_created_at, NOW()),
+('aaaa0000-0000-0000-0000-000000000001', 'SYSTEM', 500000000.00,
+ 'VND', 'ACTIVE', 'SYSTEM_REVENUE', NULL, @account_created_at, NOW()),
+('aaaa0000-0000-0000-0000-000000000002', 'SYSTEM', 1000000000.00,
+ 'VND', 'ACTIVE', 'SYSTEM_ESCROW', NULL, @account_created_at, NOW()),
+('aaaa0000-0000-0000-0000-000000000003', 'SYSTEM', 1000000000.00,
+ 'VND', 'ACTIVE', 'SYSTEM_PRIZE_POOL', NULL, @account_created_at, NOW());
 
-    -- Owner 4 (3 ngựa)
-    ('99999999-9999-9999-9999-999999999910', 'Storm Chaser', 'THOROUGHBRED', 'MALE', 5, 465.0, 'Brown', 'HEALTHY', 41, 41, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111104'),
-    ('99999999-9999-9999-9999-999999999911', 'Eclipse', 'THOROUGHBRED', 'FEMALE', 6, 450.0, 'Dark Brown', 'HEALTHY', 46, 48, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111104'),
-    ('99999999-9999-9999-9999-999999999912', 'Iron Gallop', 'THOROUGHBRED', 'MALE', 4, 462.0, 'Spotted', 'HEALTHY', 39, 39, 'CLASS_5', NOW(), 'aaaaaaaa-1111-1111-1111-111111111104'),
+DROP PROCEDURE IF EXISTS SeedStaffAccounts;
+DELIMITER $$
+CREATE PROCEDURE SeedStaffAccounts()
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    DECLARE v_user_id CHAR(36);
+    DECLARE v_profile_id CHAR(36);
 
-    -- Owner 5 (2 ngựa)
-    ('99999999-9999-9999-9999-999999999913', 'Phantom Rider', 'THOROUGHBRED', 'MALE', 5, 457.0, 'Bay', 'HEALTHY', 43, 45, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111105'),
-    ('99999999-9999-9999-9999-999999999914', 'Stardust', 'THOROUGHBRED', 'FEMALE', 4, 442.0, 'Chestnut', 'HEALTHY', 44, 44, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111105'),
+    -- 24 jockey: jockey1..jockey24.
+    WHILE i <= 24 DO
+        SET v_user_id = UUID();
+        SET v_profile_id = UUID();
+        INSERT INTO users
+            (user_id, username, password, email, dob, gender, full_name,
+             phone_number, status, role_id, created_at)
+        VALUES
+            (v_user_id, CONCAT('jockey', i), @demo_password,
+             CONCAT('jockey', i, '@hrtms.test'), '1997-03-10',
+             IF(MOD(i, 5) = 0, 'FEMALE', 'MALE'), CONCAT('Kỵ sĩ ', i),
+             CONCAT('091', LPAD(i, 7, '0')), 'ACTIVE',
+             '00000000-0000-0000-0000-000000000003', @account_created_at);
+        INSERT INTO jockeys
+            (jockey_id, user_id, height, weight, experience_years,
+             license_number, specialization, status, total_races, total_wins,
+             jockey_tier, tier_updated_at, created_at)
+        VALUES
+            (v_profile_id, v_user_id, 1.60 + MOD(i, 8) / 100,
+             49 + MOD(i, 5), 2 + MOD(i, 9), CONCAT('JOC-', LPAD(i, 4, '0')),
+             'MILE', 'AVAILABLE', 10 + i, MOD(i, 7),
+             CASE MOD(i, 4)
+                 WHEN 0 THEN 'ELITE'
+                 WHEN 1 THEN 'APPRENTICE'
+                 WHEN 2 THEN 'JUNIOR'
+                 ELSE 'PROFESSIONAL'
+             END,
+             NOW(), @account_created_at);
+        INSERT INTO wallets
+            (wallet_id, owner_type, balance, currency, status, wallet_purpose,
+             user_id, created_at, updated_at)
+        VALUES
+            (UUID(), 'USER', 10000000.00, 'VND', 'ACTIVE', 'USER_MAIN',
+             v_user_id, @account_created_at, NOW());
+        SET i = i + 1;
+    END WHILE;
 
-    -- Owner 6 (2 ngựa)
-    ('99999999-9999-9999-9999-999999999915', 'Neptune', 'THOROUGHBRED', 'MALE', 6, 468.0, 'Roan', 'HEALTHY', 37, 37, 'CLASS_5', NOW(), 'aaaaaaaa-1111-1111-1111-111111111106'),
-    ('99999999-9999-9999-9999-999999999916', 'Valkyrie', 'THOROUGHBRED', 'FEMALE', 5, 449.0, 'Dun', 'HEALTHY', 47, 49, 'CLASS_4', NOW(), 'aaaaaaaa-1111-1111-1111-111111111106');
+    -- 7 referee: referee1, referee3, referee6 là Head Referee;
+    -- referee2, referee4, referee5 là Race Referee; referee7 dự phòng.
+    SET i = 1;
+    WHILE i <= 7 DO
+        SET v_user_id = UUID();
+        SET v_profile_id = UUID();
+        INSERT INTO users
+            (user_id, username, password, email, dob, gender, full_name,
+             phone_number, status, role_id, created_at)
+        VALUES
+            (v_user_id, CONCAT('referee', i), @demo_password,
+             CONCAT('referee', i, '@hrtms.test'), '1985-02-12', 'MALE',
+             CONCAT('Trọng tài ', i), CONCAT('092', LPAD(i, 7, '0')), 'ACTIVE',
+             '00000000-0000-0000-0000-000000000005', @account_created_at);
+        INSERT INTO referees
+            (referee_id, user_id, certification_level, years_of_service,
+             status, created_at)
+        VALUES
+            (v_profile_id, v_user_id,
+             IF(i IN (1, 3, 6), 'International A', 'National A'),
+             5 + i, 'AVAILABLE', @account_created_at);
+        SET i = i + 1;
+    END WHILE;
 
+    -- 2 veterinarian.
+    SET i = 1;
+    WHILE i <= 2 DO
+        SET v_user_id = UUID();
+        SET v_profile_id = UUID();
+        INSERT INTO users
+            (user_id, username, password, email, dob, gender, full_name,
+             phone_number, status, role_id, created_at)
+        VALUES
+            (v_user_id, CONCAT('vet', i), @demo_password,
+             CONCAT('vet', i, '@hrtms.test'), '1987-04-20',
+             IF(i = 1, 'FEMALE', 'MALE'), CONCAT('Bác sĩ thú y ', i),
+             CONCAT('093', LPAD(i, 7, '0')), 'ACTIVE',
+             '00000000-0000-0000-0000-000000000006', @account_created_at);
+        INSERT INTO veterinarians
+            (vet_id, user_id, license_number, specialization,
+             years_of_service, status, created_at)
+        VALUES
+            (v_profile_id, v_user_id, CONCAT('VET-', LPAD(i, 4, '0')),
+             'Equine Medicine', 5 + i, 'AVAILABLE', @account_created_at);
+        SET i = i + 1;
+    END WHILE;
 
--- 7. KỊCH BẢN GIẢI ĐẤU MẪU ĐỂ TEST TỪNG PHASE CỦA HỆ THỐNG
+    -- 2 medical staff.
+    SET i = 1;
+    WHILE i <= 2 DO
+        SET v_user_id = UUID();
+        SET v_profile_id = UUID();
+        INSERT INTO users
+            (user_id, username, password, email, dob, gender, full_name,
+             phone_number, status, role_id, created_at)
+        VALUES
+            (v_user_id, CONCAT('medical', i), @demo_password,
+             CONCAT('medical', i, '@hrtms.test'), '1990-09-18',
+             IF(i = 1, 'MALE', 'FEMALE'), CONCAT('Nhân viên y tế ', i),
+             CONCAT('094', LPAD(i, 7, '0')), 'ACTIVE',
+             '00000000-0000-0000-0000-000000000007', @account_created_at);
+        INSERT INTO medical_staffs
+            (med_staff_id, user_id, certification, years_of_service,
+             status, created_at)
+        VALUES
+            (v_profile_id, v_user_id, CONCAT('MED-', LPAD(i, 4, '0')),
+             4 + i, 'AVAILABLE', @account_created_at);
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
 
--- Kịch bản A: Giải đấu "DEMO 5 - Đang mở đăng ký" (Phase: REGISTRATION_OPEN)
--- Phục vụ test: Owner 1 nộp đăng ký ngựa, Jockey 13 nộp đăng ký tham gia
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888805',
-    'DEMO 5 - Đang mở đăng ký',
-    'Giải đấu mùa Xuân chuẩn bị mở cổng đăng ký.',
-    DATE_ADD(CURDATE(), INTERVAL 10 DAY),
-    DATE_ADD(CURDATE(), INTERVAL 15 DAY),
-    'Hanoi National Turf Club',
-    500000.00,
-    100000.00,
-    15000000.00,
-    'THOROUGHBRED',
-    3, 8,
-    DATE_SUB(NOW(), INTERVAL 1 DAY), -- đã mở
-    DATE_ADD(NOW(), INTERVAL 5 DAY),
-    DATE_ADD(NOW(), INTERVAL 6 DAY),
-    DATE_ADD(NOW(), INTERVAL 7 DAY),
-    DATE_ADD(NOW(), INTERVAL 8 DAY),
-    DATE_ADD(NOW(), INTERVAL 9 DAY),
-    'OPEN',
-    'REGISTRATION_OPEN',
-    '11111111-1111-1111-1111-111111111111',
-    20, 20, 20,
-    'SPRINT_1200M'
+CALL SeedStaffAccounts();
+DROP PROCEDURE SeedStaffAccounts;
+
+INSERT INTO appeal_categories
+    (category_id, code, name, description, is_active, created_at)
+VALUES
+('ac000000-0000-0000-0000-000000000001', 'RESULT_ERROR',
+ 'Sai kết quả', 'Khiếu nại thứ hạng hoặc thời gian về đích.', 1, NOW()),
+('ac000000-0000-0000-0000-000000000002', 'RACE_INCIDENT',
+ 'Sự cố đường đua', 'Khiếu nại va chạm, cản trở hoặc sự cố trong race.', 1, NOW()),
+('ac000000-0000-0000-0000-000000000003', 'VIOLATION',
+ 'Vi phạm', 'Khiếu nại quyết định xử lý vi phạm.', 1, NOW());
+
+-- --------------------------------------------------------------------------
+-- 3. HAI TOURNAMENT VÀ CƠ CẤU GIẢI THƯỞNG
+-- --------------------------------------------------------------------------
+
+DROP PROCEDURE IF EXISTS SeedTournament;
+DELIMITER $$
+CREATE PROCEDURE SeedTournament(
+    IN p_id CHAR(36), IN p_name VARCHAR(150), IN p_description VARCHAR(500),
+    IN p_max_approved_entries INT, IN p_current_round VARCHAR(100),
+    IN p_round_count INT, IN p_race_count INT, IN p_end_date DATE
+)
+BEGIN
+    INSERT INTO tournaments
+        (tournament_id, name, description, start_date, end_date, finished_at,
+         location, registration_fee, system_contract_fee, total_prize_pool,
+         allowed_breed, min_horse_age, max_horse_age,
+         prediction_top1_correct_points, prediction_top3_exact_position_points,
+         prediction_top3_correct_horse_points,
+         prediction_top3_perfect_bonus_points,
+         prediction_open_minutes_before, prediction_close_minutes_before,
+         prediction_card_open_hours_before_first_race,
+         inspection_open_minutes_before, inspection_close_minutes_before,
+         max_races_per_day, min_race_interval_minutes,
+         start_early_tolerance_minutes, start_late_tolerance_minutes,
+         default_race_operational_minutes, race_day_start_time,
+         race_day_end_time, apply_break_time, break_start_time, break_end_time,
+         max_rounds, status, phase, created_at, published_at,
+         registration_open_at, registration_close_at, review_deadline_at,
+         jockey_matching_deadline_at, scheduling_deadline_at,
+         competition_start_at, current_round_name, min_round_gap_days,
+         race_class, distance, top_weight_lbs, min_weight_lbs,
+         equipment_weight_kg, handicap_enabled,
+         max_approved_horses, max_approved_jockeys, max_approved_entries,
+         planned_round_count, planned_race_count,
+         bracket_plan_status, bracket_plan_version, created_by)
+    VALUES
+        (p_id, p_name, p_description,
+         DATE_SUB(CURDATE(), INTERVAL 35 DAY), p_end_date, NULL,
+         'HRTMS Demo Racing Center', 500000.00, 100000.00, 20000000.00,
+         'THOROUGHBRED', 3, 8,
+         100, 30, 10, 50,
+         180, 5, 24,
+         185, 6,
+         9, 35,
+         185, 0,
+         180, '00:00:00', '23:59:59',
+         0, NULL, NULL,
+         p_round_count, 'ONGOING', 'RACING',
+         DATE_SUB(NOW(), INTERVAL 36 DAY),
+         DATE_SUB(NOW(), INTERVAL 35 DAY),
+         DATE_SUB(NOW(), INTERVAL 35 DAY),
+         DATE_SUB(NOW(), INTERVAL 30 DAY),
+         DATE_SUB(NOW(), INTERVAL 26 DAY),
+         DATE_SUB(NOW(), INTERVAL 20 DAY),
+         DATE_SUB(NOW(), INTERVAL 16 DAY),
+         DATE_SUB(NOW(), INTERVAL 2 DAY),
+         p_current_round, 7, 'CLASS_4', 'MILE_1600M',
+         0, 0, 0.0, 0,
+         p_max_approved_entries, 999999, p_max_approved_entries,
+         p_round_count, p_race_count, 'LOCKED', 1, @admin_user_id);
+END$$
+DELIMITER ;
+
+CALL SeedTournament(
+    @full_tournament_id,
+    'DEMO FULL 8 - Luồng 07 đến 11',
+    'Một Final Race có 8 cặp để demo khám, prediction, vận hành, vi phạm, appeal, report, rating và payout.',
+    8, 'Chung kết', 1, 1, DATE_ADD(CURDATE(), INTERVAL 2 DAY)
 );
 
--- Kịch bản B: Giải đấu "DEMO 6 - Đang ghép Kỵ sĩ" (Phase: JOCKEY_MATCHING)
--- Phục vụ test: Owner 1 (owner1) tìm Jockey (từ jockey9 đến jockey12) để đề xuất hợp đồng (Contract)
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888806',
-    'DEMO 6 - Đang ghép Kỵ sĩ',
-    'Giải đấu đang trong thời gian ghép cặp kỵ sĩ và ký hợp đồng.',
-    DATE_ADD(CURDATE(), INTERVAL 8 DAY),
-    DATE_ADD(CURDATE(), INTERVAL 12 DAY),
-    'Saigon Turf Racing Arena',
-    800000.00,
-    150000.00,
-    25000000.00,
-    'THOROUGHBRED',
-    3, 8,
-    DATE_SUB(NOW(), INTERVAL 5 DAY),
-    DATE_SUB(NOW(), INTERVAL 2 DAY),
-    DATE_SUB(NOW(), INTERVAL 1 DAY),
-    DATE_ADD(NOW(), INTERVAL 3 DAY), -- Hạn ghép kỵ sĩ còn 3 ngày
-    DATE_ADD(NOW(), INTERVAL 4 DAY),
-    DATE_ADD(NOW(), INTERVAL 5 DAY),
-    'ONGOING',
-    'JOCKEY_MATCHING',
-    '11111111-1111-1111-1111-111111111111',
-    16, 16, 16,
-    'MILE_1400M'
+CALL SeedTournament(
+    @bracket_tournament_id,
+    'DEMO BRACKET 16 - Chuyển Top 4',
+    'Có đúng 16 cặp APPROVED. Sức chứa cấu hình 32 để BE tạo cấu trúc 2 Race vòng 1 rồi Final 8.',
+    32, 'Vòng 1', 2, 3, DATE_ADD(CURDATE(), INTERVAL 10 DAY)
 );
 
--- Tạo sẵn các hồ sơ duyệt APPROVED cho giải DEMO 6 để ghép cặp kỵ sĩ
-INSERT INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, submitted_at, rating_at_registration, race_class_at_registration)
-VALUES 
-    ('reg-demo6-horse01', '88888888-8888-8888-8888-888888888806', '99999999-9999-9999-9999-999999999901', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 45, 'CLASS_4'),
-    ('reg-demo6-horse02', '88888888-8888-8888-8888-888888888806', '99999999-9999-9999-9999-999999999902', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 55, 'CLASS_4');
+DROP PROCEDURE SeedTournament;
 
-INSERT INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, submitted_at, hire_fee)
-VALUES 
-    ('reg-demo6-jock09', '88888888-8888-8888-8888-888888888806', 'bbbbbbbb-3333-3333-3333-333333333309', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 500000.00),
-    ('reg-demo6-jock10', '88888888-8888-8888-8888-888888888806', 'bbbbbbbb-3333-3333-3333-333333333310', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 400000.00),
-    ('reg-demo6-jock11', '88888888-8888-8888-8888-888888888806', 'bbbbbbbb-3333-3333-3333-333333333311', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 600000.00),
-    ('reg-demo6-jock12', '88888888-8888-8888-8888-888888888806', 'bbbbbbbb-3333-3333-3333-333333333312', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), 300000.00);
+INSERT INTO prize_structures
+    (prize_structure_id, `prize_rank`, percentage, fixed_amount,
+     is_active, tournament_id)
+SELECT UUID(), 1, 50.0, 0.00, 1, tournament_id FROM tournaments;
+INSERT INTO prize_structures
+    (prize_structure_id, `prize_rank`, percentage, fixed_amount,
+     is_active, tournament_id)
+SELECT UUID(), 2, 30.0, 0.00, 1, tournament_id FROM tournaments;
+INSERT INTO prize_structures
+    (prize_structure_id, `prize_rank`, percentage, fixed_amount,
+     is_active, tournament_id)
+SELECT UUID(), 3, 20.0, 0.00, 1, tournament_id FROM tournaments;
 
--- Tạo 1 hợp đồng chờ kỵ sĩ xác nhận (PENDING_JOCKEY) để demo
-INSERT INTO jockey_horse_contracts (contract_id, tournament_id, horse_tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, advance_paid_amount, escrow_amount, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, payment_status, escrow_status, advance_payout_status, final_payout_status, status, requested_at)
-VALUES ('con-demo6-pending', '88888888-8888-8888-8888-888888888806', 'reg-demo6-horse01', 'reg-demo6-jock09', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999901', 'bbbbbbbb-3333-3333-3333-333333333309', 500000.00, 50.0, 50.0, 0.00, 0.00, 20000.00, 80.0, 20.0, 'UNPAID', 'NOT_HELD', 'NOT_PAID', 'NOT_RELEASED', 'PENDING_JOCKEY', NOW());
+-- --------------------------------------------------------------------------
+-- 4. 24 NGỰA, REGISTRATION, CONTRACT VÀ INVOICE ĐÃ THANH TOÁN
+-- --------------------------------------------------------------------------
 
+DROP PROCEDURE IF EXISTS SeedApprovedCompetitors;
+DELIMITER $$
+CREATE PROCEDURE SeedApprovedCompetitors(
+    IN p_tournament_id CHAR(36), IN p_owner_username VARCHAR(15),
+    IN p_horse_prefix VARCHAR(40), IN p_jockey_offset INT, IN p_quantity INT
+)
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    DECLARE v_horse_id CHAR(36);
+    DECLARE v_owner_id CHAR(36);
+    DECLARE v_owner_user_id CHAR(36);
+    DECLARE v_jockey_id CHAR(36);
+    DECLARE v_horse_reg_id CHAR(36);
+    DECLARE v_jockey_reg_id CHAR(36);
+    DECLARE v_contract_id CHAR(36);
+    DECLARE v_rating INT;
 
--- Kịch bản C: Giải đấu "DEMO 7 - Đang xếp lịch" (Phase: SCHEDULING)
--- Phục vụ test: Admin (admin1) mở bàn điều phối, phân công Entry, Làn và Nhân sự (Referee, Vet, Medical Staff)
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888807',
-    'DEMO 7 - Đang xếp lịch',
-    'Giải đấu đã kết thúc ghép kỵ sĩ, đang cấu hình lịch thi đấu.',
-    DATE_ADD(CURDATE(), INTERVAL 5 DAY),
-    DATE_ADD(CURDATE(), INTERVAL 10 DAY),
-    'Da Nang Turf Park',
-    1000000.00,
-    200000.00,
-    40000000.00,
-    'THOROUGHBRED',
-    3, 8,
-    DATE_SUB(NOW(), INTERVAL 8 DAY),
-    DATE_SUB(NOW(), INTERVAL 5 DAY),
-    DATE_SUB(NOW(), INTERVAL 4 DAY),
-    DATE_SUB(NOW(), INTERVAL 2 DAY),
-    DATE_ADD(NOW(), INTERVAL 1 DAY), -- deadline còn 1 ngày
-    DATE_ADD(NOW(), INTERVAL 2 DAY),
-    'ONGOING',
-    'SCHEDULING',
-    '11111111-1111-1111-1111-111111111111',
-    16, 16, 16,
-    'MILE_1600M'
+    SELECT ho.owner_id, u.user_id
+    INTO v_owner_id, v_owner_user_id
+    FROM horse_owners ho
+    JOIN users u ON u.user_id = ho.user_id
+    WHERE u.username = p_owner_username;
+
+    WHILE i <= p_quantity DO
+        SET v_horse_id = UUID();
+        SET v_horse_reg_id = UUID();
+        SET v_jockey_reg_id = UUID();
+        SET v_contract_id = UUID();
+        -- CLASS_4 theo policy hiện tại chỉ nhận rating 40..59.
+        SET v_rating = 48 + MOD(i * 3 + p_jockey_offset, 12);
+
+        SELECT j.jockey_id INTO v_jockey_id
+        FROM jockeys j
+        JOIN users u ON u.user_id = j.user_id
+        WHERE u.username = CONCAT('jockey', p_jockey_offset + i - 1);
+
+        INSERT INTO horses
+            (horse_id, name, breed, gender, age, weight, color, image_url,
+             health_status, current_rating, race_class, highest_rating,
+             rating_updated_at, total_races, total_wins, total_places,
+             win_rate, last_race_at, created_at, owner_id)
+        VALUES
+            (v_horse_id, CONCAT(p_horse_prefix, LPAD(i, 2, '0')),
+             'THOROUGHBRED', IF(MOD(i, 2) = 0, 'FEMALE', 'MALE'),
+             4 + MOD(i, 3), 430 + MOD(i * 7, 35),
+             CASE MOD(i, 4)
+                 WHEN 0 THEN 'Bay'
+                 WHEN 1 THEN 'Black'
+                 WHEN 2 THEN 'Chestnut'
+                 ELSE 'Gray'
+             END,
+             NULL, 'HEALTHY', v_rating, 'CLASS_4', v_rating + 3,
+             NOW(), 5 + i, MOD(i, 4), MOD(i, 6), 0.0, NULL,
+             @account_created_at, v_owner_id);
+
+        INSERT INTO horse_tournament_registrations
+            (horse_tournament_reg_id, tournament_id, horse_id, owner_id,
+             status, submitted_at, reviewed_by, reviewed_at,
+             rating_at_registration, race_class_at_registration, note)
+        VALUES
+            (v_horse_reg_id, p_tournament_id, v_horse_id, v_owner_id,
+             'APPROVED', DATE_SUB(NOW(), INTERVAL 33 DAY), @admin_user_id,
+             DATE_SUB(NOW(), INTERVAL 28 DAY), v_rating, 'CLASS_4',
+             'Dữ liệu demo đã duyệt');
+
+        INSERT INTO jockey_tournament_registrations
+            (jockey_tournament_reg_id, tournament_id, jockey_id, status,
+             submitted_at, reviewed_by, reviewed_at, hire_fee, note)
+        VALUES
+            (v_jockey_reg_id, p_tournament_id, v_jockey_id, 'APPROVED',
+             DATE_SUB(NOW(), INTERVAL 33 DAY), NULL, NULL, 2000000.00,
+             'Đăng ký kỵ sĩ tự động APPROVED');
+
+        INSERT INTO jockey_horse_contracts
+            (contract_id, tournament_id, horse_tournament_reg_id,
+             jockey_tournament_reg_id, owner_id, horse_id, jockey_id,
+             hire_fee, advance_percent, final_percent,
+             advance_paid_amount, escrow_amount, system_contract_fee,
+             owner_prize_share_percent, jockey_prize_share_percent,
+             payment_status, escrow_status, advance_payout_status,
+             final_payout_status, status, advance_payout_at,
+             requested_at, responded_at, accepted_at, contract_note)
+        VALUES
+            (v_contract_id, p_tournament_id, v_horse_reg_id, v_jockey_reg_id,
+             v_owner_id, v_horse_id, v_jockey_id,
+             2000000.00, 30.0, 70.0,
+             600000.00, 1400000.00, 100000.00,
+             80.0, 20.0,
+             'PAID', 'PARTIALLY_RELEASED', 'PAID',
+             'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 23 DAY),
+             DATE_SUB(NOW(), INTERVAL 25 DAY), DATE_SUB(NOW(), INTERVAL 24 DAY),
+             DATE_SUB(NOW(), INTERVAL 24 DAY),
+             'Hợp đồng hợp lệ để test prize và final payout');
+
+        INSERT INTO invoices
+            (invoice_id, payer_user_id, contract_id, invoice_type, amount,
+             status, due_date, paid_at, created_at, note)
+        VALUES
+            (UUID(), v_owner_user_id, v_contract_id, 'JOCKEY_HIRING_FEE',
+             2000000.00, 'PAID', DATE_SUB(NOW(), INTERVAL 23 DAY),
+             DATE_SUB(NOW(), INTERVAL 24 DAY), DATE_SUB(NOW(), INTERVAL 25 DAY),
+             'Đã thanh toán phí thuê kỵ sĩ'),
+            (UUID(), v_owner_user_id, v_contract_id, 'CONTRACT_CREATION_FEE',
+             100000.00, 'PAID', DATE_SUB(NOW(), INTERVAL 22 DAY),
+             DATE_SUB(NOW(), INTERVAL 23 DAY), DATE_SUB(NOW(), INTERVAL 24 DAY),
+             'Đã thanh toán phí lập hợp đồng');
+
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL SeedApprovedCompetitors(
+    @full_tournament_id, 'owner1', 'FullHorse', 1, 8
+);
+CALL SeedApprovedCompetitors(
+    @bracket_tournament_id, 'owner2', 'BracketHorse', 9, 16
 );
 
--- Khai báo vòng đấu (Rounds) dạng SCHEDULING cho giải DEMO 7
-INSERT INTO rounds (round_id, round_name, sequence_order, is_final, prediction_type, advancement_rule, start_date, end_date, description, max_races, max_entries, min_entries, status, head_referee_id, head_referee_assigned_at, expected_entries, planned_race_count, qualifiers_per_race, bracket_plan_version, transition_status, created_at, tournament_id, created_by)
-VALUES (
-    'round-demo7-01',
-    'Vòng 1 - Lập lịch',
-    1, 1, 'TOP3', 'Chung kết tranh cup',
-    DATE_ADD(NOW(), INTERVAL 2 DAY),
-    DATE_ADD(NOW(), INTERVAL 3 DAY),
-    'Vòng đấu lập lịch thi đấu mẫu.',
-    1, 4, 4,
-    'SCHEDULING',
-    'dddddddd-5555-5555-5555-555555555501',
-    NOW(),
-    4, 1, 0, 1,
-    'NOT_READY',
-    NOW(),
-    '88888888-8888-8888-8888-888888888807',
-    '11111111-1111-1111-1111-111111111111'
+DROP PROCEDURE SeedApprovedCompetitors;
+
+-- --------------------------------------------------------------------------
+-- 5. ROUND, RACE, ENTRY VÀ PHÂN CÔNG NHÂN SỰ
+-- --------------------------------------------------------------------------
+
+-- FULL 8:
+--   Race start S+185 phút.
+--   Prediction open S-1 phút, close S+180 phút (đúng T-5).
+--   Inspection open T-185 = S, close T-6 = S+179 phút.
+--   Start earliest T-185 = S, latest T = S+185 phút.
+--   Race operational duration = 180 phút.
+SET @full_race_start = DATE_ADD(@seed_now, INTERVAL 185 MINUTE);
+SET @full_race_end = DATE_ADD(@full_race_start, INTERVAL 180 MINUTE);
+SET @full_prediction_open = DATE_SUB(@seed_now, INTERVAL 1 MINUTE);
+SET @full_prediction_close = DATE_ADD(@seed_now, INTERVAL 180 MINUTE);
+
+-- BRACKET 16: hai race vòng 1 đã kết thúc hôm qua; Final cách 7 ngày lịch.
+SET @bracket_race1_start = TIMESTAMP(DATE_SUB(CURDATE(), INTERVAL 1 DAY), '09:00:00');
+SET @bracket_race1_end = DATE_ADD(@bracket_race1_start, INTERVAL 180 MINUTE);
+SET @bracket_race2_start = DATE_ADD(@bracket_race1_end, INTERVAL 35 MINUTE);
+SET @bracket_race2_end = DATE_ADD(@bracket_race2_start, INTERVAL 180 MINUTE);
+SET @bracket_final_start = TIMESTAMP(
+    DATE_ADD(DATE(@bracket_race2_end), INTERVAL 7 DAY), '09:00:00'
+);
+SET @bracket_final_end = DATE_ADD(@bracket_final_start, INTERVAL 180 MINUTE);
+
+DROP PROCEDURE IF EXISTS SeedRound;
+DELIMITER $$
+CREATE PROCEDURE SeedRound(
+    IN p_round_id CHAR(36), IN p_tournament_id CHAR(36),
+    IN p_name VARCHAR(100), IN p_sequence INT, IN p_is_final BOOLEAN,
+    IN p_status VARCHAR(30), IN p_start DATETIME, IN p_end DATETIME,
+    IN p_race_count INT, IN p_expected_entries INT,
+    IN p_head_referee_username VARCHAR(15), IN p_transition VARCHAR(50)
+)
+BEGIN
+    DECLARE v_head_referee_id CHAR(36);
+    SELECT r.referee_id INTO v_head_referee_id
+    FROM referees r
+    JOIN users u ON u.user_id = r.user_id
+    WHERE u.username = p_head_referee_username;
+
+    INSERT INTO rounds
+        (round_id, round_name, sequence_order, is_final, prediction_type,
+         advancement_rule, start_date, end_date, description,
+         max_races, max_entries, min_entries, status,
+         head_referee_id, head_referee_assigned_at,
+         expected_entries, planned_race_count, qualifiers_per_race,
+         bracket_plan_version, advanced_at, transition_status,
+         created_at, tournament_id, created_by)
+    VALUES
+        (p_round_id, p_name, p_sequence, p_is_final, 'TOP3',
+         IF(p_is_final,
+            'Xác định Top 3 chung cuộc nhận giải',
+            'Top 4 FINISHED của mỗi Race đi tiếp'),
+         p_start, p_end, CONCAT('Round demo: ', p_name),
+         p_race_count, 16, 8, p_status,
+         v_head_referee_id, DATE_SUB(NOW(), INTERVAL 3 DAY),
+         p_expected_entries, p_race_count, IF(p_is_final, 0, 4),
+         1, NULL, p_transition,
+         DATE_SUB(NOW(), INTERVAL 10 DAY), p_tournament_id, @admin_user_id);
+END$$
+DELIMITER ;
+
+CALL SeedRound(
+    @full_round_id, @full_tournament_id, 'Chung kết', 1, 1,
+    'SCHEDULED', @full_race_start, @full_race_end,
+    1, 8, 'referee1', 'NOT_READY'
+);
+CALL SeedRound(
+    @bracket_round1_id, @bracket_tournament_id, 'Vòng 1', 1, 0,
+    'ONGOING', @bracket_race1_start, @bracket_race2_end,
+    2, 16, 'referee3', 'NOT_READY'
+);
+CALL SeedRound(
+    @bracket_final_round_id, @bracket_tournament_id, 'Vòng 2 (Chung kết)', 2, 1,
+    'SCHEDULING', @bracket_final_start, @bracket_final_end,
+    1, 8, 'referee6', 'NOT_READY'
 );
 
--- Trận đấu dạng SCHEDULING
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, round_id, created_by)
-VALUES (
-    'race-demo7-01',
-    'DEMO 7 - Trận đấu kiểm thử lập lịch',
-    NULL, NULL, 'TBD', 'MILE_1600M', 1, 'SCHEDULING',
-    'round-demo7-01', '11111111-1111-1111-1111-111111111111'
+DROP PROCEDURE IF EXISTS SeedRace;
+DELIMITER $$
+CREATE PROCEDURE SeedRace(
+    IN p_race_id CHAR(36), IN p_round_id CHAR(36), IN p_name VARCHAR(150),
+    IN p_sequence INT, IN p_status VARCHAR(30),
+    IN p_start DATETIME, IN p_end DATETIME,
+    IN p_schedule_published BOOLEAN,
+    IN p_prediction_open DATETIME, IN p_prediction_close DATETIME,
+    IN p_started_at DATETIME, IN p_finished_at DATETIME,
+    IN p_inspection_finalized BOOLEAN
+)
+BEGIN
+    INSERT INTO races
+        (race_id, name, start_time, end_time, track_condition, distance,
+         sequence_order, status, started_at, finished_at,
+         schedule_published_at, prediction_open_at, prediction_close_at,
+         ai_prediction_publication_status, ai_prediction_generated_at,
+         ai_prediction_generated_by, ai_prediction_published_at,
+         ai_prediction_published_by, round_id, created_by, started_by,
+         inspection_finalized_at, cancelled_at, cancellation_reason,
+         rescheduled_at, reschedule_reason)
+    VALUES
+        (p_race_id, p_name, p_start, p_end, 'TURF', 'MILE_1600M',
+         p_sequence, p_status, p_started_at, p_finished_at,
+         IF(p_schedule_published,
+            DATE_SUB(p_prediction_open, INTERVAL 1 MINUTE), NULL),
+         p_prediction_open, p_prediction_close,
+         NULL, NULL, NULL, NULL, NULL,
+         p_round_id, @admin_user_id, NULL,
+         IF(p_inspection_finalized,
+            DATE_SUB(p_start, INTERVAL 6 MINUTE), NULL),
+         NULL, NULL, NULL, NULL);
+END$$
+DELIMITER ;
+
+CALL SeedRace(
+    @full_race_id, @full_round_id, 'DEMO FULL 8 - Final Race', 1,
+    'SCHEDULED', @full_race_start, @full_race_end, 1,
+    @full_prediction_open, @full_prediction_close,
+    NULL, NULL, 0
 );
 
--- Tạo 4 hợp đồng (APPROVED) để sẵn sàng phân entry cho giải DEMO 7
-INSERT INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, submitted_at, rating_at_registration, race_class_at_registration)
-VALUES
-    ('reg-demo7-horse01', '88888888-8888-8888-8888-888888888807', '99999999-9999-9999-9999-999999999901', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 45, 'CLASS_4'),
-    ('reg-demo7-horse02', '88888888-8888-8888-8888-888888888807', '99999999-9999-9999-9999-999999999902', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 55, 'CLASS_4'),
-    ('reg-demo7-horse03', '88888888-8888-8888-8888-888888888807', '99999999-9999-9999-9999-999999999903', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 35, 'CLASS_5'),
-    ('reg-demo7-horse04', '88888888-8888-8888-8888-888888888807', '99999999-9999-9999-9999-999999999904', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 62, 'CLASS_3');
-
-INSERT INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, submitted_at, hire_fee)
-VALUES
-    ('reg-demo7-jock01', '88888888-8888-8888-8888-888888888807', 'bbbbbbbb-3333-3333-3333-333333333301', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 500000.00),
-    ('reg-demo7-jock02', '88888888-8888-8888-8888-888888888807', 'bbbbbbbb-3333-3333-3333-333333333302', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 400000.00),
-    ('reg-demo7-jock03', '88888888-8888-8888-8888-888888888807', 'bbbbbbbb-3333-3333-3333-333333333303', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 700000.00),
-    ('reg-demo7-jock04', '88888888-8888-8888-8888-888888888807', 'bbbbbbbb-3333-3333-3333-333333333304', 'APPROVED', DATE_SUB(NOW(), INTERVAL 4 DAY), 300000.00);
-
-INSERT INTO jockey_horse_contracts (contract_id, tournament_id, horse_tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, advance_paid_amount, escrow_amount, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, payment_status, escrow_status, advance_payout_status, final_payout_status, status, requested_at, accepted_at)
-VALUES
-    ('con-demo7-01', '88888888-8888-8888-8888-888888888807', 'reg-demo7-horse01', 'reg-demo7-jock01', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999901', 'bbbbbbbb-3333-3333-3333-333333333301', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('con-demo7-02', '88888888-8888-8888-8888-888888888807', 'reg-demo7-horse02', 'reg-demo7-jock02', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999902', 'bbbbbbbb-3333-3333-3333-333333333302', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('con-demo7-03', '88888888-8888-8888-8888-888888888807', 'reg-demo7-horse03', 'reg-demo7-jock03', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999903', 'bbbbbbbb-3333-3333-3333-333333333303', 700000.00, 50.0, 50.0, 350000.00, 350000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('con-demo7-04', '88888888-8888-8888-8888-888888888807', 'reg-demo7-horse04', 'reg-demo7-jock04', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999904', 'bbbbbbbb-3333-3333-3333-333333333304', 300000.00, 50.0, 50.0, 150000.00, 150000.00, 20000.00, 90.0, 10.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
-
-
--- Kịch bản D: Giải đấu "Summer Grand Championship" (Phase: RACING, Status: ONGOING)
--- Phục vụ các luồng chính: Khám sức khỏe (Inspection), Đặt cược (Prediction), Trọng tài nộp kết quả (Race 3)
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888808',
-    'Summer Grand Championship',
-    'The premium racing championship of the summer. Top rated horses competing for prestige.',
-    DATE_SUB(CURDATE(), INTERVAL 2 DAY),
-    DATE_ADD(CURDATE(), INTERVAL 2 DAY),
-    'Saigon Turf Racing Arena',
-    1000000.00,
-    200000.00,
-    50000000.00,
-    'THOROUGHBRED',
-    4, 10,
-    DATE_SUB(NOW(), INTERVAL 10 DAY),
-    DATE_SUB(NOW(), INTERVAL 7 DAY),
-    DATE_SUB(NOW(), INTERVAL 6 DAY),
-    DATE_SUB(NOW(), INTERVAL 5 DAY),
-    DATE_SUB(NOW(), INTERVAL 4 DAY),
-    DATE_SUB(NOW(), INTERVAL 3 DAY),
-    'ONGOING',
-    'RACING',
-    '11111111-1111-1111-1111-111111111111',
-    16, 16, 16,
-    'MILE_1600M'
+CALL SeedRace(
+    @bracket_race1_id, @bracket_round1_id, 'DEMO BRACKET 16 - Vòng 1 - Race 1', 1,
+    'COMPLETED', @bracket_race1_start, @bracket_race1_end, 1,
+    DATE_SUB(@bracket_race1_start, INTERVAL 24 HOUR),
+    DATE_SUB(@bracket_race1_start, INTERVAL 5 MINUTE),
+    @bracket_race1_start, DATE_ADD(@bracket_race1_start, INTERVAL 8 MINUTE), 1
+);
+CALL SeedRace(
+    @bracket_race2_id, @bracket_round1_id, 'DEMO BRACKET 16 - Vòng 1 - Race 2', 2,
+    'FINISHED', @bracket_race2_start, @bracket_race2_end, 1,
+    DATE_SUB(@bracket_race1_start, INTERVAL 24 HOUR),
+    DATE_SUB(@bracket_race2_start, INTERVAL 5 MINUTE),
+    @bracket_race2_start, DATE_ADD(@bracket_race2_start, INTERVAL 8 MINUTE), 1
+);
+CALL SeedRace(
+    @bracket_final_race_id, @bracket_final_round_id,
+    'DEMO BRACKET 16 - Vòng 2 - Final Race', 1,
+    'SCHEDULING', @bracket_final_start, @bracket_final_end, 0,
+    NULL, NULL, NULL, NULL, 0
 );
 
--- Cấu hình giải thưởng
-INSERT INTO prize_structures (prize_structure_id, `prize_rank`, percentage, fixed_amount, is_active, tournament_id)
-VALUES
-    ('p-demo8-01', 1, 60.0, 30000000.00, 1, '88888888-8888-8888-8888-888888888808'),
-    ('p-demo8-02', 2, 25.0, 12500000.00, 1, '88888888-8888-8888-8888-888888888808'),
-    ('p-demo8-03', 3, 15.0, 7500000.00, 1, '88888888-8888-8888-8888-888888888808');
+DROP PROCEDURE IF EXISTS SeedRaceEntries;
+DELIMITER $$
+CREATE PROCEDURE SeedRaceEntries(
+    IN p_race_id CHAR(36), IN p_tournament_id CHAR(36),
+    IN p_horse_prefix VARCHAR(40), IN p_first_number INT, IN p_quantity INT
+)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    DECLARE v_contract_id CHAR(36);
+    DECLARE v_race_start DATETIME;
 
--- Đăng ký hồ sơ APPROVED
-INSERT INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, submitted_at, rating_at_registration, race_class_at_registration)
-VALUES
-    ('reg-demo8-horse01', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999901', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 45, 'CLASS_4'),
-    ('reg-demo8-horse02', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999902', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 55, 'CLASS_4'),
-    ('reg-demo8-horse03', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999903', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 35, 'CLASS_5'),
-    ('reg-demo8-horse04', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999904', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 62, 'CLASS_3'),
-    ('reg-demo8-horse05', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999905', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 42, 'CLASS_4'),
-    ('reg-demo8-horse06', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999906', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 48, 'CLASS_4'),
-    ('reg-demo8-horse07', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999907', 'aaaaaaaa-1111-1111-1111-111111111103', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 52, 'CLASS_4'),
-    ('reg-demo8-horse08', '88888888-8888-8888-8888-888888888808', '99999999-9999-9999-9999-999999999908', 'aaaaaaaa-1111-1111-1111-111111111103', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 50, 'CLASS_4');
+    SELECT start_time INTO v_race_start
+    FROM races
+    WHERE race_id = p_race_id;
 
--- Đăng ký Nài
-INSERT INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, submitted_at, hire_fee)
-VALUES
-    ('reg-demo8-jock01', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333301', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 500000.00),
-    ('reg-demo8-jock02', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333302', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 400000.00),
-    ('reg-demo8-jock03', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333303', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 700000.00),
-    ('reg-demo8-jock04', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333304', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 300000.00),
-    ('reg-demo8-jock05', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333305', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 500000.00),
-    ('reg-demo8-jock06', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333306', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 400000.00),
-    ('reg-demo8-jock07', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333307', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 600000.00),
-    ('reg-demo8-jock08', '88888888-8888-8888-8888-888888888808', 'bbbbbbbb-3333-3333-3333-333333333308', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 450000.00);
+    WHILE i < p_quantity DO
+        SELECT c.contract_id INTO v_contract_id
+        FROM jockey_horse_contracts c
+        JOIN horses h ON h.horse_id = c.horse_id
+        WHERE c.tournament_id = p_tournament_id
+          AND h.name = CONCAT(p_horse_prefix, LPAD(p_first_number + i, 2, '0'))
+          AND c.status = 'APPROVED';
 
--- Hợp đồng đã ký
-INSERT INTO jockey_horse_contracts (contract_id, tournament_id, horse_tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, advance_paid_amount, escrow_amount, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, payment_status, escrow_status, advance_payout_status, final_payout_status, status, requested_at, accepted_at)
-VALUES
-    ('con-demo8-01', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse01', 'reg-demo8-jock01', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999901', 'bbbbbbbb-3333-3333-3333-333333333301', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-02', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse02', 'reg-demo8-jock02', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999902', 'bbbbbbbb-3333-3333-3333-333333333302', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-03', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse03', 'reg-demo8-jock03', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999903', 'bbbbbbbb-3333-3333-3333-333333333303', 700000.00, 50.0, 50.0, 350000.00, 350000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-04', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse04', 'reg-demo8-jock04', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999904', 'bbbbbbbb-3333-3333-3333-333333333304', 300000.00, 50.0, 50.0, 150000.00, 150000.00, 20000.00, 90.0, 10.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-05', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse05', 'reg-demo8-jock05', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999905', 'bbbbbbbb-3333-3333-3333-333333333305', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-06', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse06', 'reg-demo8-jock06', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999906', 'bbbbbbbb-3333-3333-3333-333333333306', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-07', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse07', 'reg-demo8-jock07', 'aaaaaaaa-1111-1111-1111-111111111103', '99999999-9999-9999-9999-999999999907', 'bbbbbbbb-3333-3333-3333-333333333307', 600000.00, 50.0, 50.0, 300000.00, 300000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo8-08', '88888888-8888-8888-8888-888888888808', 'reg-demo8-horse08', 'reg-demo8-jock08', 'aaaaaaaa-1111-1111-1111-111111111103', '99999999-9999-9999-9999-999999999908', 'bbbbbbbb-3333-3333-3333-333333333308', 450000.00, 50.0, 50.0, 225000.00, 225000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY));
+        INSERT INTO race_entries
+            (entry_id, race_id, contract_id, lane_number, status,
+             assigned_by, assigned_at, created_at)
+        VALUES
+            (UUID(), p_race_id, v_contract_id, i + 1, 'CONFIRMED',
+             @admin_user_id,
+             DATE_SUB(v_race_start, INTERVAL 2 DAY),
+             DATE_SUB(v_race_start, INTERVAL 2 DAY));
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
 
--- Khai báo vòng đấu giải Championship
-INSERT INTO rounds (round_id, round_name, sequence_order, is_final, prediction_type, advancement_rule, start_date, end_date, description, max_races, max_entries, min_entries, status, head_referee_id, head_referee_assigned_at, expected_entries, planned_race_count, qualifiers_per_race, bracket_plan_version, transition_status, created_at, tournament_id, created_by)
-VALUES 
-    ('round-demo8-01', 'Round 1 - Semifinals', 1, 0, 'TOP1', 'Top 4 horses from each Semifinal advance to Finals', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'Bán kết', 2, 4, 4, 'COMPLETED', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 4 DAY), 8, 2, 4, 1, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 4 DAY), '88888888-8888-8888-8888-888888888808', '11111111-1111-1111-1111-111111111111'),
-    ('round-demo8-02', 'Round 2 - Finals', 2, 1, 'TOP3', 'Final championship race', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), 'Chung kết', 1, 8, 8, 'SCHEDULED', 'dddddddd-5555-5555-5555-555555555502', DATE_SUB(NOW(), INTERVAL 2 DAY), 8, 1, 0, 1, 'READY', DATE_SUB(NOW(), INTERVAL 2 DAY), '88888888-8888-8888-8888-888888888808', '11111111-1111-1111-1111-111111111111');
-
--- Trận Bán Kết A & B (Đã xong, có báo cáo Published để chuyển tiếp sang chung kết)
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, started_at, finished_at, schedule_published_at, prediction_open_at, prediction_close_at, round_id, created_by, started_by)
-VALUES 
-    ('race-demo8-01', 'DEMO 8 - Semifinal A', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 30 MINUTE, 'Good', 'MILE_1600M', 1, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 2 MINUTE, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 2 HOUR, DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 5 MINUTE, 'round-demo8-01', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111'),
-    ('race-demo8-02', 'DEMO 8 - Semifinal B', DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 1 HOUR, DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 1 HOUR + INTERVAL 30 MINUTE, 'Good', 'MILE_1600M', 2, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 1 HOUR, DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 1 HOUR + INTERVAL 2 MINUTE, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 55 MINUTE, 'round-demo8-01', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111');
-
--- Trận Chung Kết (Sắp diễn ra - để test cược & khám bệnh)
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, schedule_published_at, prediction_open_at, prediction_close_at, round_id, created_by)
-VALUES (
-    'race-demo8-03', 'DEMO Upcoming Race', DATE_ADD(NOW(), INTERVAL 3 HOUR), DATE_ADD(NOW(), INTERVAL 3 HOUR) + INTERVAL 30 MINUTE, 'Fast', 'MILE_1600M', 1, 'SCHEDULED', DATE_SUB(NOW(), INTERVAL 1 DAY),
-    DATE_SUB(NOW(), INTERVAL 1 HOUR), DATE_ADD(NOW(), INTERVAL 2 HOUR) + INTERVAL 55 MINUTE, 'round-demo8-02', '11111111-1111-1111-1111-111111111111'
+CALL SeedRaceEntries(
+    @full_race_id, @full_tournament_id, 'FullHorse', 1, 8
+);
+CALL SeedRaceEntries(
+    @bracket_race1_id, @bracket_tournament_id, 'BracketHorse', 1, 8
+);
+CALL SeedRaceEntries(
+    @bracket_race2_id, @bracket_tournament_id, 'BracketHorse', 9, 8
 );
 
--- Xếp làn Bán kết A (Làn 1-4)
-INSERT INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at, created_at)
-VALUES
-    ('ent-demo8-01', 'race-demo8-01', 'con-demo8-01', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-02', 'race-demo8-01', 'con-demo8-02', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-03', 'race-demo8-01', 'con-demo8-03', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-04', 'race-demo8-01', 'con-demo8-04', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
+DROP PROCEDURE IF EXISTS SeedRaceAssignment;
+DELIMITER $$
+CREATE PROCEDURE SeedRaceAssignment(
+    IN p_race_id CHAR(36), IN p_referee_username VARCHAR(15),
+    IN p_vet_username VARCHAR(15), IN p_medical_username VARCHAR(15),
+    IN p_mark_staff_assigned BOOLEAN
+)
+BEGIN
+    DECLARE v_referee_id CHAR(36);
+    DECLARE v_referee_user_id CHAR(36);
+    DECLARE v_vet_id CHAR(36);
+    DECLARE v_medical_id CHAR(36);
+    DECLARE v_race_start DATETIME;
 
--- Xếp làn Bán kết B (Làn 1-4)
-INSERT INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at, created_at)
-VALUES
-    ('ent-demo8-05', 'race-demo8-02', 'con-demo8-05', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-06', 'race-demo8-02', 'con-demo8-06', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-07', 'race-demo8-02', 'con-demo8-07', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
-    ('ent-demo8-08', 'race-demo8-02', 'con-demo8-08', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY));
+    SELECT start_time INTO v_race_start
+    FROM races
+    WHERE race_id = p_race_id;
 
--- Xếp làn Chung kết (Làn 1-8) đại diện cho top 4 của bán kết A & B đã đi tiếp
-INSERT INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at, created_at)
-VALUES
-    ('ent-demo8-09', 'race-demo8-03', 'con-demo8-01', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-10', 'race-demo8-03', 'con-demo8-02', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-11', 'race-demo8-03', 'con-demo8-03', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-12', 'race-demo8-03', 'con-demo8-04', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-13', 'race-demo8-03', 'con-demo8-05', 5, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-14', 'race-demo8-03', 'con-demo8-06', 6, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-15', 'race-demo8-03', 'con-demo8-07', 7, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW()),
-    ('ent-demo8-16', 'race-demo8-03', 'con-demo8-08', 8, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), NOW());
+    SELECT r.referee_id, u.user_id
+    INTO v_referee_id, v_referee_user_id
+    FROM referees r
+    JOIN users u ON u.user_id = r.user_id
+    WHERE u.username = p_referee_username;
 
--- Khám y tế Vòng 1 (PASS toàn bộ)
-INSERT INTO horse_inspections (horse_inspection_id, entry_id, vet_id, result, note, inspected_at, handicap_weight, is_handicap_confirmed, status)
-VALUES
-    ('ins-demo8-h01', 'ent-demo8-01', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h02', 'ent-demo8-02', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h03', 'ent-demo8-03', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h04', 'ent-demo8-04', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h05', 'ent-demo8-05', 'eeeeeeee-6666-6666-6666-666666666602', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h06', 'ent-demo8-06', 'eeeeeeee-6666-6666-6666-666666666602', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h07', 'ent-demo8-07', 'eeeeeeee-6666-6666-6666-666666666602', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo8-h08', 'ent-demo8-08', 'eeeeeeee-6666-6666-6666-666666666602', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 3 DAY), 0.0, 0, 'CONFIRMED');
+    SELECT v.vet_id INTO v_vet_id
+    FROM veterinarians v
+    JOIN users u ON u.user_id = v.user_id
+    WHERE u.username = p_vet_username;
 
-INSERT INTO jockey_inspections (jockey_inspection_id, entry_id, med_staff_id, result, note, inspected_at, status)
-VALUES
-    ('ins-demo8-j01', 'ent-demo8-01', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo8-j02', 'ent-demo8-02', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo8-j03', 'ent-demo8-03', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo8-j04', 'ent-demo8-04', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo8-j05', 'ent-demo8-05', 'ffffffff-7777-7777-7777-777777777702', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY), 'CONFIRMED'),
-    ('ins-demo8-j06', 'ent-demo8-06', 'ffffffff-7777-7777-7777-777777777702', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY), 'CONFIRMED'),
-    ('ins-demo8-j07', 'ent-demo8-07', 'ffffffff-7777-7777-7777-777777777702', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY), 'CONFIRMED'),
-    ('ins-demo8-j08', 'ent-demo8-08', 'ffffffff-7777-7777-7777-777777777702', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 3 DAY), 'CONFIRMED');
+    SELECT m.med_staff_id INTO v_medical_id
+    FROM medical_staffs m
+    JOIN users u ON u.user_id = m.user_id
+    WHERE u.username = p_medical_username;
 
--- Khám y tế Chung kết (Để sẵn 1 bản nháp SUBMITTED cho Vet 1 & Medical 1 khám các làn còn lại)
-INSERT INTO horse_inspections (horse_inspection_id, entry_id, vet_id, result, note, inspected_at, handicap_weight, is_handicap_confirmed, status)
-VALUES ('ins-demo8-final-h01', 'ent-demo8-09', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Passed cardiac check.', NOW(), 0.0, 0, 'SUBMITTED');
+    INSERT INTO race_referees
+        (race_referee_id, race_id, referee_id, assigned_by, assigned_at)
+    VALUES
+        (UUID(), p_race_id, v_referee_id, @admin_user_id,
+         DATE_SUB(v_race_start, INTERVAL 2 DAY));
 
-INSERT INTO jockey_inspections (jockey_inspection_id, entry_id, med_staff_id, result, note, inspected_at, status)
-VALUES ('ins-demo8-final-j01', 'ent-demo8-09', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal blood pressure.', NOW(), 'SUBMITTED');
+    INSERT INTO race_inspection_staff_assignments
+        (assignment_id, race_id, vet_id, med_staff_id, assigned_by, assigned_at)
+    VALUES
+        (UUID(), p_race_id, v_vet_id, v_medical_id, @admin_user_id,
+         DATE_SUB(v_race_start, INTERVAL 2 DAY));
 
--- Lưu kết quả bán kết (Mỗi race chọn 4 làn thắng cuộc)
-INSERT INTO race_results (result_id, race_id, entry_id, finish_time, finish_position, prize_money, owner_prize_amount, jockey_prize_amount, prize_status, is_prize_paid, status, recorded_by, recorded_at, updated_at)
-VALUES
-    ('res-demo8-01', 'race-demo8-01', 'ent-demo8-01', 95.20, 1, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-02', 'race-demo8-01', 'ent-demo8-02', 96.50, 2, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-03', 'race-demo8-01', 'ent-demo8-03', 98.10, 3, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-04', 'race-demo8-01', 'ent-demo8-04', 101.40, 4, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-05', 'race-demo8-02', 'ent-demo8-05', 94.80, 1, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-06', 'race-demo8-02', 'ent-demo8-06', 95.90, 2, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-07', 'race-demo8-02', 'ent-demo8-07', 97.40, 3, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('res-demo8-08', 'race-demo8-02', 'ent-demo8-08', 99.80, 4, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
+    UPDATE races
+    SET started_by = v_referee_user_id
+    WHERE race_id = p_race_id AND started_at IS NOT NULL;
 
--- Công bố báo cáo để Vòng 1 hoàn tất chuyển tiếp sang Vòng 2
-INSERT INTO race_reports (report_id, race_id, referee_id, summary, status, signed_by, signed_at, published_by, published_at, created_at)
-VALUES
-    ('rep-demo8-01', 'race-demo8-01', 'dddddddd-5555-5555-5555-555555555501', 'Trận bán kết A kết thúc hợp lệ. Không có khiếu nại.', 'Published', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('rep-demo8-02', 'race-demo8-02', 'dddddddd-5555-5555-5555-555555555501', 'Trận bán kết B kết thúc hợp lệ. Không có khiếu nại.', 'Published', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 3 DAY), '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
+    IF p_mark_staff_assigned THEN
+        UPDATE veterinarians SET status = 'ASSIGNED' WHERE vet_id = v_vet_id;
+        UPDATE medical_staffs SET status = 'ASSIGNED' WHERE med_staff_id = v_medical_id;
+    END IF;
+END$$
+DELIMITER ;
 
--- Tạo sẵn dự đoán của khán giả spectator1 trên trận chung kết sắp diễn ra (Race 3)
-INSERT INTO predictions (prediction_id, spectator_id, race_id, prediction_type, prediction_time, status, reward_points)
-VALUES ('pred-demo8-01', 'cccccccc-1111-1111-1111-111111111101', 'race-demo8-03', 'TOP3', DATE_SUB(NOW(), INTERVAL 30 MINUTE), 'PENDING', 0);
+-- Head Referee FULL 8 là referee1, Race Referee là referee2.
+CALL SeedRaceAssignment(@full_race_id, 'referee2', 'vet1', 'medical1', 1);
+-- Head Referee vòng 1 bracket là referee3; mỗi race có đúng một Race Referee.
+CALL SeedRaceAssignment(@bracket_race1_id, 'referee4', 'vet2', 'medical2', 0);
+CALL SeedRaceAssignment(@bracket_race2_id, 'referee5', 'vet2', 'medical2', 0);
 
-INSERT INTO prediction_detail (prediction_detail_id, prediction_id, entry_id, predicted_rank, status, awarded_points)
-VALUES 
-    ('pred-dt-demo8-01', 'pred-demo8-01', 'ent-demo8-09', 1, 'UNSCORED', 0),
-    ('pred-dt-demo8-02', 'pred-demo8-01', 'ent-demo8-10', 2, 'UNSCORED', 0),
-    ('pred-dt-demo8-03', 'pred-demo8-01', 'ent-demo8-11', 3, 'UNSCORED', 0);
+DROP PROCEDURE IF EXISTS SeedConfirmedInspections;
+DELIMITER $$
+CREATE PROCEDURE SeedConfirmedInspections(IN p_race_id CHAR(36))
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE v_entry_id CHAR(36);
+    DECLARE v_vet_id CHAR(36);
+    DECLARE v_medical_id CHAR(36);
+    DECLARE v_race_start DATETIME;
+    DECLARE v_horse_weight FLOAT;
+    DECLARE v_horse_breed VARCHAR(50);
+    DECLARE v_jockey_weight FLOAT;
+    DECLARE entry_cursor CURSOR FOR
+        SELECT entry_id
+        FROM race_entries
+        WHERE race_id = p_race_id
+        ORDER BY lane_number;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
+    SELECT vet_id, med_staff_id
+    INTO v_vet_id, v_medical_id
+    FROM race_inspection_staff_assignments
+    WHERE race_id = p_race_id;
 
--- Kịch bản E: Giải đấu "DEMO 2 - Final chờ publish" (Phase: RESULT_PENDING)
--- Phục vụ test: Trọng tài (referee1) đã nhập kết quả trận chung kết và ĐÃ KÝ (Signed) báo cáo kết quả.
--- Admin (admin1) vào kiểm tra thay đổi Rating và bấm công bố (Publish) báo cáo để:
--- Hệ thống tự chia giải thưởng (Prize money) chuyển ví, trả nốt 70% lương nài, và chấm điểm dự đoán.
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888802',
-    'DEMO 2 - Final chờ publish',
-    'Giải đấu mẫu đã kết thúc đua chung kết, báo cáo kết quả ở dạng Signed chờ Admin duyệt và công bố.',
-    DATE_SUB(CURDATE(), INTERVAL 4 DAY),
-    DATE_SUB(CURDATE(), INTERVAL 1 DAY),
-    'Saigon Turf Racing Arena',
-    1000000.00,
-    200000.00,
-    50000000.00,
-    'THOROUGHBRED',
-    4, 10,
-    DATE_SUB(NOW(), INTERVAL 15 DAY),
-    DATE_SUB(NOW(), INTERVAL 12 DAY),
-    DATE_SUB(NOW(), INTERVAL 11 DAY),
-    DATE_SUB(NOW(), INTERVAL 10 DAY),
-    DATE_SUB(NOW(), INTERVAL 9 DAY),
-    DATE_SUB(NOW(), INTERVAL 8 DAY),
-    'ONGOING',
-    'RACING',
-    '11111111-1111-1111-1111-111111111111',
-    16, 16, 16,
-    'MILE_1600M'
-);
+    SELECT start_time INTO v_race_start
+    FROM races WHERE race_id = p_race_id;
 
--- Cấu hình giải thưởng giải DEMO 2
-INSERT INTO prize_structures (prize_structure_id, `prize_rank`, percentage, fixed_amount, is_active, tournament_id)
-VALUES
-    ('p-demo2-01', 1, 60.0, 30000000.00, 1, '88888888-8888-8888-8888-888888888802'),
-    ('p-demo2-02', 2, 25.0, 12500000.00, 1, '88888888-8888-8888-8888-888888888802'),
-    ('p-demo2-03', 3, 15.0, 7500000.00, 1, '88888888-8888-8888-8888-888888888802');
+    OPEN entry_cursor;
+    inspection_loop: LOOP
+        FETCH entry_cursor INTO v_entry_id;
+        IF done = 1 THEN
+            LEAVE inspection_loop;
+        END IF;
 
--- Đăng ký hồ sơ APPROVED
-INSERT INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, submitted_at, rating_at_registration, race_class_at_registration)
-VALUES
-    ('reg-demo2-horse01', '88888888-8888-8888-8888-888888888802', '99999999-9999-9999-9999-999999999901', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 45, 'CLASS_4'),
-    ('reg-demo2-horse02', '88888888-8888-8888-8888-888888888802', '99999999-9999-9999-9999-999999999902', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 55, 'CLASS_4'),
-    ('reg-demo2-horse03', '88888888-8888-8888-8888-888888888802', '99999999-9999-9999-9999-999999999903', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 35, 'CLASS_5'),
-    ('reg-demo2-horse04', '88888888-8888-8888-8888-888888888802', '99999999-9999-9999-9999-999999999904', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 62, 'CLASS_3');
+        SELECT h.weight, h.breed, j.weight
+        INTO v_horse_weight, v_horse_breed, v_jockey_weight
+        FROM race_entries re
+        JOIN jockey_horse_contracts c ON c.contract_id = re.contract_id
+        JOIN horses h ON h.horse_id = c.horse_id
+        JOIN jockeys j ON j.jockey_id = c.jockey_id
+        WHERE re.entry_id = v_entry_id;
 
--- Đăng ký Nài
-INSERT INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, submitted_at, hire_fee)
-VALUES
-    ('reg-demo2-jock01', '88888888-8888-8888-8888-888888888802', 'bbbbbbbb-3333-3333-3333-333333333301', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 500000.00),
-    ('reg-demo2-jock02', '88888888-8888-8888-8888-888888888802', 'bbbbbbbb-3333-3333-3333-333333333302', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 400000.00),
-    ('reg-demo2-jock03', '88888888-8888-8888-8888-888888888802', 'bbbbbbbb-3333-3333-3333-333333333303', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 700000.00),
-    ('reg-demo2-jock04', '88888888-8888-8888-8888-888888888802', 'bbbbbbbb-3333-3333-3333-333333333304', 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), 300000.00);
+        INSERT INTO horse_inspections
+            (horse_inspection_id, entry_id, vet_id, result, note,
+             inspected_at, handicap_weight, registered_weight,
+             registered_breed, actual_weight, actual_breed,
+             doping_detected, is_handicap_confirmed, confirmed_at, status)
+        VALUES
+            (UUID(), v_entry_id, v_vet_id, 'PASS', 'Lịch sử: đủ điều kiện',
+             DATE_SUB(v_race_start, INTERVAL 60 MINUTE), 0.0,
+             v_horse_weight, v_horse_breed, v_horse_weight, v_horse_breed,
+             0, 1, DATE_SUB(v_race_start, INTERVAL 55 MINUTE), 'CONFIRMED');
 
--- Hợp đồng giải DEMO 2
-INSERT INTO jockey_horse_contracts (contract_id, tournament_id, horse_tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, advance_paid_amount, escrow_amount, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, payment_status, escrow_status, advance_payout_status, final_payout_status, status, requested_at, accepted_at)
-VALUES
-    ('con-demo2-01', '88888888-8888-8888-8888-888888888802', 'reg-demo2-horse01', 'reg-demo2-jock01', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999901', 'bbbbbbbb-3333-3333-3333-333333333301', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY)),
-    ('con-demo2-02', '88888888-8888-8888-8888-888888888802', 'reg-demo2-horse02', 'reg-demo2-jock02', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999902', 'bbbbbbbb-3333-3333-3333-333333333302', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY)),
-    ('con-demo2-03', '88888888-8888-8888-8888-888888888802', 'reg-demo2-horse03', 'reg-demo2-jock03', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999903', 'bbbbbbbb-3333-3333-3333-333333333303', 700000.00, 50.0, 50.0, 350000.00, 350000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY)),
-    ('con-demo2-04', '88888888-8888-8888-8888-888888888802', 'reg-demo2-horse04', 'reg-demo2-jock04', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999904', 'bbbbbbbb-3333-3333-3333-333333333304', 300000.00, 50.0, 50.0, 150000.00, 150000.00, 20000.00, 90.0, 10.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 13 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY));
+        INSERT INTO jockey_inspections
+            (jockey_inspection_id, entry_id, med_staff_id, result, note,
+             inspected_at, registered_weight, actual_weight,
+             doping_detected, status)
+        VALUES
+            (UUID(), v_entry_id, v_medical_id, 'PASS', 'Lịch sử: đủ điều kiện',
+             DATE_SUB(v_race_start, INTERVAL 60 MINUTE),
+             v_jockey_weight, v_jockey_weight, 0, 'CONFIRMED');
+    END LOOP;
+    CLOSE entry_cursor;
+END$$
+DELIMITER ;
 
--- Vòng đấu và Trận Chung kết
-INSERT INTO rounds (round_id, round_name, sequence_order, is_final, prediction_type, advancement_rule, start_date, end_date, description, max_races, max_entries, min_entries, status, head_referee_id, head_referee_assigned_at, expected_entries, planned_race_count, qualifiers_per_race, bracket_plan_version, transition_status, created_at, tournament_id, created_by)
-VALUES ('round-demo2-01', 'Chung kết', 1, 1, 'TOP3', 'Chung kết chung cuộc', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), 'Final', 1, 4, 4, 'FINISHED', 'dddddddd-5555-5555-5555-555555555501', NOW(), 4, 1, 0, 1, 'NOT_READY', NOW(), '88888888-8888-8888-8888-888888888802', '11111111-1111-1111-1111-111111111111');
+-- FULL 8 cố ý chưa có inspection để Vet/Medical thao tác thật trên FE.
+-- Hai race lịch sử của bracket đã PASS inspection để dữ liệu nhất quán.
+CALL SeedConfirmedInspections(@bracket_race1_id);
+CALL SeedConfirmedInspections(@bracket_race2_id);
 
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, started_at, finished_at, schedule_published_at, prediction_open_at, prediction_close_at, round_id, created_by, started_by)
-VALUES ('race-demo2-01', 'DEMO 2 - Final Race', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 30 MINUTE, 'Good', 'MILE_1600M', 1, 'FINISHED', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 2 MINUTE, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 2 HOUR, DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 5 MINUTE, 'round-demo2-01', '11111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111');
+DROP PROCEDURE SeedConfirmedInspections;
+DROP PROCEDURE SeedRaceAssignment;
+DROP PROCEDURE SeedRaceEntries;
+DROP PROCEDURE SeedRace;
+DROP PROCEDURE SeedRound;
 
--- Entry và Kiểm tra y tế
-INSERT INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at, created_at)
-VALUES
-    ('ent-demo2-01', 'race-demo2-01', 'con-demo2-01', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo2-02', 'race-demo2-01', 'con-demo2-02', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo2-03', 'race-demo2-01', 'con-demo2-03', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo2-04', 'race-demo2-01', 'con-demo2-04', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
+-- --------------------------------------------------------------------------
+-- 6. SNAPSHOT KẾT QUẢ BRACKET: RACE 1 PUBLISHED, RACE 2 SIGNED
+-- --------------------------------------------------------------------------
 
-INSERT INTO horse_inspections (horse_inspection_id, entry_id, vet_id, result, note, inspected_at, handicap_weight, is_handicap_confirmed, status)
-VALUES
-    ('ins-demo2-h01', 'ent-demo2-01', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo2-h02', 'ent-demo2-02', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo2-h03', 'ent-demo2-03', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo2-h04', 'ent-demo2-04', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED');
+DROP PROCEDURE IF EXISTS SeedBracketResultsAndReport;
+DELIMITER $$
+CREATE PROCEDURE SeedBracketResultsAndReport(
+    IN p_race_id CHAR(36), IN p_report_status VARCHAR(30)
+)
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE v_entry_id CHAR(36);
+    DECLARE v_lane INT;
+    DECLARE v_recorded_by_user CHAR(36);
+    DECLARE v_race_referee_id CHAR(36);
+    DECLARE v_head_referee_id CHAR(36);
+    DECLARE v_race_finished DATETIME;
+    DECLARE v_race_end DATETIME;
+    DECLARE entry_cursor CURSOR FOR
+        SELECT entry_id, lane_number
+        FROM race_entries
+        WHERE race_id = p_race_id
+        ORDER BY lane_number;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
 
-INSERT INTO jockey_inspections (jockey_inspection_id, entry_id, med_staff_id, result, note, inspected_at, status)
-VALUES
-    ('ins-demo2-j01', 'ent-demo2-01', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo2-j02', 'ent-demo2-02', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo2-j03', 'ent-demo2-03', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo2-j04', 'ent-demo2-04', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 'CONFIRMED');
+    SELECT rr.referee_id, u.user_id
+    INTO v_race_referee_id, v_recorded_by_user
+    FROM race_referees rr
+    JOIN referees r ON r.referee_id = rr.referee_id
+    JOIN users u ON u.user_id = r.user_id
+    WHERE rr.race_id = p_race_id
+    LIMIT 1;
 
--- Kết quả đua (1st: con1, 2nd: con2, 3rd: con3, 4th: con4)
-INSERT INTO race_results (result_id, race_id, entry_id, finish_time, finish_position, prize_money, owner_prize_amount, jockey_prize_amount, prize_status, is_prize_paid, status, recorded_by, recorded_at, updated_at)
-VALUES
-    ('res-demo2-01', 'race-demo2-01', 'ent-demo2-01', 95.20, 1, 30000000.00, 24000000.00, 6000000.00, 'PendingPayout', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
-    ('res-demo2-02', 'race-demo2-01', 'ent-demo2-02', 96.50, 2, 12500000.00, 10000000.00, 2500000.00, 'PendingPayout', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
-    ('res-demo2-03', 'race-demo2-01', 'ent-demo2-03', 98.10, 3, 7500000.00, 6375000.00, 1125000.00, 'PendingPayout', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
-    ('res-demo2-04', 'race-demo2-01', 'ent-demo2-04', 101.40, 4, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY));
+    SELECT ro.head_referee_id, ra.finished_at, ra.end_time
+    INTO v_head_referee_id, v_race_finished, v_race_end
+    FROM races ra
+    JOIN rounds ro ON ro.round_id = ra.round_id
+    WHERE ra.race_id = p_race_id;
 
--- Báo cáo kết quả đua ở dạng 'Signed' (để Admin duyệt và Publish kết quả chung cuộc)
-INSERT INTO race_reports (report_id, race_id, referee_id, summary, status, signed_by, signed_at, created_at)
-VALUES ('rep-demo2-01', 'race-demo2-01', 'dddddddd-5555-5555-5555-555555555501', 'Trận chung kết kết thúc tốt đẹp. Thứ tự 1, 2, 3 được phân chia rõ ràng. Chờ Admin công bố để trao thưởng.', 'Signed', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY));
+    OPEN entry_cursor;
+    result_loop: LOOP
+        FETCH entry_cursor INTO v_entry_id, v_lane;
+        IF done = 1 THEN
+            LEAVE result_loop;
+        END IF;
 
--- Dự đoán cược của spectator2 ở giải DEMO 2 để kiểm thử tính năng tính điểm sau khi publish
-INSERT INTO predictions (prediction_id, spectator_id, race_id, prediction_type, prediction_time, status, reward_points)
-VALUES ('pred-demo2-02', 'cccccccc-1111-1111-1111-111111111102', 'race-demo2-01', 'TOP3', DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 1 HOUR, 'PENDING', 0);
+        UPDATE race_entries
+        SET status = 'FINISHED'
+        WHERE entry_id = v_entry_id;
 
-INSERT INTO prediction_detail (prediction_detail_id, prediction_id, entry_id, predicted_rank, status, awarded_points)
-VALUES 
-    ('pred-dt-demo2-01', 'pred-demo2-02', 'ent-demo2-01', 1, 'UNSCORED', 0),
-    ('pred-dt-demo2-02', 'pred-demo2-02', 'ent-demo2-02', 2, 'UNSCORED', 0),
-    ('pred-dt-demo2-03', 'pred-demo2-02', 'ent-demo2-03', 3, 'UNSCORED', 0);
+        INSERT INTO race_results
+            (result_id, race_id, entry_id, finish_time, finish_position,
+             prize_money, owner_prize_amount, jockey_prize_amount,
+             prize_status, is_prize_paid, prize_paid_at, status,
+             recorded_by, recorded_at, updated_at)
+        VALUES
+            (UUID(), p_race_id, v_entry_id, 95.0 + v_lane * 0.8, v_lane,
+             0.00, 0.00, 0.00, 'NotEligible', 0, NULL, 'FINISHED',
+             v_recorded_by_user, v_race_finished, v_race_finished);
+    END LOOP;
+    CLOSE entry_cursor;
 
+    INSERT INTO race_reports
+        (report_id, race_id, referee_id, summary, appeal_note, status,
+         submitted_at, submitted_by, returned_at, returned_by, return_reason,
+         signed_by, signed_at, published_by, published_at, created_at)
+    VALUES
+        (UUID(), p_race_id, v_race_referee_id,
+         CONCAT('Biên bản bracket hợp lệ của race ', p_race_id,
+                '. Tám entry đều FINISHED; Top 4 sẽ đi tiếp.'),
+         NULL, p_report_status,
+         v_race_finished, v_race_referee_id,
+         NULL, NULL, NULL,
+         v_head_referee_id, DATE_ADD(v_race_finished, INTERVAL 2 MINUTE),
+         IF(p_report_status = 'PUBLISHED', @admin_user_id, NULL),
+         IF(p_report_status = 'PUBLISHED',
+            DATE_ADD(v_race_end, INTERVAL 1 MINUTE), NULL),
+         v_race_finished);
+END$$
+DELIMITER ;
 
--- Kịch bản F: Giải đấu "DEMO 4 - Bracket 32 chuyển vòng" (Phase: RACING)
--- Phục vụ test: Đã chạy xong 2 trận Bán kết A & B. Trận bán kết A đã Publish báo cáo.
--- Trận bán kết B chỉ mới Signed báo cáo. Khi Admin bấm Publish báo cáo trận bán kết B,
--- Hệ thống sẽ tự động chuyển tiếp vòng (Round Transition) và xếp 8 ngựa đi tiếp vào Chung kết trong 1 Transaction nguyên tử (Atomic).
-INSERT INTO tournaments (tournament_id, name, description, start_date, end_date, location, registration_fee, system_contract_fee, total_prize_pool, allowed_breed, min_horse_age, max_horse_age, registration_open_at, registration_close_at, review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at, status, phase, created_by, max_approved_horses, max_approved_jockeys, max_approved_entries, distance)
-VALUES (
-    '88888888-8888-8888-8888-888888888804',
-    'DEMO 4 - Bracket 32 chuyển vòng',
-    'Tournament test chuyển vòng bán kết lên chung kết.',
-    DATE_SUB(CURDATE(), INTERVAL 3 DAY),
-    DATE_ADD(CURDATE(), INTERVAL 3 DAY),
-    'Hanoi National Turf Club',
-    1000000.00,
-    200000.00,
-    50000000.00,
-    'THOROUGHBRED',
-    4, 10,
-    DATE_SUB(NOW(), INTERVAL 15 DAY),
-    DATE_SUB(NOW(), INTERVAL 12 DAY),
-    DATE_SUB(NOW(), INTERVAL 11 DAY),
-    DATE_SUB(NOW(), INTERVAL 10 DAY),
-    DATE_SUB(NOW(), INTERVAL 9 DAY),
-    DATE_SUB(NOW(), INTERVAL 8 DAY),
-    'ONGOING',
-    'RACING',
-    '11111111-1111-1111-1111-111111111111',
-    16, 16, 16,
-    'MILE_1600M'
-);
+CALL SeedBracketResultsAndReport(@bracket_race1_id, 'PUBLISHED');
+CALL SeedBracketResultsAndReport(@bracket_race2_id, 'SIGNED');
 
--- Vòng 1 (Bán kết) & Vòng 2 (Chung kết) giải DEMO 4
-INSERT INTO rounds (round_id, round_name, sequence_order, is_final, prediction_type, advancement_rule, start_date, end_date, description, max_races, max_entries, min_entries, status, head_referee_id, head_referee_assigned_at, expected_entries, planned_race_count, qualifiers_per_race, bracket_plan_version, transition_status, created_at, tournament_id, created_by)
-VALUES 
-    ('round-demo4-01', 'Round 1 - Semifinals', 1, 0, 'TOP1', 'Top 4 đi tiếp', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'Semi-finals', 2, 4, 4, 'SCHEDULED', 'dddddddd-5555-5555-5555-555555555501', NOW(), 8, 2, 4, 1, 'NOT_READY', NOW(), '88888888-8888-8888-8888-888888888804', '11111111-1111-1111-1111-111111111111'),
-    ('round-demo4-02', 'Round 2 - Finals', 2, 1, 'TOP3', 'Chung kết tranh giải', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), 'Chung kết', 1, 8, 8, 'SCHEDULING', 'dddddddd-5555-5555-5555-555555555501', NOW(), 8, 1, 0, 1, 'NOT_READY', NOW(), '88888888-8888-8888-8888-888888888804', '11111111-1111-1111-1111-111111111111');
+DROP PROCEDURE SeedBracketResultsAndReport;
 
--- Trận Bán kết A & B giải DEMO 4 (Đều ở trạng thái FINISHED)
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, started_at, finished_at, round_id, created_by)
-VALUES 
-    ('race-demo4-01', 'DEMO 4 - Semifinal A', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 30 MINUTE, 'Good', 'MILE_1600M', 1, 'FINISHED', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 2 MINUTE, 'round-demo4-01', '11111111-1111-1111-1111-111111111111'),
-    ('race-demo4-02', 'DEMO 4 - Semifinal B', DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 1 HOUR, DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 1 HOUR + INTERVAL 30 MINUTE, 'Good', 'MILE_1600M', 2, 'FINISHED', DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 1 HOUR, DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 1 HOUR + INTERVAL 2 MINUTE, 'round-demo4-01', '11111111-1111-1111-1111-111111111111');
+-- --------------------------------------------------------------------------
+-- 7. KIỂM TRA CỨNG SAU SEED
+-- --------------------------------------------------------------------------
 
--- Trận Chung kết giải DEMO 4 (Chưa xếp lịch, chưa có entry)
-INSERT INTO races (race_id, name, start_time, end_time, track_condition, distance, sequence_order, status, round_id, created_by)
-VALUES ('race-demo4-03', 'DEMO 4 - Grand Final', NULL, NULL, 'TBD', 'MILE_1600M', 1, 'SCHEDULING', 'round-demo4-02', '11111111-1111-1111-1111-111111111111');
+DROP PROCEDURE IF EXISTS ValidateFreshDemoData;
+DELIMITER $$
+CREATE PROCEDURE ValidateFreshDemoData()
+BEGIN
+    DECLARE v_count INT;
 
--- Hồ sơ APPROVED ngựa giải DEMO 4
-INSERT INTO horse_tournament_registrations (horse_tournament_reg_id, tournament_id, horse_id, owner_id, status, submitted_at, rating_at_registration, race_class_at_registration)
-VALUES
-    ('reg-demo4-horse01', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999901', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 45, 'CLASS_4'),
-    ('reg-demo4-horse02', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999902', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 55, 'CLASS_4'),
-    ('reg-demo4-horse03', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999903', 'aaaaaaaa-1111-1111-1111-111111111101', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 35, 'CLASS_5'),
-    ('reg-demo4-horse04', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999904', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 62, 'CLASS_3'),
-    ('reg-demo4-horse05', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999905', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 42, 'CLASS_4'),
-    ('reg-demo4-horse06', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999906', 'aaaaaaaa-1111-1111-1111-111111111102', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 48, 'CLASS_4'),
-    ('reg-demo4-horse07', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999907', 'aaaaaaaa-1111-1111-1111-111111111103', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 52, 'CLASS_4'),
-    ('reg-demo4-horse08', '88888888-8888-8888-8888-888888888804', '99999999-9999-9999-9999-999999999908', 'aaaaaaaa-1111-1111-1111-111111111103', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 50, 'CLASS_4');
+    SELECT COUNT(*) INTO v_count FROM tournaments;
+    IF v_count <> 2 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: phải có đúng 2 tournament.';
+    END IF;
 
--- Đăng ký Nài giải DEMO 4
-INSERT INTO jockey_tournament_registrations (jockey_tournament_reg_id, tournament_id, jockey_id, status, submitted_at, hire_fee)
-VALUES
-    ('reg-demo4-jock01', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333301', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 500000.00),
-    ('reg-demo4-jock02', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333302', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 400000.00),
-    ('reg-demo4-jock03', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333303', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 700000.00),
-    ('reg-demo4-jock04', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333304', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 300000.00),
-    ('reg-demo4-jock05', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333305', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 500000.00),
-    ('reg-demo4-jock06', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333306', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 400000.00),
-    ('reg-demo4-jock07', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333307', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 600000.00),
-    ('reg-demo4-jock08', '88888888-8888-8888-8888-888888888804', 'bbbbbbbb-3333-3333-3333-333333333308', 'APPROVED', DATE_SUB(NOW(), INTERVAL 9 DAY), 450000.00);
+    SELECT COUNT(*) INTO v_count
+    FROM jockey_horse_contracts
+    WHERE tournament_id = @full_tournament_id AND status = 'APPROVED';
+    IF v_count <> 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: DEMO FULL phải có 8 contract APPROVED.';
+    END IF;
 
--- Hợp đồng giải DEMO 4
-INSERT INTO jockey_horse_contracts (contract_id, tournament_id, horse_tournament_reg_id, jockey_tournament_reg_id, owner_id, horse_id, jockey_id, hire_fee, advance_percent, final_percent, advance_paid_amount, escrow_amount, system_contract_fee, owner_prize_share_percent, jockey_prize_share_percent, payment_status, escrow_status, advance_payout_status, final_payout_status, status, requested_at, accepted_at)
-VALUES
-    ('con-demo4-01', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse01', 'reg-demo4-jock01', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999901', 'bbbbbbbb-3333-3333-3333-333333333301', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-02', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse02', 'reg-demo4-jock02', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999902', 'bbbbbbbb-3333-3333-3333-333333333302', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-03', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse03', 'reg-demo4-jock03', 'aaaaaaaa-1111-1111-1111-111111111101', '99999999-9999-9999-9999-999999999903', 'bbbbbbbb-3333-3333-3333-333333333303', 700000.00, 50.0, 50.0, 350000.00, 350000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-04', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse04', 'reg-demo4-jock04', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999904', 'bbbbbbbb-3333-3333-3333-333333333304', 300000.00, 50.0, 50.0, 150000.00, 150000.00, 20000.00, 90.0, 10.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-05', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse05', 'reg-demo4-jock05', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999905', 'bbbbbbbb-3333-3333-3333-333333333305', 500000.00, 50.0, 50.0, 250000.00, 250000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-06', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse06', 'reg-demo4-jock06', 'aaaaaaaa-1111-1111-1111-111111111102', '99999999-9999-9999-9999-999999999906', 'bbbbbbbb-3333-3333-3333-333333333306', 400000.00, 50.0, 50.0, 200000.00, 200000.00, 20000.00, 80.0, 20.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-07', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse07', 'reg-demo4-jock07', 'aaaaaaaa-1111-1111-1111-111111111103', '99999999-9999-9999-9999-999999999907', 'bbbbbbbb-3333-3333-3333-333333333307', 600000.00, 50.0, 50.0, 300000.00, 300000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY)),
-    ('con-demo4-08', '88888888-8888-8888-8888-888888888804', 'reg-demo4-horse08', 'reg-demo4-jock08', 'aaaaaaaa-1111-1111-1111-111111111103', '99999999-9999-9999-9999-999999999908', 'bbbbbbbb-3333-3333-3333-333333333308', 450000.00, 50.0, 50.0, 225000.00, 225000.00, 20000.00, 85.0, 15.0, 'PAID', 'HELD', 'PAID', 'NOT_RELEASED', 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 8 DAY));
+    SELECT COUNT(*) INTO v_count
+    FROM jockey_horse_contracts
+    WHERE tournament_id = @bracket_tournament_id AND status = 'APPROVED';
+    IF v_count <> 16 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: DEMO BRACKET phải có 16 contract APPROVED.';
+    END IF;
 
--- Xếp làn Bán kết A & B giải DEMO 4
-INSERT INTO race_entries (entry_id, race_id, contract_id, lane_number, status, assigned_by, assigned_at, created_at)
-VALUES
-    ('ent-demo4-01', 'race-demo4-01', 'con-demo4-01', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-02', 'race-demo4-01', 'con-demo4-02', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-03', 'race-demo4-01', 'con-demo4-03', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-04', 'race-demo4-01', 'con-demo4-04', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-05', 'race-demo4-02', 'con-demo4-05', 1, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-06', 'race-demo4-02', 'con-demo4-06', 2, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-07', 'race-demo4-02', 'con-demo4-07', 3, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
-    ('ent-demo4-08', 'race-demo4-02', 'con-demo4-08', 4, 'CONFIRMED', '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY));
+    SELECT COUNT(*) INTO v_count
+    FROM tournaments
+    WHERE created_at > published_at
+       OR start_date > DATE(registration_open_at)
+       OR registration_open_at > registration_close_at
+       OR registration_close_at > review_deadline_at
+       OR review_deadline_at > jockey_matching_deadline_at
+       OR jockey_matching_deadline_at > scheduling_deadline_at
+       OR scheduling_deadline_at > competition_start_at;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: timeline Tournament không đúng thứ tự.';
+    END IF;
 
--- Khám y tế Vòng 1 giải DEMO 4
-INSERT INTO horse_inspections (horse_inspection_id, entry_id, vet_id, result, note, inspected_at, handicap_weight, is_handicap_confirmed, status)
-VALUES
-    ('ins-demo4-h01', 'ent-demo4-01', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h02', 'ent-demo4-02', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h03', 'ent-demo4-03', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h04', 'ent-demo4-04', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h05', 'ent-demo4-05', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h06', 'ent-demo4-06', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h07', 'ent-demo4-07', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY), 0.0, 0, 'CONFIRMED'),
-    ('ins-demo4-h08', 'ent-demo4-08', 'eeeeeeee-6666-6666-6666-666666666601', 'PASS', 'Healthy.', DATE_SUB(NOW(), INTERVAL 2 DAY), 0.0, 0, 'CONFIRMED');
+    SELECT COUNT(*) INTO v_count
+    FROM tournaments
+    WHERE handicap_enabled = 0
+      AND (top_weight_lbs <> 0 OR min_weight_lbs <> 0
+           OR equipment_weight_kg <> 0);
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: handicap tắt nhưng cấu hình cân không bằng 0.';
+    END IF;
 
-INSERT INTO jockey_inspections (jockey_inspection_id, entry_id, med_staff_id, result, note, inspected_at, status)
-VALUES
-    ('ins-demo4-j01', 'ent-demo4-01', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo4-j02', 'ent-demo4-02', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo4-j03', 'ent-demo4-03', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo4-j04', 'ent-demo4-04', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 1 HOUR, 'CONFIRMED'),
-    ('ins-demo4-j05', 'ent-demo4-05', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY), 'CONFIRMED'),
-    ('ins-demo4-j06', 'ent-demo4-06', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY), 'CONFIRMED'),
-    ('ins-demo4-j07', 'ent-demo4-07', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY), 'CONFIRMED'),
-    ('ins-demo4-j08', 'ent-demo4-08', 'ffffffff-7777-7777-7777-777777777701', 'PASS', 'Normal.', DATE_SUB(NOW(), INTERVAL 2 DAY), 'CONFIRMED');
+    SELECT COUNT(*) INTO v_count
+    FROM horses
+    WHERE race_class = 'CLASS_4'
+      AND (current_rating < 40 OR current_rating > 59);
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Horse CLASS_4 có rating ngoài 40..59.';
+    END IF;
 
--- Kết quả đua Bán kết A & B giải DEMO 4
-INSERT INTO race_results (result_id, race_id, entry_id, finish_time, finish_position, prize_money, owner_prize_amount, jockey_prize_amount, prize_status, is_prize_paid, status, recorded_by, recorded_at, updated_at)
-VALUES
-    ('res-demo4-01', 'race-demo4-01', 'ent-demo4-01', 95.20, 1, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-02', 'race-demo4-01', 'ent-demo4-02', 96.50, 2, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-03', 'race-demo4-01', 'ent-demo4-03', 98.10, 3, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-04', 'race-demo4-01', 'ent-demo4-04', 101.40, 4, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-05', 'race-demo4-02', 'ent-demo4-05', 94.80, 1, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-06', 'race-demo4-02', 'ent-demo4-06', 95.90, 2, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-07', 'race-demo4-02', 'ent-demo4-07', 97.40, 3, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
-    ('res-demo4-08', 'race-demo4-02', 'ent-demo4-08', 99.80, 4, 0.00, 0.00, 0.00, 'NotEligible', 0, 'FINISHED', '55555555-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY));
+    SELECT COUNT(*) INTO v_count FROM race_entries WHERE race_id = @full_race_id;
+    IF v_count <> 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Final Race FULL phải có 8 entry.';
+    END IF;
 
--- Báo cáo kết quả đua cho Bán kết A đã Published
-INSERT INTO race_reports (report_id, race_id, referee_id, summary, status, signed_by, signed_at, published_by, published_at, created_at)
-VALUES ('rep-demo4-01', 'race-demo4-01', 'dddddddd-5555-5555-5555-555555555501', 'Trận bán kết A hoàn tất. Kết quả chính thức.', 'Published', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), '11111111-1111-1111-1111-111111111111', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY));
+    SELECT COUNT(*) INTO v_count FROM race_entries WHERE race_id = @bracket_race1_id;
+    IF v_count <> 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Bracket Race 1 phải có 8 entry.';
+    END IF;
 
--- Báo cáo kết quả đua cho Bán kết B chỉ mới dừng ở dạng Signed (chờ Admin vào bấm Publish để kích hoạt chuyển vòng)
-INSERT INTO race_reports (report_id, race_id, referee_id, summary, status, signed_by, signed_at, created_at)
-VALUES ('rep-demo4-02', 'race-demo4-02', 'dddddddd-5555-5555-5555-555555555501', 'Trận bán kết B đã ký. Đang chờ Admin công bố báo cáo này.', 'Signed', 'dddddddd-5555-5555-5555-555555555501', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY));
+    SELECT COUNT(*) INTO v_count FROM race_entries WHERE race_id = @bracket_race2_id;
+    IF v_count <> 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Bracket Race 2 phải có 8 entry.';
+    END IF;
 
--- Chuẩn hóa các ID dễ đọc như tour-demo1/race-demo4-01 thành UUID hợp lệ.
--- Các cột này được BE ánh xạ java.util.UUID; để chuỗi ngắn trong CHAR(36) sẽ
--- insert được ở MySQL nhưng API sẽ lỗi khi Hibernate đọc dữ liệu.
-DROP TEMPORARY TABLE IF EXISTS demo_invalid_uuid_map;
-CREATE TEMPORARY TABLE demo_invalid_uuid_map (
-    old_id VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci PRIMARY KEY,
-    new_id CHAR(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
-    UNIQUE KEY uk_demo_new_uuid (new_id)
-);
+    SELECT COUNT(*) INTO v_count FROM race_entries WHERE race_id = @bracket_final_race_id;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Final bracket phải rỗng trước khi chuyển Top 4.';
+    END IF;
 
-INSERT IGNORE INTO demo_invalid_uuid_map (old_id)
-SELECT raw_id
-FROM (
-    SELECT tournament_id AS raw_id FROM tournaments
-    UNION ALL SELECT prize_structure_id FROM prize_structures
-    UNION ALL SELECT horse_tournament_reg_id FROM horse_tournament_registrations
-    UNION ALL SELECT jockey_tournament_reg_id FROM jockey_tournament_registrations
-    UNION ALL SELECT contract_id FROM jockey_horse_contracts
-    UNION ALL SELECT round_id FROM rounds
-    UNION ALL SELECT race_id FROM races
-    UNION ALL SELECT entry_id FROM race_entries
-    UNION ALL SELECT horse_inspection_id FROM horse_inspections
-    UNION ALL SELECT jockey_inspection_id FROM jockey_inspections
-    UNION ALL SELECT result_id FROM race_results
-    UNION ALL SELECT report_id FROM race_reports
-    UNION ALL SELECT prediction_id FROM predictions
-    UNION ALL SELECT prediction_detail_id FROM prediction_detail
-) demo_ids
-WHERE raw_id NOT REGEXP '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$';
+    SELECT COUNT(*) INTO v_count
+    FROM (
+        SELECT race_id, lane_number
+        FROM race_entries
+        GROUP BY race_id, lane_number
+        HAVING COUNT(*) > 1
+    ) duplicated_lanes;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: có lane bị trùng trong cùng Race.';
+    END IF;
 
-UPDATE demo_invalid_uuid_map
-SET new_id = LOWER(UUID());
+    SELECT COUNT(*) INTO v_count
+    FROM races ra
+    JOIN rounds ro ON ro.round_id = ra.round_id
+    JOIN tournaments t ON t.tournament_id = ro.tournament_id
+    WHERE TIMESTAMPDIFF(MINUTE, ra.start_time, ra.end_time)
+          <> t.default_race_operational_minutes;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: thời lượng Race lệch default operational.';
+    END IF;
 
--- Tournament và các bảng tham chiếu Tournament.
-UPDATE prize_structures x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
-UPDATE horse_tournament_registrations x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
-UPDATE jockey_tournament_registrations x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
-UPDATE jockey_horse_contracts x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
-UPDATE rounds x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
-UPDATE tournaments x JOIN demo_invalid_uuid_map m ON x.tournament_id = m.old_id SET x.tournament_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_referees rr
+    JOIN races ra ON ra.race_id = rr.race_id
+    WHERE ra.schedule_published_at IS NOT NULL
+      AND rr.assigned_at > ra.schedule_published_at;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Race Referee được gán sau khi publish lịch.';
+    END IF;
 
--- Registration và Contract.
-UPDATE jockey_horse_contracts x JOIN demo_invalid_uuid_map m ON x.horse_tournament_reg_id = m.old_id SET x.horse_tournament_reg_id = m.new_id;
-UPDATE invoices x JOIN demo_invalid_uuid_map m ON x.tournament_reg_id = m.old_id SET x.tournament_reg_id = m.new_id;
-UPDATE horse_tournament_registrations x JOIN demo_invalid_uuid_map m ON x.horse_tournament_reg_id = m.old_id SET x.horse_tournament_reg_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_inspection_staff_assignments a
+    JOIN races ra ON ra.race_id = a.race_id
+    WHERE ra.schedule_published_at IS NOT NULL
+      AND a.assigned_at > ra.schedule_published_at;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: nhân sự inspection được gán sau khi publish lịch.';
+    END IF;
 
-UPDATE jockey_horse_contracts x JOIN demo_invalid_uuid_map m ON x.jockey_tournament_reg_id = m.old_id SET x.jockey_tournament_reg_id = m.new_id;
-UPDATE invoices x JOIN demo_invalid_uuid_map m ON x.jockey_tournament_reg_id = m.old_id SET x.jockey_tournament_reg_id = m.new_id;
-UPDATE jockey_tournament_registrations x JOIN demo_invalid_uuid_map m ON x.jockey_tournament_reg_id = m.old_id SET x.jockey_tournament_reg_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_referees rr
+    JOIN races ra ON ra.race_id = rr.race_id
+    JOIN rounds ro ON ro.round_id = ra.round_id
+    WHERE ro.head_referee_id = rr.referee_id;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Head Referee bị trùng Race Referee.';
+    END IF;
 
-UPDATE race_entries x JOIN demo_invalid_uuid_map m ON x.contract_id = m.old_id SET x.contract_id = m.new_id;
-UPDATE invoices x JOIN demo_invalid_uuid_map m ON x.contract_id = m.old_id SET x.contract_id = m.new_id;
-UPDATE wallet_transactions x JOIN demo_invalid_uuid_map m ON x.contract_id = m.old_id SET x.contract_id = m.new_id;
-UPDATE jockey_horse_contracts x JOIN demo_invalid_uuid_map m ON x.contract_id = m.old_id SET x.contract_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM races ra
+    WHERE ra.race_id IN (@full_race_id, @bracket_race1_id, @bracket_race2_id)
+      AND (SELECT COUNT(*) FROM race_referees rr WHERE rr.race_id = ra.race_id) <> 1;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Race đã công bố phải có đúng một Race Referee.';
+    END IF;
 
--- Round và Race.
-UPDATE races x JOIN demo_invalid_uuid_map m ON x.round_id = m.old_id SET x.round_id = m.new_id;
-UPDATE rounds x JOIN demo_invalid_uuid_map m ON x.round_id = m.old_id SET x.round_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_reports
+    WHERE race_id = @bracket_race1_id AND status = 'PUBLISHED';
+    IF v_count <> 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Bracket Race 1 phải PUBLISHED.';
+    END IF;
 
-UPDATE race_entries x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE race_results x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE race_reports x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE predictions x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE race_referees x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE race_inspection_staff_assignments x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE horse_rating_histories x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
-UPDATE races x JOIN demo_invalid_uuid_map m ON x.race_id = m.old_id SET x.race_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_reports
+    WHERE race_id = @bracket_race2_id AND status = 'SIGNED';
+    IF v_count <> 1 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Bracket Race 2 phải SIGNED.';
+    END IF;
 
--- RaceEntry, result và prediction.
-UPDATE horse_inspections x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE jockey_inspections x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE ai_predictions x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE race_results x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE prediction_detail x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE violations x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE appeals x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
-UPDATE race_entries x JOIN demo_invalid_uuid_map m ON x.entry_id = m.old_id SET x.entry_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM race_results
+    WHERE race_id IN (@bracket_race1_id, @bracket_race2_id)
+      AND status = 'FINISHED'
+      AND finish_position BETWEEN 1 AND 4;
+    IF v_count <> 8 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: hai Race bracket phải có tổng 8 Top 4 hợp lệ.';
+    END IF;
 
-UPDATE appeals x JOIN demo_invalid_uuid_map m ON x.race_result_id = m.old_id SET x.race_result_id = m.new_id;
-UPDATE horse_rating_histories x JOIN demo_invalid_uuid_map m ON x.race_result_id = m.old_id SET x.race_result_id = m.new_id;
-UPDATE wallet_transactions x JOIN demo_invalid_uuid_map m ON x.race_result_id = m.old_id SET x.race_result_id = m.new_id;
-UPDATE race_results x JOIN demo_invalid_uuid_map m ON x.result_id = m.old_id SET x.result_id = m.new_id;
+    IF DATE(@bracket_final_start)
+       < DATE_ADD(DATE(@bracket_race2_end), INTERVAL 7 DAY) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: Final bracket chưa cách Round 1 đủ 7 ngày.';
+    END IF;
 
-UPDATE prediction_detail x JOIN demo_invalid_uuid_map m ON x.prediction_id = m.old_id SET x.prediction_id = m.new_id;
-UPDATE predictions x JOIN demo_invalid_uuid_map m ON x.prediction_id = m.old_id SET x.prediction_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM horse_inspections hi
+    JOIN race_entries re ON re.entry_id = hi.entry_id
+    WHERE re.race_id = @full_race_id;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: FULL 8 phải bắt đầu khi chưa khám ngựa.';
+    END IF;
 
--- Các khóa chính không có bảng con trong bộ seed này.
-UPDATE prize_structures x JOIN demo_invalid_uuid_map m ON x.prize_structure_id = m.old_id SET x.prize_structure_id = m.new_id;
-UPDATE horse_inspections x JOIN demo_invalid_uuid_map m ON x.horse_inspection_id = m.old_id SET x.horse_inspection_id = m.new_id;
-UPDATE jockey_inspections x JOIN demo_invalid_uuid_map m ON x.jockey_inspection_id = m.old_id SET x.jockey_inspection_id = m.new_id;
-UPDATE race_reports x JOIN demo_invalid_uuid_map m ON x.report_id = m.old_id SET x.report_id = m.new_id;
-UPDATE prediction_detail x JOIN demo_invalid_uuid_map m ON x.prediction_detail_id = m.old_id SET x.prediction_detail_id = m.new_id;
+    SELECT COUNT(*) INTO v_count
+    FROM jockey_inspections ji
+    JOIN race_entries re ON re.entry_id = ji.entry_id
+    WHERE re.race_id = @full_race_id;
+    IF v_count <> 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: FULL 8 phải bắt đầu khi chưa khám jockey.';
+    END IF;
 
-DROP TEMPORARY TABLE demo_invalid_uuid_map;
+    SELECT COUNT(*) INTO v_count FROM prize_structures;
+    IF v_count <> 6 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: hai Tournament phải có tổng 6 prize structure.';
+    END IF;
 
--- Kích hoạt lại kiểm tra khóa ngoại
+    SELECT COUNT(*) INTO v_count
+    FROM wallets
+    WHERE owner_type = 'SYSTEM'
+      AND wallet_purpose IN ('SYSTEM_REVENUE', 'SYSTEM_ESCROW', 'SYSTEM_PRIZE_POOL');
+    IF v_count <> 3 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: thiếu ví hệ thống cho scoring/payout.';
+    END IF;
+
+    IF TIMESTAMPDIFF(MINUTE, @full_prediction_close, @full_race_start) <> 5 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: prediction phải đóng đúng T-5.';
+    END IF;
+
+    IF TIMESTAMPDIFF(MINUTE, @seed_now, @full_prediction_close) < 179 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Seed invalid: prediction window phải còn gần 3 giờ.';
+    END IF;
+END$$
+DELIMITER ;
+
+CALL ValidateFreshDemoData();
+DROP PROCEDURE ValidateFreshDemoData;
+
+-- --------------------------------------------------------------------------
+-- 8. KẾT QUẢ TÓM TẮT SAU KHI CHẠY SCRIPT
+-- --------------------------------------------------------------------------
+
+SELECT
+    t.name AS tournament,
+    t.max_approved_entries AS configured_capacity,
+    COUNT(DISTINCT c.contract_id) AS actual_approved_contracts,
+    t.phase,
+    t.current_round_name
+FROM tournaments t
+LEFT JOIN jockey_horse_contracts c
+       ON c.tournament_id = t.tournament_id AND c.status = 'APPROVED'
+GROUP BY t.tournament_id, t.name, t.max_approved_entries,
+         t.phase, t.current_round_name
+ORDER BY t.name;
+
+SELECT
+    t.name AS tournament,
+    ro.round_name,
+    ro.sequence_order AS round_order,
+    ro.is_final,
+    ro.transition_status,
+    ra.name AS race,
+    ra.status AS race_status,
+    COUNT(re.entry_id) AS entry_count,
+    rp.status AS report_status,
+    ra.start_time,
+    ra.end_time,
+    ra.prediction_open_at,
+    ra.prediction_close_at
+FROM tournaments t
+JOIN rounds ro ON ro.tournament_id = t.tournament_id
+JOIN races ra ON ra.round_id = ro.round_id
+LEFT JOIN race_entries re ON re.race_id = ra.race_id
+LEFT JOIN race_reports rp ON rp.race_id = ra.race_id
+GROUP BY t.name, ro.round_name, ro.sequence_order, ro.is_final,
+         ro.transition_status, ra.race_id, ra.name, ra.status,
+         rp.status, ra.start_time, ra.end_time,
+         ra.prediction_open_at, ra.prediction_close_at
+ORDER BY t.name, ro.sequence_order, ra.sequence_order;
+
+SELECT
+    TIMESTAMPDIFF(MINUTE, @seed_now, @full_prediction_close)
+        AS prediction_minutes_remaining,
+    TIMESTAMPDIFF(
+        MINUTE,
+        @seed_now,
+        DATE_SUB(@full_race_start, INTERVAL 6 MINUTE)
+    ) AS inspection_minutes_remaining,
+    TIMESTAMPDIFF(MINUTE, @seed_now, @full_race_start)
+        AS start_window_minutes_remaining,
+    TIMESTAMPDIFF(MINUTE, @full_race_start, @full_race_end)
+        AS race_operational_minutes;
+
+SELECT role_name, username, full_name
+FROM users u
+JOIN roles r ON r.role_id = u.role_id
+WHERE username IN (
+    'admin1', 'owner1', 'owner2', 'spectator1', 'spectator2',
+    'jockey1', 'jockey9', 'referee1', 'referee2', 'referee3',
+    'referee4', 'referee5', 'referee6', 'vet1', 'medical1'
+)
+ORDER BY role_name, username;
+
 SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;
 SET SQL_SAFE_UPDATES = @OLD_SQL_SAFE_UPDATES;
+
+-- ============================================================================
+-- HẾT FILE
+-- Mật khẩu chung của tất cả tài khoản: 12345678
+-- ============================================================================

@@ -5,6 +5,7 @@ import com.swp391.horseracing.dto.common.PageResponse;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.medicalstaff.request.AssignInspectionStaffRequest;
 import com.swp391.horseracing.dto.medicalstaff.response.InspectionStaffAssignmentResponse;
+import com.swp391.horseracing.dto.race_entry.request.AdminCreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.request.CreateRaceEntryRequest;
 import com.swp391.horseracing.dto.race_entry.response.RaceEntryResponse;
 import com.swp391.horseracing.dto.race_referee.request.CreateRaceRefereeRequest;
@@ -152,10 +153,14 @@ public class AdminController {
 
     @PostMapping("/races/{raceId}/entries")
     public ApiResponse<RaceEntryResponse> createRaceEntry(@PathVariable UUID raceId,
-                                                          @RequestBody CreateRaceEntryRequest request) {
-        request.setRaceId(raceId);
+                                                           @RequestBody @Valid AdminCreateRaceEntryRequest request) {
+        CreateRaceEntryRequest serviceRequest = CreateRaceEntryRequest.builder()
+                .raceId(raceId)
+                .contractId(request.getContractId())
+                .laneNumber(request.getLaneNumber())
+                .build();
         return ApiResponse.<RaceEntryResponse>builder()
-                .result(raceEntryService.create(request))
+                .result(raceEntryService.create(serviceRequest))
                 .build();
     }
 

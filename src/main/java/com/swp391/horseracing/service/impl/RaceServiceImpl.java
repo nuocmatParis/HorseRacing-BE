@@ -40,14 +40,17 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import com.swp391.horseracing.entity.RaceReferee;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Optional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import com.swp391.horseracing.entity.Tournament;
 
@@ -55,6 +58,14 @@ import com.swp391.horseracing.entity.Tournament;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
+
+    /**
+     * Round.minEntries remains the scheduling/publishing requirement. Once a race
+     * has been published, failed inspections may reduce the field. A final race
+     * needs at least two starters; an earlier round must still have enough
+     * starters to produce its configured qualifiers (Top 4 in the current plan).
+     */
+    private static final int MIN_COMPETITIVE_STARTERS = 2;
 
     RaceRepository raceRepository;
     RoundRepository roundRepository;
@@ -222,14 +233,26 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.RACE_ALREADY_PUBLISHED);
         }
 
-        int entryCount = raceEntryRepository.countByRace_RaceId(raceId);
+        List<RaceEntry> raceEntries = raceEntryRepository
+                .findByRace_RaceIdOrderByCreatedAtAsc(raceId);
+        int entryCount = raceEntries.size();
         if (entryCount < race.getRound().getMinEntries()) {
             throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ENTRIES);
         }
+        Set<Integer> assignedLanes = new HashSet<>();
+        for (RaceEntry entry : raceEntries) {
+            Integer laneNumber = entry.getLaneNumber();
+            if (laneNumber == null
+                    || laneNumber < 1
+                    || laneNumber > race.getRound().getMaxEntries()
+                    || !assignedLanes.add(laneNumber)) {
+                throw new AppException(ErrorCode.RACE_LANES_INCOMPLETE);
+            }
+        }
 
         int refereeCount = raceRefereeRepository.countByRace_RaceId(raceId);
-        if (refereeCount < 1) {
-            throw new AppException(ErrorCode.RACE_MISSING_REFEREES);
+        if (refereeCount != 1) {
+            throw new AppException(ErrorCode.RACE_REQUIRES_EXACTLY_ONE_REFEREE);
         }
 
         race.setStatus(RoundStatus.SCHEDULED);
@@ -356,7 +379,8 @@ public class RaceServiceImpl implements RaceService {
             activeEntryCount++;
         }
 
-        if (activeEntryCount < race.getRound().getMinEntries()) {
+        int runtimeMinEntries = getRuntimeMinimumStarters(race);
+        if (activeEntryCount < runtimeMinEntries) {
             throw new AppException(ErrorCode.RACE_NOT_ENOUGH_ACTIVE_ENTRIES);
         }
 
@@ -467,8 +491,10 @@ public class RaceServiceImpl implements RaceService {
         }
 
         int minEntries = race.getRound().getMinEntries();
-        if (activeEntryCount < minEntries) {
-            raceBlockingReasons.add("Chưa đủ số lượt tham gia hoạt động tối thiểu để bắt đầu.");
+        int runtimeMinEntries = getRuntimeMinimumStarters(race);
+        if (activeEntryCount < runtimeMinEntries) {
+            raceBlockingReasons.add("Cuộc đua phải còn ít nhất " + runtimeMinEntries
+                    + " lượt tham gia đủ điều kiện để bắt đầu.");
         }
         for (RaceEntryReadinessResponse entry : entryResponses) {
             if (isActiveStatus(entry.getEntryStatus()) && !entry.isCanRace()) {
@@ -489,6 +515,7 @@ public class RaceServiceImpl implements RaceService {
                         .build())
                 .activeEntryCount(activeEntryCount)
                 .minEntries(minEntries)
+                .runtimeMinEntries(runtimeMinEntries)
                 .blockingReasons(raceBlockingReasons)
                 .entries(entryResponses)
                 .build();
@@ -496,6 +523,16 @@ public class RaceServiceImpl implements RaceService {
 
     private boolean isActiveRaceEntry(RaceEntry entry) {
         return isActiveStatus(entry.getStatus());
+    }
+
+    private int getRuntimeMinimumStarters(Race race) {
+        Round round = race.getRound();
+        if (round != null && !round.isFinal()
+                && round.getQualifiersPerRace() != null
+                && round.getQualifiersPerRace() > 0) {
+            return Math.max(MIN_COMPETITIVE_STARTERS, round.getQualifiersPerRace());
+        }
+        return MIN_COMPETITIVE_STARTERS;
     }
 
     private boolean isActiveStatus(RaceEntryStatus status) {
@@ -508,13 +545,14 @@ public class RaceServiceImpl implements RaceService {
     private void validateRefereeCanOperateRace(Race race, User currentUser) {
         Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-        boolean authorized = race.getRound().getHeadReferee() != null
-                && race.getRound().getHeadReferee().getRefereeId().equals(referee.getRefereeId());
-        if (!authorized) {
-            authorized = raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
-                    race.getRaceId(), referee.getRefereeId());
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
         }
-        if (!authorized) {
+
+        // The Round Head Referee reviews appeals and signs the Race Report.
+        // Starting and operating the race belongs only to a directly assigned Race Referee.
+        if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), referee.getRefereeId())) {
             throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
         }
     }
@@ -595,7 +633,7 @@ public class RaceServiceImpl implements RaceService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void finalizeRaceEntries(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
