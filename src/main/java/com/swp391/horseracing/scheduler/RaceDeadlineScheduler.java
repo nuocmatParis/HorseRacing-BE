@@ -27,7 +27,7 @@ public class RaceDeadlineScheduler {
     PredictionService predictionService;
 
     @Scheduled(fixedRate = 30000) // Runs every 30 seconds
-    @Transactional(readOnly = true)
+    @Transactional
     public void checkDeadlineAndFinalize() {
         LocalDateTime now = LocalDateTime.now();
         List<Race> races = raceRepository.findAll();

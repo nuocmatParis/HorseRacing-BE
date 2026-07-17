@@ -30,6 +30,16 @@ public class HorseInspectionResponse {
 
     Float handicapWeight;
 
+    Float registeredWeight;
+
+    HorseBreed registeredBreed;
+
+    Float actualWeight;
+
+    HorseBreed actualBreed;
+
+    Boolean dopingDetected;
+
     Boolean handicapConfirmed;
 
     LocalDateTime confirmedAt;

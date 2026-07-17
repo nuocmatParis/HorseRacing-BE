@@ -33,6 +33,7 @@ public class RoundResponse {
     UUID tournamentId;
     UUID createdById;
     UUID headRefereeId;
+    String headRefereeName;
     LocalDateTime headRefereeAssignedAt;
     Integer expectedEntries;
     Integer plannedRaceCount;

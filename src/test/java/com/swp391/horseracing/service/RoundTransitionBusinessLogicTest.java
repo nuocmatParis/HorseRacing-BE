@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
@@ -46,6 +47,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -88,7 +90,11 @@ class RoundTransitionBusinessLogicTest {
 
         invokeAdvance(fixture.currentRound);
 
-        verify(raceEntryRepository, times(8)).save(any(RaceEntry.class));
+        ArgumentCaptor<RaceEntry> entryCaptor = ArgumentCaptor.forClass(RaceEntry.class);
+        verify(raceEntryRepository, times(8)).save(entryCaptor.capture());
+        for (RaceEntry advancedEntry : entryCaptor.getAllValues()) {
+            assertNull(advancedEntry.getLaneNumber());
+        }
         assertNotNull(fixture.currentRound.getAdvancedAt());
         assertEquals(RoundStatus.COMPLETED, fixture.currentRound.getStatus());
         assertEquals(RoundTransitionStatus.COMPLETED, fixture.currentRound.getTransitionStatus());

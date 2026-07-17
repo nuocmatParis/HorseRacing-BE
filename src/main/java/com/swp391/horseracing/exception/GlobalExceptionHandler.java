@@ -78,7 +78,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleMessageNotReadableException(
             HttpMessageNotReadableException exception){
-        ErrorCode errorCode = ErrorCode.ROLE_NOT_FOUND;
+        ErrorCode errorCode = ErrorCode.INVALID_REQUEST;
 
         ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
                 .code(errorCode.getCode())

@@ -20,7 +20,5 @@ public class ViolationCreateRequest {
     @NotNull(message = "Penalty type is required")
     PenaltyType penaltyType;
 
-    Float penaltyValue;
-
     LocalDateTime occurredAt;
 }

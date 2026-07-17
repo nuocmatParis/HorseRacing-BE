@@ -64,6 +64,8 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.RACE_ALREADY_STARTED);
         }
 
+        validateManualEntryManagement(race.getRound());
+
         JockeyHorseContract contract = contractRepository.findById(request.getContractId())
                 .orElseThrow(() -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
 
@@ -86,7 +88,8 @@ public class RaceEntryServiceImpl implements RaceEntryService {
         }
 
         if (request.getLaneNumber() != null) {
-            if (request.getLaneNumber() > race.getRound().getMaxEntries()) {
+            if (request.getLaneNumber() < 1
+                    || request.getLaneNumber() > race.getRound().getMaxEntries()) {
                 throw new AppException(ErrorCode.LANE_EXCEEDS_MAX);
             }
             if (raceEntryRepository.existsByRace_RaceIdAndLaneNumber(
@@ -214,6 +217,8 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.RACE_ALREADY_PUBLISHED);
         }
 
+        validateManualEntryManagement(race.getRound());
+
         raceEntryRepository.delete(raceEntry);
     }
 
@@ -222,6 +227,8 @@ public class RaceEntryServiceImpl implements RaceEntryService {
     public void autoAssignRound(UUID roundId) {
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+
+        validateManualEntryManagement(round);
 
         if (round.getTournament().getPhase() != TournamentPhase.SCHEDULING) {
             throw new AppException(ErrorCode.INVALID_PHASE_TRANSITION);
@@ -273,11 +280,11 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             Collections.shuffle(raceContracts);
 
             Race race = races.get(i);
-            for (int lane = 0; lane < raceContracts.size(); lane++) {
+            for (int entryIndex = 0; entryIndex < raceContracts.size(); entryIndex++) {
                 RaceEntry entry = RaceEntry.builder()
                         .race(race)
-                        .contract(raceContracts.get(lane))
-                        .laneNumber(lane + 1)
+                        .contract(raceContracts.get(entryIndex))
+                        .laneNumber(null)
                         .status(RaceEntryStatus.CONFIRMED)
                         .assignedBy(currentUser)
                         .assignedAt(LocalDateTime.now())
@@ -287,6 +294,12 @@ public class RaceEntryServiceImpl implements RaceEntryService {
         }
 
         raceEntryRepository.saveAll(allNewEntries);
+    }
+
+    private void validateManualEntryManagement(Round round) {
+        if (round != null && round.getSequenceOrder() > 1) {
+            throw new AppException(ErrorCode.ADVANCED_ROUND_ENTRIES_MANAGED_BY_RESULTS);
+        }
     }
 
     @Override
@@ -303,6 +316,13 @@ public class RaceEntryServiceImpl implements RaceEntryService {
         if (entries.isEmpty()) {
             return;
         }
+
+        // Clear the old lane values first. This prevents transient duplicate-lane
+        // violations when an existing lane assignment is shuffled again.
+        for (RaceEntry entry : entries) {
+            entry.setLaneNumber(null);
+        }
+        raceEntryRepository.saveAllAndFlush(entries);
 
         Collections.shuffle(entries);
 
@@ -325,16 +345,20 @@ public class RaceEntryServiceImpl implements RaceEntryService {
         }
 
         if (laneNumber != null) {
-            if (laneNumber > race.getRound().getMaxEntries()) {
+            if (laneNumber < 1 || laneNumber > race.getRound().getMaxEntries()) {
                 throw new AppException(ErrorCode.LANE_EXCEEDS_MAX);
             }
 
-            RaceEntry conflicting = raceEntryRepository.findByRace_RaceIdOrderByCreatedAtAsc(race.getRaceId())
-                    .stream()
-                    .filter(e -> !e.getEntryId().equals(entryId)
-                            && laneNumber.equals(e.getLaneNumber()))
-                    .findFirst()
-                    .orElse(null);
+            RaceEntry conflicting = null;
+            List<RaceEntry> raceEntries = raceEntryRepository
+                    .findByRace_RaceIdOrderByCreatedAtAsc(race.getRaceId());
+            for (RaceEntry raceEntry : raceEntries) {
+                if (!raceEntry.getEntryId().equals(entryId)
+                        && laneNumber.equals(raceEntry.getLaneNumber())) {
+                    conflicting = raceEntry;
+                    break;
+                }
+            }
 
             if (conflicting != null) {
                 throw new AppException(ErrorCode.LANE_NUMBER_ALREADY_TAKEN);
@@ -366,12 +390,22 @@ public class RaceEntryServiceImpl implements RaceEntryService {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
         }
 
-        Integer tempLane = entry1.getLaneNumber();
-        entry1.setLaneNumber(entry2.getLaneNumber());
-        entry2.setLaneNumber(tempLane);
+        Integer firstLane = entry1.getLaneNumber();
+        Integer secondLane = entry2.getLaneNumber();
+        if (firstLane == null || secondLane == null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
+        // Temporarily release the first lane so the unique (race, lane) constraint
+        // is never violated between the two UPDATE statements.
+        entry1.setLaneNumber(null);
+        raceEntryRepository.saveAndFlush(entry1);
+
+        entry2.setLaneNumber(firstLane);
+        raceEntryRepository.saveAndFlush(entry2);
+
+        entry1.setLaneNumber(secondLane);
         raceEntryRepository.save(entry1);
-        raceEntryRepository.save(entry2);
 
         return raceEntryMapper.toRaceEntryResponse(entry1);
     }

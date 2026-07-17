@@ -50,6 +50,15 @@ public class JockeyInspection {
     @Column(name = "inspected_at", nullable = false)
     LocalDateTime inspectedAt;
 
+    @Column(name = "registered_weight", nullable = false)
+    Float registeredWeight;
+
+    @Column(name = "actual_weight", nullable = false)
+    Float actualWeight;
+
+    @Column(name = "doping_detected", nullable = false)
+    Boolean dopingDetected;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     InspectionStatus status;
