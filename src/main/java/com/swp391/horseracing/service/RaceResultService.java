@@ -12,6 +12,7 @@ public interface RaceResultService {
     List<RaceResultResponse> createResults(UUID raceId, List<CreateRaceResultRequest> requests);
 
     List<RaceResultResponse> updateResults(UUID raceId, List<UpdateRaceResultRequest> requests);
+    List<RaceResultResponse> finishRaceWithRandomResults(UUID raceId);
 
     List<RaceResultResponse> getResultsByRaceId(UUID raceId);
 

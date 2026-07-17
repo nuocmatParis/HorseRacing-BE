@@ -17,7 +17,10 @@ public class RaceStartReadinessResponse {
     private LocalDateTime inspectionFinalizedAt;
     private RaceStartWindowResponse startWindow;
     private int activeEntryCount;
+    /** Minimum entries required when scheduling/publishing the race. */
     private int minEntries;
+    /** Minimum eligible starters required after the inspection stage. */
+    private int runtimeMinEntries;
     private List<String> blockingReasons;
     private List<RaceEntryReadinessResponse> entries;
 }

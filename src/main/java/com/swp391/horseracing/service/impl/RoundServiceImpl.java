@@ -11,11 +11,13 @@ import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.BracketPlanStatus;
 import com.swp391.horseracing.enums.PredictionType;
+import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
 import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.repository.RefereeRepository;
+import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
@@ -40,6 +42,7 @@ public class RoundServiceImpl implements RoundService {
     TournamentRepository tournamentRepository;
     UserRepository userRepository;
     RefereeRepository refereeRepository;
+    RaceRefereeRepository raceRefereeRepository;
     RoundMapper roundMapper;
 
     @Override
@@ -105,6 +108,9 @@ public class RoundServiceImpl implements RoundService {
         if (request.getHeadRefereeId() != null) {
             Referee referee = refereeRepository.findById(request.getHeadRefereeId())
                     .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+            if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+                throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+            }
             saved.setHeadReferee(referee);
             saved.setHeadRefereeAssignedAt(LocalDateTime.now());
             saved = roundRepository.save(saved);
@@ -213,9 +219,18 @@ public class RoundServiceImpl implements RoundService {
     public RoundResponse assignHeadReferee(UUID roundId, UUID refereeId) {
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        validateHeadRefereeAssignmentEditable(round);
 
         Referee referee = refereeRepository.findById(refereeId)
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+        }
+        if (raceRefereeRepository.existsByRace_Round_RoundIdAndReferee_RefereeId(
+                roundId, refereeId)) {
+            throw new AppException(ErrorCode.REFEREE_ROLE_CONFLICT_IN_ROUND);
+        }
 
         round.setHeadReferee(referee);
         round.setHeadRefereeAssignedAt(LocalDateTime.now());
@@ -228,11 +243,21 @@ public class RoundServiceImpl implements RoundService {
     public RoundResponse removeHeadReferee(UUID roundId) {
         Round round = roundRepository.findById(roundId)
                 .orElseThrow(() -> new AppException(ErrorCode.ROUND_NOT_FOUND));
+        validateHeadRefereeAssignmentEditable(round);
 
         round.setHeadReferee(null);
         round.setHeadRefereeAssignedAt(null);
 
         return roundMapper.toRoundResponse(roundRepository.save(round));
+    }
+
+    private void validateHeadRefereeAssignmentEditable(Round round) {
+        Tournament tournament = round.getTournament();
+        boolean tournamentEditable = tournament.getStatus() == TournamentStatus.DRAFT
+                || tournament.getPhase() == TournamentPhase.SCHEDULING;
+        if (!tournamentEditable || round.getStatus() != com.swp391.horseracing.enums.RoundStatus.SCHEDULING) {
+            throw new AppException(ErrorCode.HEAD_REFEREE_ASSIGNMENT_LOCKED);
+        }
     }
 
     private User getCurrentUser() {

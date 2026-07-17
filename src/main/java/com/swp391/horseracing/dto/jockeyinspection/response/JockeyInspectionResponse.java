@@ -31,5 +31,11 @@ public class JockeyInspectionResponse {
 
     LocalDateTime inspectedAt;
 
+    Float registeredWeight;
+
+    Float actualWeight;
+
+    Boolean dopingDetected;
+
     InspectionStatus status;
 }

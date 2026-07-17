@@ -16,9 +16,16 @@ public class AppealResponse {
 
     UUID appealId;
     UUID entryId;
+    UUID raceId;
+    String raceName;
+    String roundName;
+    String tournamentName;
+    String horseName;
+    String jockeyName;
     UUID raceResultId;
     UUID relatedViolationId;
     UUID categoryId;
+    String categoryName;
     UUID submittedByUserId;
     String description;
     AppealStatus status;

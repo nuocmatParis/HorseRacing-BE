@@ -7,6 +7,7 @@ import com.swp391.horseracing.entity.RaceReferee;
 import com.swp391.horseracing.entity.Referee;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.RoundStatus;
+import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceRefereeMapper;
@@ -48,9 +49,20 @@ public class RaceRefereeServiceImpl implements RaceRefereeService {
         if (race.getSchedulePublishedAt() != null) {
             throw new AppException(ErrorCode.RACE_ALREADY_PUBLISHED);
         }
+        if (raceRefereeRepository.countByRace_RaceId(request.getRaceId()) >= 1) {
+            throw new AppException(ErrorCode.RACE_REQUIRES_EXACTLY_ONE_REFEREE);
+        }
 
         Referee referee = refereeRepository.findById(request.getRefereeId())
                 .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+        }
+        if (race.getRound().getHeadReferee() != null
+                && race.getRound().getHeadReferee().getRefereeId().equals(request.getRefereeId())) {
+            throw new AppException(ErrorCode.REFEREE_ROLE_CONFLICT_IN_ROUND);
+        }
 
         if (raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
                 request.getRaceId(), request.getRefereeId())) {

@@ -112,6 +112,36 @@ class RaceReportApprovalWorkflowTest {
     }
 
     @Test
+    void adminCannotPublishSignedReportWhileLateAppealIsPending() {
+        Fixture fixture = fixture(true);
+        fixture.report.setStatus(ReportStatus.SIGNED);
+        when(raceRepository.findById(fixture.race.getRaceId())).thenReturn(Optional.of(fixture.race));
+        when(raceReportRepository.findForUpdateByRace_RaceId(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.report));
+        when(appealRepository.existsByEntry_Race_RaceIdAndStatus(
+                fixture.race.getRaceId(), AppealStatus.Pending)).thenReturn(true);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.publishReport(fixture.race.getRaceId()));
+
+        assertEquals(ErrorCode.RACE_REPORT_PENDING_APPEAL, exception.getErrorCode());
+        assertEquals(ReportStatus.SIGNED, fixture.report.getStatus());
+    }
+
+    @Test
+    void suspendedHeadRefereeCannotSignReport() {
+        Fixture fixture = fixture(true);
+        fixture.referee.setStatus(RefereeStatus.SUSPENDED);
+        mockCurrentReferee(fixture);
+        when(raceRepository.findById(fixture.race.getRaceId())).thenReturn(Optional.of(fixture.race));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.signReport(fixture.race.getRaceId()));
+
+        assertEquals(ErrorCode.REFEREE_NOT_AVAILABLE, exception.getErrorCode());
+    }
+
+    @Test
     void publishingSignedReportRunsScoringAndRatingOnce() {
         Fixture fixture = fixture(true);
         fixture.race.setStatus(RoundStatus.FINISHED);
@@ -175,7 +205,7 @@ class RaceReportApprovalWorkflowTest {
         Race race = new Race();
         race.setRaceId(UUID.randomUUID());
         race.setRound(round);
-        race.setStatus(RoundStatus.ONGOING);
+        race.setStatus(RoundStatus.FINISHED);
 
         Horse horse = new Horse();
         horse.setHorseId(UUID.randomUUID());

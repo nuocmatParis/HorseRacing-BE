@@ -33,8 +33,6 @@ public class ViolationResponse {
 
     PenaltyType penaltyType;
 
-    Float penaltyValue;
-
     LocalDateTime occurredAt;
     LocalDateTime createdAt;
     ViolationStatus status;

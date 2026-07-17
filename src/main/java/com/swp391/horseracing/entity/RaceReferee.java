@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Table(name = "race_referees", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"race_id", "referee_id"})
+        @UniqueConstraint(name = "uk_race_referee_one_per_race", columnNames = {"race_id"})
 })
 @Entity
 @Getter

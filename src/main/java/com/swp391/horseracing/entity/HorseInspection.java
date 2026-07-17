@@ -2,6 +2,7 @@ package com.swp391.horseracing.entity;
 
 import com.swp391.horseracing.enums.InspectionResult;
 import com.swp391.horseracing.enums.InspectionStatus;
+import com.swp391.horseracing.enums.HorseBreed;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -55,6 +56,23 @@ public class HorseInspection {
 
     @Column(name = "handicap_weight")
     Float handicapWeight;
+
+    @Column(name = "registered_weight", nullable = false)
+    Float registeredWeight;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "registered_breed", nullable = false, length = 50)
+    HorseBreed registeredBreed;
+
+    @Column(name = "actual_weight", nullable = false)
+    Float actualWeight;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "actual_breed", nullable = false, length = 50)
+    HorseBreed actualBreed;
+
+    @Column(name = "doping_detected", nullable = false)
+    Boolean dopingDetected;
 
     @Column(name = "is_handicap_confirmed", nullable = false)
     Boolean isHandicapConfirmed;
