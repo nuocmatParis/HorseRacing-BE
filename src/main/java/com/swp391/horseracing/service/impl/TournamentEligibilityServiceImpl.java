@@ -5,6 +5,10 @@ import com.swp391.horseracing.dto.tournament.request.UpdateEligibilityRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentEligibilityResponse;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.TournamentEligibility;
+import com.swp391.horseracing.enums.EligibilityCondition;
+import com.swp391.horseracing.enums.EligibilityTargetType;
+import com.swp391.horseracing.enums.HorseBreed;
+import com.swp391.horseracing.enums.JockeyTier;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -46,6 +50,8 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
             throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
         }
 
+        validateConditionValue(request.getConditionName(), request.getTargetType(), request.getConditionValue());
+
         TournamentEligibility eligibility = tournamentEligibilityMapper.toEligibility(request);
         eligibility.setTournament(tournament);
 
@@ -67,6 +73,14 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
                 && tournamentEligibilityRepository.existsByTournament_TournamentIdAndConditionName(
                         tournament.getTournamentId(), request.getConditionName())) {
             throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
+        }
+
+        if (request.getConditionValue() != null) {
+            EligibilityCondition condition = request.getConditionName() != null
+                    ? request.getConditionName() : eligibility.getConditionName();
+            EligibilityTargetType target = request.getTargetType() != null
+                    ? request.getTargetType() : eligibility.getTargetType();
+            validateConditionValue(condition, target, request.getConditionValue());
         }
 
         tournamentEligibilityMapper.updateEligibility(request, eligibility);
@@ -92,5 +106,34 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         return tournamentEligibilityRepository.findByTournament_TournamentId(tournamentId)
                 .stream().map(tournamentEligibilityMapper :: toEligibilityResponse).collect(Collectors.toList());
+    }
+
+    private void validateConditionValue(EligibilityCondition conditionName, EligibilityTargetType targetType, String conditionValue) {
+        try {
+            switch (conditionName) {
+                case AGE, EXPERIENCE_YEARS -> {
+                    int v = Integer.parseInt(conditionValue);
+                    if (v < 0) throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+                }
+                case WEIGHT -> {
+                    float v = Float.parseFloat(conditionValue);
+                    if (v <= 0) throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+                    if (targetType == EligibilityTargetType.HORSE && (v < 400 || v > 600)) {
+                        throw new AppException(ErrorCode.ELIGIBILITY_HORSE_WEIGHT_OUT_OF_RANGE);
+                    }
+                    if (targetType == EligibilityTargetType.JOCKEY && (v < 45 || v > 65)) {
+                        throw new AppException(ErrorCode.ELIGIBILITY_JOCKEY_WEIGHT_OUT_OF_RANGE);
+                    }
+                }
+                case WIN_RATE -> {
+                    double v = Double.parseDouble(conditionValue);
+                    if (v < 0 || v > 100) throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+                }
+                case BREED -> HorseBreed.valueOf(conditionValue.toUpperCase());
+                case JOCKEY_TIER -> JockeyTier.valueOf(conditionValue.toUpperCase());
+            }
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+        }
     }
 }

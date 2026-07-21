@@ -45,9 +45,6 @@ public class Jockey {
     @Column(name = "experience_years", nullable = false)
     int experienceYears = 0;
 
-    @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    String licenseNumber;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "specialization", nullable = false, length = 100)
     Specialization specialization;

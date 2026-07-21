@@ -37,9 +37,6 @@ public class HorseOwner {
     @Column(name = "address", columnDefinition = "TEXT", nullable = false)
     String address;
 
-    @Column(name = "license_number", nullable = false, unique = true, length = 50)
-    String licenseNumber;
-
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     LocalDateTime createdAt;

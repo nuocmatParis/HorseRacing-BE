@@ -15,7 +15,6 @@ public interface JockeyTournamentRegistrationMapper {
     @Mapping(target = "height", source = "jockey.height")
     @Mapping(target = "weight", source = "jockey.weight")
     @Mapping(target = "experienceYears", source = "jockey.experienceYears")
-    @Mapping(target = "licenseNumber", source = "jockey.licenseNumber")
     @Mapping(target = "specialization", source = "jockey.specialization")
     @Mapping(target = "hireFee", source = "hireFee")
     @Mapping(target = "jockeyStatus", source = "jockey.status")

@@ -24,7 +24,6 @@ public class JockeyTournamentRegistrationResponse {
     float height;
     float weight;
     int experienceYears;
-    String licenseNumber;
     Specialization specialization;
     BigDecimal hireFee;
     String jockeyStatus;

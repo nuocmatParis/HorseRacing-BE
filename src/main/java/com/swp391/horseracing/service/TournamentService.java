@@ -2,7 +2,6 @@ package com.swp391.horseracing.service;
 
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
-import com.swp391.horseracing.dto.tournament.request.ConfirmBracketRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -33,13 +32,6 @@ public interface TournamentService {
     TournamentResponse getById(UUID id);
 
     TournamentResponse closeRegistration(UUID id);
-
-    com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse getBracketPreview(UUID tournamentId);
-
-    TournamentResponse confirmBracket(UUID tournamentId, ConfirmBracketRequest request);
-
-    com.swp391.horseracing.dto.tournament.response.TournamentScheduleProposalResponse
-    getScheduleProposal(UUID tournamentId);
 
     TournamentResponse uploadImage(UUID id, MultipartFile file);
 }

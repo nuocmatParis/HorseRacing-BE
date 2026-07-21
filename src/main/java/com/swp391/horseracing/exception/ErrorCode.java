@@ -293,8 +293,6 @@ public enum ErrorCode {
     SCHEDULING_DEADLINE_AFTER_ROUND(1543, HttpStatus.BAD_REQUEST,
             "Scheduling deadline must be before or on the first round start date"),
 
-    LICENSE_NUMBER_ALREADY_EXISTS(1544, HttpStatus.CONFLICT, "License number already exists"),
-
     ROUND_NAME_ALREADY_EXISTS(1545, HttpStatus.CONFLICT, "Round name already exists in this tournament"),
 
     RACE_NAME_ALREADY_EXISTS(1546, HttpStatus.CONFLICT, "Race name already exists in this round"),
@@ -538,12 +536,6 @@ public enum ErrorCode {
 
     FILE_UPLOAD_FAILED(2001, HttpStatus.INTERNAL_SERVER_ERROR, "File upload failed"),
 
-    // BRACKET PLAN
-    INVALID_MAX_APPROVED_ENTRIES(2101, HttpStatus.BAD_REQUEST, "Max approved entries must be a power of 2 and at least 8"),
-    BRACKET_NOT_CONFIRMED(2103, HttpStatus.BAD_REQUEST, "Bracket plan has not been confirmed yet"),
-    BRACKET_PLAN_STALE(2104, HttpStatus.BAD_REQUEST, "Bracket plan is stale due to registration changes"),
-    BRACKET_PLAN_LOCKED(2105, HttpStatus.BAD_REQUEST, "Bracket plan is locked after schedule publication"),
-    APPROVED_ENTRIES_BELOW_BRACKET_MINIMUM(2106, HttpStatus.BAD_REQUEST, "Approved entries is below the minimum required for this bracket"),
     APPROVED_ENTRIES_EXCEED_MAXIMUM(2107, HttpStatus.BAD_REQUEST, "Approved entries exceed the tournament capacity"),
     RACE_ENTRIES_OUT_OF_RANGE(2108, HttpStatus.BAD_REQUEST, "Race entries count must be between 8 and 16"),
     ROUND_STRUCTURE_MISMATCH(2109, HttpStatus.BAD_REQUEST, "Round structure does not match the bracket plan"),
@@ -554,9 +546,6 @@ public enum ErrorCode {
     FINAL_ROUND_MUST_HAVE_ONE_RACE(2114, HttpStatus.BAD_REQUEST, "Final round must have exactly one race"),
     PRIZE_PAYOUT_ONLY_ALLOWED_FOR_FINAL(2115, HttpStatus.BAD_REQUEST, "Prize payout is only allowed for the final round"),
     PRIZE_PAYOUT_ALREADY_COMPLETED(2116, HttpStatus.CONFLICT, "Prize payout has already been completed for this tournament"),
-    BRACKET_PLAN_VERSION_CONFLICT(2117, HttpStatus.CONFLICT, "Bracket plan version has changed, please preview again"),
-    INVALID_JOCKEY_CAPACITY(2118, HttpStatus.BAD_REQUEST, "Max approved jockeys must be at least 125 percent of max approved entries"),
-    TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET(2119, HttpStatus.BAD_REQUEST, "The final race cannot finish within the tournament date range for the selected bracket"),
     RACE_SCHEDULE_INCOMPLETE(2120, HttpStatus.BAD_REQUEST, "All races in the active round must have a valid schedule before publication"),
     TOURNAMENT_START_DATE_MUST_BE_TODAY(2121, HttpStatus.BAD_REQUEST, "Tournament start date must be the creation date"),
     REGISTRATION_OPEN_TIME_IN_PAST(2122, HttpStatus.BAD_REQUEST, "Registration open time cannot be in the past"),
@@ -566,10 +555,17 @@ public enum ErrorCode {
     SCHEDULING_PERIOD_TOO_SHORT(2126, HttpStatus.BAD_REQUEST, "Scheduling period must be at least 4 calendar days"),
     TOURNAMENT_START_DATE_IMMUTABLE(2127, HttpStatus.BAD_REQUEST, "Tournament start date cannot be changed after creation"),
     ADVANCED_ROUND_ENTRIES_MANAGED_BY_RESULTS(2128, HttpStatus.CONFLICT, "Entries after the first round are created only from official qualifiers"),
+    TOURNAMENT_DATE_RANGE_INVALID(2129, HttpStatus.BAD_REQUEST, "Tournament date range is too short for the scheduled races"),
 
     // SPECTATOR HORSE FOLLOW
     HORSE_ALREADY_FOLLOWED(2201, HttpStatus.CONFLICT, "Horse is already followed"),
     HORSE_FOLLOW_NOT_FOUND(2202, HttpStatus.NOT_FOUND, "Horse follow not found"),
+
+    // ELIGIBILITY VALIDATION
+    ELIGIBILITY_INVALID_VALUE(2301, HttpStatus.BAD_REQUEST, "Eligibility condition value không đúng định dạng hoặc ngoài phạm vi cho phép"),
+    ELIGIBILITY_INVALID_TARGET(2302, HttpStatus.BAD_REQUEST, "Condition name không tương thích với target type"),
+    ELIGIBILITY_HORSE_WEIGHT_OUT_OF_RANGE(2303, HttpStatus.BAD_REQUEST, "Horse weight phải từ 400kg đến 600kg"),
+    ELIGIBILITY_JOCKEY_WEIGHT_OUT_OF_RANGE(2304, HttpStatus.BAD_REQUEST, "Jockey weight phải từ 45kg đến 65kg"),
 
     ;
 

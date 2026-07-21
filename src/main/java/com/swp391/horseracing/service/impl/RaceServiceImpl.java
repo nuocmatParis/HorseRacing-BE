@@ -91,9 +91,6 @@ public class RaceServiceImpl implements RaceService {
         if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (round.getTournament().getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
-        }
 
         Tournament tournament = round.getTournament();
         LocalDateTime endTime = request.getStartTime().plusMinutes(tournament.getDefaultRaceOperationalMinutes());
@@ -152,8 +149,7 @@ public class RaceServiceImpl implements RaceService {
         if (!scheduleEditable) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (tournament.getBracketPlanStatus() == BracketPlanStatus.CONFIRMED
-                || tournament.getBracketPlanStatus() == BracketPlanStatus.LOCKED) {
+        if (tournament.getPhase() == TournamentPhase.SCHEDULING) {
             validateOnlyRaceScheduleChanges(request);
         }
 
@@ -208,8 +204,13 @@ public class RaceServiceImpl implements RaceService {
         if (race.getRound().getTournament().getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (race.getRound().getTournament().getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+
+        if (race.getSchedulePublishedAt() != null) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (!raceEntryRepository.findByRace_RaceIdOrderByCreatedAtAsc(raceId).isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         raceRepository.delete(race);
@@ -220,11 +221,6 @@ public class RaceServiceImpl implements RaceService {
     public RaceResponse publishSchedule(UUID raceId) {
         Race race = raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
-
-        BracketPlanStatus bracketStatus = race.getRound().getTournament().getBracketPlanStatus();
-        if (bracketStatus == BracketPlanStatus.CONFIRMED || bracketStatus == BracketPlanStatus.LOCKED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
-        }
 
         if (race.getStatus() != RoundStatus.SCHEDULING) {
             throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
@@ -1018,7 +1014,7 @@ public class RaceServiceImpl implements RaceService {
                 || request.getTrackCondition() != null
                 || request.getDistance() != null
                 || request.getSequenceOrder() != null) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
     }
 }

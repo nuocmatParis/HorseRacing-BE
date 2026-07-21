@@ -61,9 +61,6 @@ public class JockeyServiceImpl implements JockeyService {
         if (jockeyRepository.existsByUser_UserId(user.getUserId())){
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE);
         }
-        if (jockeyRepository.existsByLicenseNumber(request.getLicenseNumber())) {
-            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
-        }
 
         Jockey jockey = jockeyMapper.toJockey(request);
         jockey.setUser(user);
@@ -93,9 +90,6 @@ public class JockeyServiceImpl implements JockeyService {
         User user = getCurrentUser();
         Jockey jockey = jockeyRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new AppException(ErrorCode.JOCKEY_PROFILE_NOT_FOUND));
-        if (jockeyRepository.existsByLicenseNumberAndJockeyIdNot(request.getLicenseNumber(), jockey.getJockeyId())) {
-            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
-        }
         jockeyMapper.updateJockey(jockey, request);
         return jockeyMapper.toJockeyResponse(jockeyRepository.save(jockey));
     }

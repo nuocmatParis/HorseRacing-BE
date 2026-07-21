@@ -79,14 +79,8 @@ public class Round {
     @Column(name = "expected_entries")
     Integer expectedEntries;
 
-    @Column(name = "planned_race_count")
-    Integer plannedRaceCount;
-
     @Column(name = "qualifiers_per_race")
     Integer qualifiersPerRace;
-
-    @Column(name = "bracket_plan_version")
-    Integer bracketPlanVersion;
 
     @Column(name = "advanced_at")
     LocalDateTime advancedAt;

@@ -3,6 +3,8 @@ package com.swp391.horseracing.dto.tournament.request;
 import com.swp391.horseracing.enums.EligibilityCondition;
 import com.swp391.horseracing.enums.EligibilityOperator;
 import com.swp391.horseracing.enums.EligibilityTargetType;
+import com.swp391.horseracing.validation.ValidEligibilityTarget;
+import com.swp391.horseracing.validation.ValidEligibilityValue;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -11,6 +13,8 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
+@ValidEligibilityValue
+@ValidEligibilityTarget
 public class UpdateEligibilityRequest {
 
     EligibilityTargetType targetType;

@@ -19,7 +19,6 @@ public class VeterinarianResponse {
     String fullName;
     String email;
     String username;
-    String licenseNumber;
     String specialization;
     int yearsOfService;
     VetStatus status;

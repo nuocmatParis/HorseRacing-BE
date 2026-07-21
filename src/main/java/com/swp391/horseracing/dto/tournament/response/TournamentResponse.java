@@ -60,13 +60,8 @@ public class TournamentResponse {
     Boolean applyBreakTime;
     LocalTime breakStartTime;
     LocalTime breakEndTime;
-    Integer maxRounds;
     Integer maxApprovedJockeys;
     Integer maxApprovedEntries;
-    Integer plannedRoundCount;
-    Integer plannedRaceCount;
-    String bracketPlanStatus;
-    Integer bracketPlanVersion;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;

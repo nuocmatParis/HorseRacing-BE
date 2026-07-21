@@ -40,9 +40,6 @@ public class VeterinarianServiceImpl implements VeterinarianService {
         if (veterinarianRepository.existsByUser_UserId(user.getUserId())) {
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE);
         }
-        if (veterinarianRepository.existsByLicenseNumber(request.getLicenseNumber())) {
-            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
-        }
 
         Veterinarian veterinarian = veterinarianMapper.toVeterinarian(request);
         veterinarian.setUser(user);
@@ -74,11 +71,6 @@ public class VeterinarianServiceImpl implements VeterinarianService {
     public VeterinarianResponse update(UUID id, VeterinarianUpdateRequest request) {
         Veterinarian veterinarian = veterinarianRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.VETERINARIAN_PROFILE_NOT_FOUND));
-
-        if (request.getLicenseNumber() != null
-                && veterinarianRepository.existsByLicenseNumberAndVetIdNot(request.getLicenseNumber(), id)) {
-            throw new AppException(ErrorCode.LICENSE_NUMBER_ALREADY_EXISTS);
-        }
 
         veterinarianMapper.updateVeterinarian(veterinarian, request);
         return veterinarianMapper.toVeterinarianResponse(veterinarianRepository.save(veterinarian));

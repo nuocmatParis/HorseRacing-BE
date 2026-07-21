@@ -43,9 +43,9 @@ VALUES
 ON DUPLICATE KEY UPDATE status = 'AVAILABLE';
 
 INSERT INTO veterinarians
-    (vet_id, user_id, license_number, specialization, years_of_service, status, created_at)
+    (vet_id, user_id, specialization, years_of_service, status, created_at)
 VALUES
-    ('23000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000002', 'VET-DEMO-AVAILABLE', 'Equine Medicine', 5, 'AVAILABLE', @now)
+    ('23000000-0000-0000-0000-000000000002', '12000000-0000-0000-0000-000000000002', 'Equine Medicine', 5, 'AVAILABLE', @now)
 ON DUPLICATE KEY UPDATE status = 'AVAILABLE';
 
 INSERT INTO medical_staffs
@@ -67,8 +67,8 @@ INSERT INTO tournaments
      max_races_per_day, min_race_interval_minutes,
      start_early_tolerance_minutes, start_late_tolerance_minutes,
      default_race_operational_minutes, race_day_start_time, race_day_end_time,
-     apply_break_time, break_start_time, break_end_time, max_rounds,
-     status, phase, created_at, published_at,
+      apply_break_time, break_start_time, break_end_time,
+      status, phase, created_at, published_at,
      registration_open_at, registration_close_at, review_deadline_at,
      jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at,
      current_round_name, min_round_gap_days, race_class, distance,
@@ -84,7 +84,7 @@ VALUES
      'Trường đua Demo Registration', 100000, 50000, 5000000,
      'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24,
      90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00',
-     0, NULL, NULL, 1, 'OPEN', 'REGISTRATION_OPEN', DATE_SUB(@now, INTERVAL 2 DAY),
+     0, NULL, NULL, 'OPEN', 'REGISTRATION_OPEN', DATE_SUB(@now, INTERVAL 2 DAY),
      DATE_SUB(@now, INTERVAL 1 DAY), DATE_SUB(@now, INTERVAL 1 DAY),
      DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY),
      DATE_ADD(@now, INTERVAL 11 DAY), DATE_ADD(@now, INTERVAL 13 DAY),

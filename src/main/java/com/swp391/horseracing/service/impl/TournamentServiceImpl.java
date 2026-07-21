@@ -1,31 +1,14 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
-import com.swp391.horseracing.dto.tournament.request.ConfirmBracketRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
-import com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse;
-import com.swp391.horseracing.dto.tournament.response.RoundPreviewDto;
-import com.swp391.horseracing.dto.tournament.response.RaceScheduleProposalDto;
-import com.swp391.horseracing.dto.tournament.response.RoundScheduleProposalDto;
-import com.swp391.horseracing.dto.tournament.response.TournamentScheduleProposalResponse;
-import com.swp391.horseracing.entity.PrizeStructure;
-import com.swp391.horseracing.entity.Race;
-import com.swp391.horseracing.entity.Round;
-import com.swp391.horseracing.entity.Tournament;
-import com.swp391.horseracing.entity.User;
-import com.swp391.horseracing.entity.HorseTournamentRegistration;
-import com.swp391.horseracing.entity.JockeyHorseContract;
-import com.swp391.horseracing.entity.RaceEntry;
-import com.swp391.horseracing.enums.RaceEntryStatus;
+import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.TournamentPhase;
-import com.swp391.horseracing.entity.Invoice;
 import com.swp391.horseracing.enums.RegistrationStatus;
 import com.swp391.horseracing.enums.InvoiceStatus;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.RoundStatus;
-import com.swp391.horseracing.enums.BracketPlanStatus;
-import com.swp391.horseracing.enums.RoundTransitionStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
@@ -33,15 +16,14 @@ import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.policy.TournamentTimelinePolicy;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
-import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
-import com.swp391.horseracing.repository.JockeyHorseContractRepository;
 import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.InvoiceRepository;
+import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.InvoiceService;
 import com.swp391.horseracing.service.BusinessNotificationEventService;
@@ -59,26 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @RequiredArgsConstructor
 public class TournamentServiceImpl implements TournamentService {
-
-    private static final int MIN_ENTRIES_PER_RACE = 8;
-    private static final int MAX_ENTRIES_PER_RACE = 16;
-    private static final int QUALIFIERS_PER_RACE = 4;
-    private static final int JOCKEY_POOL_PERCENT = 125;
 
     TournamentRepository tournamentRepository;
     UserRepository userRepository;
@@ -87,13 +55,12 @@ public class TournamentServiceImpl implements TournamentService {
     TournamentEligibilityRepository eligibilityRepository;
     RoundRepository roundRepository;
     RaceRepository raceRepository;
-    RaceEntryRepository raceEntryRepository;
     RaceRefereeRepository raceRefereeRepository;
     HorseTournamentRegistrationRepository horseRegistrationRepository;
     InvoiceRepository invoiceRepository;
+    RaceEntryRepository raceEntryRepository;
     InvoiceService invoiceService;
     BusinessNotificationEventService notificationEventService;
-    JockeyHorseContractRepository jockeyHorseContractRepository;
     RaceService raceService;
     CloudinaryService cloudinaryService;
 
@@ -174,14 +141,10 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setMaxApprovedEntries(maxEntries);
         tournament.setMaxApprovedHorses(maxEntries);
         tournament.setMaxApprovedJockeys(999999);
-        tournament.setBracketPlanStatus(BracketPlanStatus.NOT_GENERATED);
-        tournament.setBracketPlanVersion(1);
         tournament.setCreatedBy(currentUser);
         tournament.setCreatedAt(LocalDateTime.now());
         tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
                 tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime()));
-
-        validateTournamentScheduleCapacity(tournament, maxEntries);
 
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -274,12 +237,7 @@ public class TournamentServiceImpl implements TournamentService {
         validateHandicapSettings(newHandicapEnabled, topWeightLbs, minWeightLbs, equipmentWeightKg);
 
         if (request.getMaxApprovedEntries() != null) {
-            Integer maxEntries = request.getMaxApprovedEntries();
-            validateMaxApprovedEntries(maxEntries);
-            if (tournament.getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED
-                    && !maxEntries.equals(tournament.getMaxApprovedEntries())) {
-                throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
-            }
+            validateMaxApprovedEntries(request.getMaxApprovedEntries());
         }
 
         Integer effectiveMaxEntries = request.getMaxApprovedEntries() != null
@@ -309,8 +267,6 @@ public class TournamentServiceImpl implements TournamentService {
             tournament.setEquipmentWeightKg(0.0);
         }
 
-        validateTournamentScheduleCapacity(tournament, effectiveMaxEntries);
-
         return toResponse(tournamentRepository.save(tournament));
     }
 
@@ -337,10 +293,6 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
-        if (tournament.getBracketPlanStatus() != com.swp391.horseracing.enums.BracketPlanStatus.CONFIRMED) {
-            throw new AppException(ErrorCode.BRACKET_NOT_CONFIRMED);
-        }
-
         if (prizeStructureRepository.findByTournament_TournamentId(id).isEmpty()) {
             throw new AppException(ErrorCode.TOURNAMENT_MISSING_PRIZE);
         }
@@ -348,8 +300,6 @@ public class TournamentServiceImpl implements TournamentService {
         if (eligibilityRepository.findByTournament_TournamentId(id).isEmpty()) {
             throw new AppException(ErrorCode.TOURNAMENT_MISSING_ELIGIBILITY);
         }
-
-        validateBracketStructure(tournament);
 
         tournament.setPublishedAt(LocalDateTime.now());
 
@@ -378,38 +328,6 @@ public class TournamentServiceImpl implements TournamentService {
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         validatePhase(tournament, TournamentPhase.JOCKEY_MATCHING);
 
-        if (tournament.getBracketPlanStatus() != BracketPlanStatus.CONFIRMED) {
-            throw new AppException(ErrorCode.BRACKET_NOT_CONFIRMED);
-        }
-        validateBracketStructure(tournament);
-
-        long actualApprovedCount = jockeyHorseContractRepository.countByTournament_TournamentIdAndStatus(id, com.swp391.horseracing.enums.ContractStatus.APPROVED);
-        int actualCount = (int) actualApprovedCount;
-
-        Integer maxEntries = tournament.getMaxApprovedEntries();
-        validateMaxApprovedEntries(maxEntries);
-
-        int firstRoundRaceCount = calculateFirstRoundRaceCount(maxEntries);
-
-        int minEntriesRequired = firstRoundRaceCount * MIN_ENTRIES_PER_RACE;
-
-        if (actualCount < minEntriesRequired || actualCount > maxEntries) {
-            tournament.setBracketPlanStatus(BracketPlanStatus.STALE);
-            return toResponse(tournamentRepository.save(tournament));
-        } else {
-            List<Round> rounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(id);
-            if (!rounds.isEmpty()) {
-                Round round1 = rounds.get(0);
-                updateExpectedEntriesAfterMatching(rounds, actualCount);
-                int round1Entries = raceEntryRepository.countByRace_Round_RoundId(round1.getRoundId());
-                if (round1Entries == 0) {
-                    distributeFirstRoundEntries(tournament, round1);
-                } else if (round1Entries != actualCount) {
-                    throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-                }
-            }
-        }
-
         setPhaseAndStatus(tournament, TournamentPhase.SCHEDULING);
         return toResponse(tournamentRepository.save(tournament));
     }
@@ -420,16 +338,7 @@ public class TournamentServiceImpl implements TournamentService {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
 
-        if (tournament.getBracketPlanStatus() == com.swp391.horseracing.enums.BracketPlanStatus.STALE) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_STALE);
-        }
-        if (tournament.getBracketPlanStatus() != com.swp391.horseracing.enums.BracketPlanStatus.CONFIRMED &&
-                tournament.getBracketPlanStatus() != com.swp391.horseracing.enums.BracketPlanStatus.LOCKED) {
-            throw new AppException(ErrorCode.BRACKET_NOT_CONFIRMED);
-        }
-
         validatePhase(tournament, TournamentPhase.SCHEDULING);
-        validateBracketStructure(tournament);
 
         List<Round> orderedRounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(id);
         if (orderedRounds.isEmpty()) {
@@ -552,10 +461,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         tournament.setCurrentRoundName(activeRound.getRoundName());
         setPhaseAndStatus(tournament, TournamentPhase.RACING);
-        
-        if (activeRound.getSequenceOrder() == 1) {
-            tournament.setBracketPlanStatus(com.swp391.horseracing.enums.BracketPlanStatus.LOCKED);
-        }
 
         Tournament savedTournament = tournamentRepository.save(tournament);
         notificationEventService.schedulePublished(savedTournament);
@@ -582,7 +487,7 @@ public class TournamentServiceImpl implements TournamentService {
         LocalDateTime tournamentEnd = tournament.getEndDate()
                 .atTime(tournament.getRaceDayEndTime());
         if (finalRaceEnd == null || finalRaceEnd.isAfter(tournamentEnd)) {
-            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
+            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_INVALID);
         }
     }
 
@@ -829,658 +734,9 @@ public class TournamentServiceImpl implements TournamentService {
         }
     }
 
-    @Override
-    public com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse getBracketPreview(UUID tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
-
-        Integer maxEntries = tournament.getMaxApprovedEntries();
-        validateMaxApprovedEntries(maxEntries);
-
-        long actualApprovedCount = jockeyHorseContractRepository.countByTournament_TournamentIdAndStatus(tournamentId, com.swp391.horseracing.enums.ContractStatus.APPROVED);
-        int actualCount = (int) actualApprovedCount;
-
-        int effectiveCount = actualCount > 0 ? actualCount : maxEntries;
-
-        int firstRoundRaceCount = calculateFirstRoundRaceCount(maxEntries);
-
-        int minEntriesRequired = firstRoundRaceCount * 8;
-
-        boolean valid = true;
-        String errorMessage = null;
-        Integer recommendedMax = null;
-
-        boolean actualCountIsFinal = actualCount > 0
-                || tournament.getBracketPlanStatus() == BracketPlanStatus.STALE;
-        if (actualCountIsFinal) {
-            if (actualCount < minEntriesRequired) {
-                valid = false;
-                errorMessage = "Số lượng hồ sơ đã duyệt không đủ để duy trì cấu trúc bracket hiện tại (cần tối thiểu " + minEntriesRequired + " entry). Đề xuất giảm maxApprovedEntries.";
-                recommendedMax = getRecommendedMaxApprovedEntries(actualCount);
-            } else if (actualCount > maxEntries) {
-                valid = false;
-                errorMessage = "Số lượng hồ sơ đã duyệt vượt quá sức chứa tối đa của Tournament.";
-            }
-        }
-
-        java.util.List<com.swp391.horseracing.dto.tournament.response.RoundPreviewDto> rounds = new java.util.ArrayList<>();
-        int currentRaceCount = firstRoundRaceCount;
-        int currentExpectedEntries = effectiveCount;
-        int order = 1;
-
-        while (true) {
-            boolean isFinal = (currentRaceCount == 1);
-            
-            java.util.List<Integer> entriesPerRace = new java.util.ArrayList<>();
-            if (order == 1) {
-                int baseSize = currentExpectedEntries / currentRaceCount;
-                int remainder = currentExpectedEntries % currentRaceCount;
-                for (int i = 0; i < currentRaceCount; i++) {
-                    entriesPerRace.add(i < remainder ? baseSize + 1 : baseSize);
-                }
-            } else {
-                for (int i = 0; i < currentRaceCount; i++) {
-                    entriesPerRace.add(8);
-                }
-            }
-
-            rounds.add(com.swp391.horseracing.dto.tournament.response.RoundPreviewDto.builder()
-                    .sequenceOrder(order)
-                    .raceCount(currentRaceCount)
-                    .entriesPerRace(entriesPerRace)
-                    .isFinal(isFinal)
-                    .build());
-
-            if (isFinal) {
-                break;
-            }
-
-            currentRaceCount /= 2;
-            currentExpectedEntries = currentRaceCount * 8;
-            order++;
-        }
-
-        int totalRaceCount = 0;
-        for (com.swp391.horseracing.dto.tournament.response.RoundPreviewDto round : rounds) {
-            totalRaceCount += round.getRaceCount();
-        }
-
-        List<Integer> plannedRaceCounts = new ArrayList<>();
-        for (com.swp391.horseracing.dto.tournament.response.RoundPreviewDto round : rounds) {
-            plannedRaceCounts.add(round.getRaceCount());
-        }
-        ScheduleCalculation schedule = calculateSchedule(tournament, plannedRaceCounts);
-        int minimumRacingDays = schedule.racingDays;
-        int minimumCalendarDays = schedule.calendarDays;
-        LocalDate earliestEndDate = schedule.proposedFinalEndAt.toLocalDate();
-        boolean scheduleFeasible = schedule.fitsTournament;
-        if (!scheduleFeasible) {
-            valid = false;
-            if (errorMessage == null) {
-                errorMessage = "Tournament needs at least " + minimumCalendarDays
-                        + " calendar days for the selected bracket";
-            }
-        }
-
-        return com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse.builder()
-                .maxApprovedEntries(maxEntries)
-                .actualApprovedEntries(actualCount)
-                .minEntriesPerRace(8)
-                .maxEntriesPerRace(16)
-                .qualifiersPerRace(4)
-                .predictionPositions(3)
-                .finalPrizePositions(3)
-                .rounds(rounds)
-                .totalRaceCount(totalRaceCount)
-                .valid(valid)
-                .errorMessage(errorMessage)
-                .recommendedMaxApprovedEntries(recommendedMax)
-                .minimumRacingDays(minimumRacingDays)
-                .minimumTournamentCalendarDays(minimumCalendarDays)
-                .earliestPossibleEndDate(earliestEndDate)
-                .scheduleFeasible(scheduleFeasible)
-                .build();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public TournamentScheduleProposalResponse getScheduleProposal(UUID tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
-        if (tournament.getBracketPlanStatus() == BracketPlanStatus.STALE) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_STALE);
-        }
-        validateBracketStructure(tournament);
-
-        List<Round> rounds = roundRepository
-                .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId);
-        List<Integer> raceCounts = new ArrayList<>();
-        for (Round round : rounds) {
-            raceCounts.add(round.getPlannedRaceCount());
-        }
-
-        ScheduleCalculation calculation = calculateSchedule(tournament, raceCounts);
-        if (!calculation.fitsTournament) {
-            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
-        }
-
-        List<RoundScheduleProposalDto> roundProposals = new ArrayList<>();
-        int durationMinutes = tournament.getDefaultRaceOperationalMinutes();
-        for (int roundIndex = 0; roundIndex < rounds.size(); roundIndex++) {
-            Round round = rounds.get(roundIndex);
-            List<Race> races = raceRepository
-                    .findByRound_RoundIdOrderBySequenceOrderAsc(round.getRoundId());
-            List<LocalDateTime> proposedStarts = calculation.roundRaceStartTimes.get(roundIndex);
-            if (races.size() != proposedStarts.size()) {
-                throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
-            }
-
-            List<RaceScheduleProposalDto> raceProposals = new ArrayList<>();
-            for (int raceIndex = 0; raceIndex < races.size(); raceIndex++) {
-                Race race = races.get(raceIndex);
-                LocalDateTime proposedStart = proposedStarts.get(raceIndex);
-                raceProposals.add(RaceScheduleProposalDto.builder()
-                        .raceId(race.getRaceId())
-                        .raceName(race.getName())
-                        .sequenceOrder(race.getSequenceOrder())
-                        .suggestedStartTime(proposedStart)
-                        .suggestedEndTime(proposedStart.plusMinutes(durationMinutes))
-                        .build());
-            }
-
-            LocalDateTime roundStart = proposedStarts.get(0);
-            LocalDateTime roundEnd = proposedStarts.get(proposedStarts.size() - 1)
-                    .plusMinutes(durationMinutes);
-            roundProposals.add(RoundScheduleProposalDto.builder()
-                    .roundId(round.getRoundId())
-                    .roundName(round.getRoundName())
-                    .sequenceOrder(round.getSequenceOrder())
-                    .suggestedStartDate(roundStart)
-                    .suggestedEndDate(roundEnd)
-                    .races(raceProposals)
-                    .build());
-        }
-
-        return TournamentScheduleProposalResponse.builder()
-                .tournamentId(tournamentId)
-                .bracketPlanVersion(tournament.getBracketPlanVersion())
-                .proposedStartAt(calculation.proposedStartAt)
-                .proposedFinalEndAt(calculation.proposedFinalEndAt)
-                .racingDays(calculation.racingDays)
-                .calendarDays(calculation.calendarDays)
-                .fitsTournament(calculation.fitsTournament)
-                .rounds(roundProposals)
-                .build();
-    }
-
-    private int getRecommendedMaxApprovedEntries(int actualApprovedEntries) {
-        if (actualApprovedEntries < 8) {
-            return 8;
-        }
-        int power = 8;
-        while (power < actualApprovedEntries) {
-            power *= 2;
-        }
-        return power;
-    }
-
-    @Override
-    @Transactional
-    public TournamentResponse confirmBracket(UUID tournamentId, ConfirmBracketRequest request) {
-        Tournament tournament = tournamentRepository.findForUpdateByTournamentId(tournamentId)
-                .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
-
-        BracketPlanStatus previousStatus = tournament.getBracketPlanStatus();
-        if (previousStatus == BracketPlanStatus.CONFIRMED
-                || previousStatus == BracketPlanStatus.LOCKED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
-        }
-        if (previousStatus == BracketPlanStatus.NOT_GENERATED
-                && tournament.getStatus() != TournamentStatus.DRAFT) {
-            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
-        }
-        if (!request.getExpectedPlanVersion().equals(tournament.getBracketPlanVersion())) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_VERSION_CONFLICT);
-        }
-
-        Integer selectedMax = request.getMaxApprovedEntries();
-        validateMaxApprovedEntries(selectedMax);
-        if (previousStatus == BracketPlanStatus.NOT_GENERATED
-                && !selectedMax.equals(tournament.getMaxApprovedEntries())) {
-            throw new AppException(ErrorCode.INVALID_MAX_APPROVED_ENTRIES);
-        }
-        if (previousStatus == BracketPlanStatus.STALE) {
-            BracketPreviewResponse stalePreview = getBracketPreview(tournamentId);
-            if (stalePreview.getRecommendedMaxApprovedEntries() == null
-                    || !selectedMax.equals(stalePreview.getRecommendedMaxApprovedEntries())) {
-                throw new AppException(ErrorCode.INVALID_MAX_APPROVED_ENTRIES);
-            }
-        }
-        tournament.setMaxApprovedEntries(selectedMax);
-        tournament.setMaxApprovedHorses(selectedMax);
-
-        com.swp391.horseracing.dto.tournament.response.BracketPreviewResponse preview = getBracketPreview(tournamentId);
-        if (!preview.isValid()) {
-            if (!preview.isScheduleFeasible()) {
-                throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
-            }
-            if (preview.getActualApprovedEntries() > selectedMax) {
-                throw new AppException(ErrorCode.APPROVED_ENTRIES_EXCEED_MAXIMUM);
-            }
-            throw new AppException(ErrorCode.APPROVED_ENTRIES_BELOW_BRACKET_MINIMUM);
-        }
-
-        // Delete existing rounds and races
-        List<Round> oldRounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId);
-        for (Round r : oldRounds) {
-            raceEntryRepository.deleteAll(raceEntryRepository.findByRace_Round_RoundId(r.getRoundId()));
-            raceRepository.deleteAll(raceRepository.findByRound_RoundId(r.getRoundId()));
-        }
-        roundRepository.deleteAll(oldRounds);
-        roundRepository.flush();
-
-        User currentUser = getCurrentUser();
-
-        // Create new skeleton rounds and races
-        int newPlanVersion = tournament.getBracketPlanVersion() + 1;
-        java.util.List<Round> savedRounds = new java.util.ArrayList<>();
-        for (com.swp391.horseracing.dto.tournament.response.RoundPreviewDto roundDto : preview.getRounds()) {
-            Round round = Round.builder()
-                    .roundName("Vòng " + roundDto.getSequenceOrder() + (roundDto.isFinal() ? " (Chung Kết)" : ""))
-                    .sequenceOrder(roundDto.getSequenceOrder())
-                    .isFinal(roundDto.isFinal())
-                    .predictionType(com.swp391.horseracing.enums.PredictionType.TOP3)
-                    .advancementRule(roundDto.isFinal() ? "Xác định hạng chung cuộc nhận giải thưởng" : "Top 4 mỗi Race đi tiếp vào vòng sau")
-                    .startDate(null)
-                    .endDate(null)
-                    .description("Vòng đấu số " + roundDto.getSequenceOrder() + " thuộc giải " + tournament.getName())
-                    .maxRaces(roundDto.getRaceCount())
-                    .plannedRaceCount(roundDto.getRaceCount())
-                    .expectedEntries(sumEntries(roundDto.getEntriesPerRace()))
-                    .maxEntries(16)
-                    .minEntries(8)
-                    .qualifiersPerRace(roundDto.isFinal() ? 0 : 4)
-                    .bracketPlanVersion(newPlanVersion)
-                    .transitionStatus(RoundTransitionStatus.NOT_READY)
-                    .status(com.swp391.horseracing.enums.RoundStatus.SCHEDULING)
-                    .tournament(tournament)
-                    .createdBy(currentUser)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            Round savedRound = roundRepository.save(round);
-            savedRounds.add(savedRound);
-
-            for (int j = 1; j <= roundDto.getRaceCount(); j++) {
-                Race race = Race.builder()
-                        .name(tournament.getName() + " - " + savedRound.getRoundName() + " - Race " + j)
-                        .startTime(null)
-                        .endTime(null)
-                        .trackCondition("TBD")
-                        .distance(tournament.getDistance())
-                        .sequenceOrder(j)
-                        .status(com.swp391.horseracing.enums.RoundStatus.SCHEDULING)
-                        .predictionOpenAt(null)
-                        .predictionCloseAt(null)
-                        .round(savedRound)
-                        .createdBy(currentUser)
-                        .build();
-                raceRepository.save(race);
-            }
-        }
-
-        // If actual approved entries exist, distribute them immediately
-        if (preview.getActualApprovedEntries() > 0 && !savedRounds.isEmpty()) {
-            distributeFirstRoundEntries(tournament, savedRounds.get(0));
-            updateExpectedEntriesAfterMatching(savedRounds, preview.getActualApprovedEntries());
-        }
-
-        tournament.setPlannedRoundCount(preview.getRounds().size());
-        tournament.setPlannedRaceCount(preview.getTotalRaceCount());
-        tournament.setMaxRounds(preview.getRounds().size());
-        tournament.setBracketPlanVersion(newPlanVersion);
-        tournament.setBracketPlanStatus(BracketPlanStatus.CONFIRMED);
-        if (previousStatus == BracketPlanStatus.STALE) {
-            tournament.setPhase(TournamentPhase.SCHEDULING);
-        }
-
-        return toResponse(tournamentRepository.save(tournament));
-    }
-
-    private void distributeFirstRoundEntries(Tournament tournament, Round round1) {
-        List<JockeyHorseContract> approvedContracts = jockeyHorseContractRepository.findByTournament_TournamentIdAndStatus(
-                tournament.getTournamentId(), com.swp391.horseracing.enums.ContractStatus.APPROVED);
-        List<Race> round1Races = raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(round1.getRoundId());
-        if (round1Races.isEmpty() || approvedContracts.isEmpty()) {
-            return;
-        }
-        if (raceEntryRepository.countByRace_Round_RoundId(round1.getRoundId()) > 0) {
-            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-        }
-
-        approvedContracts.sort(new Comparator<JockeyHorseContract>() {
-            @Override
-            public int compare(JockeyHorseContract left, JockeyHorseContract right) {
-                int ratingCompare = Integer.compare(
-                        right.getHorse().getCurrentRating(), left.getHorse().getCurrentRating());
-                if (ratingCompare != 0) {
-                    return ratingCompare;
-                }
-                return left.getContractId().toString().compareTo(right.getContractId().toString());
-            }
-        });
-
-        Set<UUID> horseIds = new HashSet<>();
-        Set<UUID> jockeyIds = new HashSet<>();
-        Set<UUID> contractIds = new HashSet<>();
-        int[] entryCounts = new int[round1Races.size()];
-        for (int index = 0; index < approvedContracts.size(); index++) {
-            JockeyHorseContract contract = approvedContracts.get(index);
-            if (!horseIds.add(contract.getHorse().getHorseId())
-                    || !jockeyIds.add(contract.getJockey().getJockeyId())
-                    || !contractIds.add(contract.getContractId())) {
-                throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-            }
-
-            int cycle = index / round1Races.size();
-            int offset = index % round1Races.size();
-            int raceIndex = cycle % 2 == 0 ? offset : round1Races.size() - 1 - offset;
-            entryCounts[raceIndex]++;
-            RaceEntry entry = RaceEntry.builder()
-                    .race(round1Races.get(raceIndex))
-                    .contract(contract)
-                    .laneNumber(null)
-                    .status(RaceEntryStatus.CONFIRMED)
-                    .assignedBy(tournament.getCreatedBy())
-                    .assignedAt(LocalDateTime.now())
-                    .build();
-            raceEntryRepository.save(entry);
-        }
-
-        for (int entryCount : entryCounts) {
-            if (entryCount < MIN_ENTRIES_PER_RACE || entryCount > MAX_ENTRIES_PER_RACE) {
-                throw new AppException(ErrorCode.RACE_ENTRIES_OUT_OF_RANGE);
-            }
-        }
-    }
-
-    private int sumEntries(List<Integer> entriesPerRace) {
-        int total = 0;
-        for (Integer count : entriesPerRace) {
-            total += count;
-        }
-        return total;
-    }
-
-    private void validateTournamentScheduleCapacity(Tournament tournament, Integer maxEntries) {
-        ScheduleCalculation calculation = calculateSchedule(
-                tournament, buildPlannedRaceCounts(maxEntries));
-        if (!calculation.fitsTournament) {
-            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_TOO_SHORT_FOR_BRACKET);
-        }
-    }
-
-    private List<Integer> buildPlannedRaceCounts(Integer maxEntries) {
-        validateMaxApprovedEntries(maxEntries);
-        List<Integer> raceCounts = new ArrayList<>();
-        int currentRaceCount = calculateFirstRoundRaceCount(maxEntries);
-        while (true) {
-            raceCounts.add(currentRaceCount);
-            if (currentRaceCount == 1) {
-                break;
-            }
-            currentRaceCount /= 2;
-        }
-        return raceCounts;
-    }
-
-    private ScheduleCalculation calculateSchedule(Tournament tournament, List<Integer> raceCounts) {
-        if (raceCounts == null || raceCounts.isEmpty()) {
-            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-        }
-        calculateMaximumRacesPerDay(tournament);
-
-        LocalDateTime competitionStart = resolveCompetitionStartAt(tournament);
-        LocalDateTime cursor = competitionStart;
-
-        Map<LocalDate, Integer> raceCountByDay = new HashMap<>();
-        Set<LocalDate> racingDates = new LinkedHashSet<>();
-        List<List<LocalDateTime>> roundRaceStartTimes = new ArrayList<>();
-        LocalDateTime proposedStartAt = null;
-        LocalDateTime previousRoundEnd = null;
-        int durationMinutes = tournament.getDefaultRaceOperationalMinutes();
-
-        for (int roundIndex = 0; roundIndex < raceCounts.size(); roundIndex++) {
-            if (previousRoundEnd != null) {
-                LocalDate earliestNextRoundDate =
-                        RoundSchedulePolicy.earliestNextRoundDate(
-                                previousRoundEnd,
-                                tournament.getMinRoundGapDays()
-                        );
-                cursor = earliestNextRoundDate.atTime(
-                        tournament.getRaceDayStartTime()
-                );
-            }
-
-            List<LocalDateTime> raceStarts = new ArrayList<>();
-            int raceCount = raceCounts.get(roundIndex);
-            for (int raceIndex = 0; raceIndex < raceCount; raceIndex++) {
-                LocalDateTime raceStart = findNextRaceSlot(tournament, cursor, raceCountByDay);
-                LocalDateTime raceEnd = raceStart.plusMinutes(durationMinutes);
-                raceStarts.add(raceStart);
-                racingDates.add(raceStart.toLocalDate());
-                raceCountByDay.put(raceStart.toLocalDate(),
-                        raceCountByDay.getOrDefault(raceStart.toLocalDate(), 0) + 1);
-                if (proposedStartAt == null) {
-                    proposedStartAt = raceStart;
-                }
-                previousRoundEnd = raceEnd;
-                cursor = raceEnd.plusMinutes(tournament.getMinRaceIntervalMinutes());
-            }
-            roundRaceStartTimes.add(raceStarts);
-        }
-
-        LocalDateTime tournamentEnd = tournament.getEndDate()
-                .atTime(tournament.getRaceDayEndTime());
-        boolean fitsTournament = previousRoundEnd != null
-                && !previousRoundEnd.isAfter(tournamentEnd);
-        int calendarDays = previousRoundEnd == null || proposedStartAt == null ? 0
-                : (int) ChronoUnit.DAYS.between(
-                proposedStartAt.toLocalDate(), previousRoundEnd.toLocalDate()) + 1;
-        return new ScheduleCalculation(
-                roundRaceStartTimes,
-                proposedStartAt,
-                previousRoundEnd,
-                racingDates.size(),
-                calendarDays,
-                fitsTournament);
-    }
-
-    private LocalDateTime findNextRaceSlot(Tournament tournament,
-                                           LocalDateTime earliest,
-                                           Map<LocalDate, Integer> raceCountByDay) {
-        LocalDateTime candidate = earliest;
-        LocalDateTime competitionStart = resolveCompetitionStartAt(tournament);
-        if (candidate.isBefore(competitionStart)) {
-            candidate = competitionStart;
-        }
-
-        while (true) {
-            LocalDate date = candidate.toLocalDate();
-            LocalTime dayStart = tournament.getRaceDayStartTime();
-            LocalTime dayEnd = tournament.getRaceDayEndTime();
-            if (candidate.toLocalTime().isBefore(dayStart)) {
-                candidate = date.atTime(dayStart);
-            }
-
-            int racesOnDate = raceCountByDay.getOrDefault(candidate.toLocalDate(), 0);
-            if (racesOnDate >= tournament.getMaxRacesPerDay()) {
-                candidate = nextOperatingDay(candidate.toLocalDate(), dayStart);
-                continue;
-            }
-
-            LocalDateTime candidateEnd = candidate
-                    .plusMinutes(tournament.getDefaultRaceOperationalMinutes());
-            if (!candidateEnd.toLocalDate().equals(candidate.toLocalDate())
-                    || candidateEnd.toLocalTime().isAfter(dayEnd)) {
-                candidate = nextOperatingDay(candidate.toLocalDate(), dayStart);
-                continue;
-            }
-
-            if (Boolean.TRUE.equals(tournament.getApplyBreakTime())
-                    && overlaps(candidate.toLocalTime(), candidateEnd.toLocalTime(),
-                    tournament.getBreakStartTime(), tournament.getBreakEndTime())) {
-                candidate = candidate.toLocalDate().atTime(tournament.getBreakEndTime());
-                continue;
-            }
-            return candidate;
-        }
-    }
-
-    private LocalDateTime nextOperatingDay(LocalDate currentDate, LocalTime dayStart) {
-        return currentDate.plusDays(1).atTime(dayStart);
-    }
-
-    private LocalDateTime resolveCompetitionStartAt(Tournament tournament) {
-        if (tournament.getCompetitionStartAt() != null) {
-            return tournament.getCompetitionStartAt();
-        }
-        if (tournament.getSchedulingDeadlineAt() == null) {
-            return tournament.getStartDate().atTime(tournament.getRaceDayStartTime());
-        }
-        return TournamentTimelinePolicy.competitionStartAt(
-                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime());
-    }
-
-    private static class ScheduleCalculation {
-        final List<List<LocalDateTime>> roundRaceStartTimes;
-        final LocalDateTime proposedStartAt;
-        final LocalDateTime proposedFinalEndAt;
-        final int racingDays;
-        final int calendarDays;
-        final boolean fitsTournament;
-
-        ScheduleCalculation(List<List<LocalDateTime>> roundRaceStartTimes,
-                            LocalDateTime proposedStartAt,
-                            LocalDateTime proposedFinalEndAt,
-                            int racingDays,
-                            int calendarDays,
-                            boolean fitsTournament) {
-            this.roundRaceStartTimes = roundRaceStartTimes;
-            this.proposedStartAt = proposedStartAt;
-            this.proposedFinalEndAt = proposedFinalEndAt;
-            this.racingDays = racingDays;
-            this.calendarDays = calendarDays;
-            this.fitsTournament = fitsTournament;
-        }
-    }
-
-    private int calculateMaximumRacesPerDay(Tournament tournament) {
-        int operationalMinutes = tournament.getDefaultRaceOperationalMinutes();
-        int intervalMinutes = tournament.getMinRaceIntervalMinutes();
-        LocalTime candidateStart = tournament.getRaceDayStartTime();
-        LocalTime dayEnd = tournament.getRaceDayEndTime();
-        int capacity = 0;
-        while (candidateStart != null && dayEnd != null
-                && !candidateStart.plusMinutes(operationalMinutes).isAfter(dayEnd)) {
-            LocalTime candidateEnd = candidateStart.plusMinutes(operationalMinutes);
-            if (Boolean.TRUE.equals(tournament.getApplyBreakTime())
-                    && overlaps(candidateStart, candidateEnd,
-                    tournament.getBreakStartTime(), tournament.getBreakEndTime())) {
-                candidateStart = tournament.getBreakEndTime();
-                continue;
-            }
-            capacity++;
-            candidateStart = candidateEnd.plusMinutes(intervalMinutes);
-        }
-        capacity = Math.min(capacity, tournament.getMaxRacesPerDay());
-        if (capacity < 1) {
-            throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
-        }
-        return capacity;
-    }
-
-    private boolean overlaps(LocalTime start, LocalTime end,
-                             LocalTime breakStart, LocalTime breakEnd) {
-        if (breakStart == null || breakEnd == null) {
-            return false;
-        }
-        return start.isBefore(breakEnd) && end.isAfter(breakStart);
-    }
-
-    private int calculateFirstRoundRaceCount(Integer maxEntries) {
-        if (maxEntries <= MAX_ENTRIES_PER_RACE) {
-            return 1;
-        }
-        return maxEntries / MAX_ENTRIES_PER_RACE;
-    }
-
     private void validateMaxApprovedEntries(Integer maxEntries) {
-        if (maxEntries == null || maxEntries < MIN_ENTRIES_PER_RACE
-                || (maxEntries & (maxEntries - 1)) != 0) {
-            throw new AppException(ErrorCode.INVALID_MAX_APPROVED_ENTRIES);
-        }
-    }
-
-    private void validateJockeyCapacity(Integer maxEntries, Integer maxJockeys) {
-        long minimumJockeys = ((long) maxEntries * JOCKEY_POOL_PERCENT + 99) / 100;
-        if (maxJockeys == null || maxJockeys < minimumJockeys) {
-            throw new AppException(ErrorCode.INVALID_JOCKEY_CAPACITY);
-        }
-    }
-
-    private void updateExpectedEntriesAfterMatching(List<Round> rounds, int actualApprovedEntries) {
-        for (int index = 0; index < rounds.size(); index++) {
-            Round round = rounds.get(index);
-            round.setExpectedEntries(index == 0
-                    ? actualApprovedEntries
-                    : round.getPlannedRaceCount() * MIN_ENTRIES_PER_RACE);
-            roundRepository.save(round);
-        }
-    }
-
-    private void validateBracketStructure(Tournament tournament) {
-        if (tournament.getBracketPlanStatus() != BracketPlanStatus.CONFIRMED
-                && tournament.getBracketPlanStatus() != BracketPlanStatus.LOCKED) {
-            throw new AppException(ErrorCode.BRACKET_NOT_CONFIRMED);
-        }
-        List<Round> rounds = roundRepository.findByTournament_TournamentIdOrderBySequenceOrderAsc(
-                tournament.getTournamentId());
-        if (tournament.getPlannedRoundCount() == null
-                || rounds.size() != tournament.getPlannedRoundCount()) {
-            throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-        }
-
-        int expectedRaceCount = calculateFirstRoundRaceCount(tournament.getMaxApprovedEntries());
-        int totalRaces = 0;
-        for (int index = 0; index < rounds.size(); index++) {
-            Round round = rounds.get(index);
-            boolean finalRound = index == rounds.size() - 1;
-            if (round.getSequenceOrder() != index + 1
-                    || round.isFinal() != finalRound
-                    || !tournament.getBracketPlanVersion().equals(round.getBracketPlanVersion())
-                    || round.getMinEntries() != MIN_ENTRIES_PER_RACE
-                    || round.getMaxEntries() != MAX_ENTRIES_PER_RACE
-                    || round.getPlannedRaceCount() == null
-                    || round.getPlannedRaceCount() != expectedRaceCount
-                    || (finalRound && round.getQualifiersPerRace() != 0)
-                    || (!finalRound && round.getQualifiersPerRace() != QUALIFIERS_PER_RACE)) {
-                throw new AppException(ErrorCode.ROUND_STRUCTURE_MISMATCH);
-            }
-
-            List<Race> races = raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(round.getRoundId());
-            if (races.size() != expectedRaceCount || (finalRound && races.size() != 1)) {
-                throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
-            }
-            for (int raceIndex = 0; raceIndex < races.size(); raceIndex++) {
-                if (races.get(raceIndex).getSequenceOrder() != raceIndex + 1) {
-                    throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
-                }
-            }
-            totalRaces += races.size();
-            expectedRaceCount /= 2;
-        }
-        if (tournament.getPlannedRaceCount() == null || totalRaces != tournament.getPlannedRaceCount()) {
-            throw new AppException(ErrorCode.RACE_STRUCTURE_MISMATCH);
+        if (maxEntries == null || maxEntries < 8) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
     }
 

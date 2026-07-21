@@ -140,9 +140,9 @@ public class BE2HorseRatingIntegrationTest {
             userId.toString(), "owner_" + userId.toString().substring(0,8), "owner_" + userId.toString().substring(0,8) + "@example.com", roleId, "Owner Name"
         );
         jdbcTemplate.update(
-            "INSERT INTO horse_owners (owner_id, user_id, farm_name, license_number, address, created_at) " +
-            "VALUES (?, ?, ?, ?, 'Dummy Address', NOW())",
-            ownerId.toString(), userId.toString(), "Farm " + ownerId.toString().substring(0,8), "LIC-O-" + ownerId.toString().substring(0,8)
+            "INSERT INTO horse_owners (owner_id, user_id, farm_name, address, created_at) " +
+            "VALUES (?, ?, ?, 'Dummy Address', NOW())",
+            ownerId.toString(), userId.toString(), "Farm " + ownerId.toString().substring(0,8)
         );
     }
 
@@ -155,9 +155,9 @@ public class BE2HorseRatingIntegrationTest {
             userId.toString(), "jockey_" + userId.toString().substring(0,8), "jockey_" + userId.toString().substring(0,8) + "@example.com", roleId, "Jockey Name"
         );
         jdbcTemplate.update(
-            "INSERT INTO jockeys (jockey_id, user_id, license_number, experience_years, status, height, weight, specialization, total_races, total_wins, jockey_tier, created_at) " +
-            "VALUES (?, ?, ?, 5, 'AVAILABLE', 1.6, 55.0, 'FLAT', 0, 0, 'APPRENTICE', NOW())",
-            jockeyId.toString(), userId.toString(), "LIC-J-" + jockeyId.toString().substring(0,8)
+            "INSERT INTO jockeys (jockey_id, user_id, experience_years, status, height, weight, specialization, total_races, total_wins, jockey_tier, created_at) " +
+            "VALUES (?, ?, 5, 'AVAILABLE', 1.6, 55.0, 'FLAT', 0, 0, 'APPRENTICE', NOW())",
+            jockeyId.toString(), userId.toString()
         );
     }
 
