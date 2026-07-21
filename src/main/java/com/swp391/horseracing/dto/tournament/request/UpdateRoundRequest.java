@@ -44,6 +44,8 @@ public class UpdateRoundRequest {
     @Min(value = 1, message = "Min entries must be at least 1")
     Integer minEntries;
 
+    Integer qualifiersPerRace;
+
     RoundStatus status;
 
     UUID headRefereeId;

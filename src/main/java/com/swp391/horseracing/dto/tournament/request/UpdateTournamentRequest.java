@@ -99,8 +99,8 @@ public class UpdateTournamentRequest {
     @Max(value = 9, message = "Max races per day must be at most 9")
     Integer maxRacesPerDay;
 
-    @Min(value = 30, message = "Min race interval minutes must be at least 30")
-    @Max(value = 60, message = "Min race interval minutes must be at most 60")
+    @Min(value = 1, message = "Min race interval minutes must be at least 1")
+    @Max(value = 30, message = "Min race interval minutes must be at most 30")
     Integer minRaceIntervalMinutes;
 
     @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
@@ -131,9 +131,6 @@ public class UpdateTournamentRequest {
     LocalDateTime jockeyMatchingDeadlineAt;
 
     LocalDateTime schedulingDeadlineAt;
-
-    @Min(value = 7, message = "Min round gap days must be at least 7")
-    Integer minRoundGapDays;
 
     @Min(value = 8, message = "Max approved entries must be at least 8")
     Integer maxApprovedEntries;

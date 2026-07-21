@@ -22,6 +22,7 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceMapper;
 import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
+import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.UserRepository;
@@ -72,6 +73,7 @@ public class RaceServiceImpl implements RaceService {
     UserRepository userRepository;
     RaceEntryRepository raceEntryRepository;
     RaceRefereeRepository raceRefereeRepository;
+    TournamentRepository tournamentRepository;
     RaceMapper raceMapper;
     RefereeRepository refereeRepository;
     HorseInspectionRepository horseInspectionRepository;
@@ -93,14 +95,17 @@ public class RaceServiceImpl implements RaceService {
         }
 
         Tournament tournament = round.getTournament();
+
+        if (request.getDistance() != tournament.getDistance()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
         LocalDateTime endTime = request.getStartTime().plusMinutes(tournament.getDefaultRaceOperationalMinutes());
 
         if (!request.getStartTime().toLocalDate().equals(endTime.toLocalDate())) {
             throw new AppException(ErrorCode.INVALID_RACE_DATES);
         }
 
-        if (request.getStartTime().isBefore(round.getStartDate())
-                || endTime.isAfter(round.getEndDate())) {
+        if (request.getStartTime().isBefore(round.getStartDate())) {
             throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
         }
 
@@ -133,7 +138,9 @@ public class RaceServiceImpl implements RaceService {
         race.setPredictionOpenAt(request.getStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
         race.setPredictionCloseAt(request.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
-        return raceMapper.toRaceResponse(raceRepository.save(race));
+        Race savedRace = raceRepository.save(race);
+        updateRoundDateRange(round);
+        return raceMapper.toRaceResponse(savedRace);
     }
 
     @Override
@@ -153,6 +160,14 @@ public class RaceServiceImpl implements RaceService {
             validateOnlyRaceScheduleChanges(request);
         }
 
+        if (tournament.getStatus() != TournamentStatus.DRAFT && race.getStatus() != RoundStatus.SCHEDULING) {
+            throw new AppException(ErrorCode.RACE_NOT_IN_SCHEDULING);
+        }
+
+        if (request.getDistance() != null && request.getDistance() != tournament.getDistance()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         if (request.getName() != null && !request.getName().equals(race.getName())
                 && raceRepository.existsByRound_RoundIdAndName(round.getRoundId(), request.getName())) {
             throw new AppException(ErrorCode.RACE_NAME_ALREADY_EXISTS);
@@ -164,7 +179,7 @@ public class RaceServiceImpl implements RaceService {
         }
 
         LocalDateTime newStartTime = request.getStartTime() != null ? request.getStartTime() : race.getStartTime();
-        if (newStartTime == null || round.getStartDate() == null || round.getEndDate() == null) {
+        if (newStartTime == null || round.getStartDate() == null) {
             throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
         }
         LocalDateTime newEndTime = newStartTime.plusMinutes(round.getTournament().getDefaultRaceOperationalMinutes());
@@ -173,7 +188,7 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.INVALID_RACE_DATES);
         }
 
-        if (newStartTime.isBefore(round.getStartDate()) || newEndTime.isAfter(round.getEndDate())) {
+        if (newStartTime.isBefore(round.getStartDate())) {
             throw new AppException(ErrorCode.RACE_DATES_OUT_OF_ROUND);
         }
 
@@ -192,7 +207,9 @@ public class RaceServiceImpl implements RaceService {
         race.setPredictionOpenAt(race.getStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
         race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
-        return raceMapper.toRaceResponse(raceRepository.save(race));
+        Race saved = raceRepository.save(race);
+        updateRoundDateRange(round);
+        return raceMapper.toRaceResponse(saved);
     }
 
     @Override
@@ -283,7 +300,40 @@ public class RaceServiceImpl implements RaceService {
             }
         }
 
+        updateRoundDateRange(round);
         round.setStatus(RoundStatus.SCHEDULED);
+        roundRepository.save(round);
+    }
+
+    private void updateRoundDateRange(Round round) {
+        List<Race> races = raceRepository.findByRound_RoundId(round.getRoundId());
+        if (races.isEmpty()) return;
+
+        LocalDateTime earliestStart = null;
+        LocalDateTime latestEnd = null;
+        for (Race r : races) {
+            if (r.getStatus() == RoundStatus.CANCELLED || r.getStartTime() == null) continue;
+            LocalDateTime effectiveStart = r.getStartTime()
+                    .minusMinutes(r.getRound().getTournament().getInspectionOpenMinutesBefore());
+            if (earliestStart == null || effectiveStart.isBefore(earliestStart)) {
+                earliestStart = effectiveStart;
+            }
+            if (latestEnd == null || r.getEndTime().isAfter(latestEnd)) {
+                latestEnd = r.getEndTime();
+            }
+        }
+
+        if (earliestStart != null) round.setStartDate(earliestStart);
+        if (latestEnd != null) {
+            round.setEndDate(latestEnd);
+            Tournament tournament = round.getTournament();
+            LocalDateTime tournamentEnd = tournament.getEndDate()
+                    .atTime(tournament.getRaceDayEndTime());
+            if (latestEnd.isAfter(tournamentEnd)) {
+                tournament.setEndDate(latestEnd.toLocalDate());
+                tournamentRepository.save(tournament);
+            }
+        }
         roundRepository.save(round);
     }
 
@@ -805,7 +855,7 @@ public class RaceServiceImpl implements RaceService {
                 if (otherRace.getStartTime() == null || otherRace.getEndTime() == null) {
                     continue;
                 }
-                long restThreshold = 60; // 60 minutes rest time
+                long restThreshold = tournament.getMinRaceIntervalMinutes();
                 LocalDateTime otherStart = otherRace.getStartTime();
                 LocalDateTime otherEnd = otherRace.getEndTime();
                 

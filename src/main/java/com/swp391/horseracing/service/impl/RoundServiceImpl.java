@@ -11,10 +11,10 @@ import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RefereeStatus;
+import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
-import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
@@ -49,9 +49,6 @@ public class RoundServiceImpl implements RoundService {
     @Transactional
     public RoundResponse create(UUID tournamentId, CreateRoundRequest request) {
         validatePredictionType(request.getPredictionType());
-        if (request.getEndDate().isBefore(request.getStartDate())) {
-            throw new AppException(ErrorCode.INVALID_ROUND_DATES);
-        }
 
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
@@ -72,8 +69,23 @@ public class RoundServiceImpl implements RoundService {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
-        if (Boolean.TRUE.equals(request.getIsFinal())
-                && roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournamentId)) {
+        if (Boolean.TRUE.equals(request.getIsFinal())) {
+            if (roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournamentId)) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+            if (request.getMaxRaces() != null && request.getMaxRaces() != 1) {
+                throw new AppException(ErrorCode.INVALID_FINAL_ROUND_CONFIGURATION);
+            }
+            if (request.getQualifiersPerRace() != null && request.getQualifiersPerRace() > 0) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+        } else {
+            if (request.getQualifiersPerRace() == null || request.getQualifiersPerRace() < 1) {
+                throw new AppException(ErrorCode.INVALID_REQUEST);
+            }
+        }
+
+        if (request.getQualifiersPerRace() != null && request.getQualifiersPerRace() > request.getMaxEntries()) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
@@ -82,16 +94,12 @@ public class RoundServiceImpl implements RoundService {
 
         if (!existingRounds.isEmpty()) {
             Round lastRound = existingRounds.get(existingRounds.size() - 1);
-            if (!RoundSchedulePolicy.hasMinimumCalendarDayGap(
-                    lastRound.getEndDate(),
-                    request.getStartDate(),
-                    tournament.getMinRoundGapDays())) {
-                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
+            if (request.getStartDate().isBefore(lastRound.getEndDate())) {
+                throw new AppException(ErrorCode.INVALID_ROUND_DATES);
             }
         }
 
-        if (request.getStartDate().isBefore(tournament.getCompetitionStartAt())
-                || request.getEndDate().toLocalDate().isAfter(tournament.getEndDate())) {
+        if (request.getStartDate().isBefore(tournament.getCompetitionStartAt())) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
         }
 
@@ -137,6 +145,10 @@ public class RoundServiceImpl implements RoundService {
             validateOnlyRoundScheduleChanges(request);
         }
 
+        if (tournament.getStatus() != TournamentStatus.DRAFT && round.getStatus() != RoundStatus.SCHEDULING) {
+            throw new AppException(ErrorCode.ROUND_ALREADY_SCHEDULED);
+        }
+
         if (request.getMinEntries() != null && request.getMaxEntries() != null
                 && request.getMinEntries() > request.getMaxEntries()) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -145,6 +157,25 @@ public class RoundServiceImpl implements RoundService {
         if (Boolean.TRUE.equals(request.getIsFinal())
                 && !round.isFinal()
                 && roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournament.getTournamentId())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        boolean finalRound = request.getIsFinal() != null ? request.getIsFinal() : round.isFinal();
+        Integer maxRaces = request.getMaxRaces() != null ? request.getMaxRaces() : round.getMaxRaces();
+        if (finalRound && maxRaces != null && maxRaces != 1) {
+            throw new AppException(ErrorCode.INVALID_FINAL_ROUND_CONFIGURATION);
+        }
+
+        Integer qualifiers = request.getQualifiersPerRace() != null
+                ? request.getQualifiersPerRace() : round.getQualifiersPerRace();
+        Integer maxEntries = request.getMaxEntries() != null ? request.getMaxEntries() : round.getMaxEntries();
+        if (!finalRound && (qualifiers == null || qualifiers < 1)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        if (finalRound && qualifiers != null && qualifiers > 0) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        if (qualifiers != null && maxEntries != null && qualifiers > maxEntries) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
@@ -158,40 +189,22 @@ public class RoundServiceImpl implements RoundService {
             throw new AppException(ErrorCode.DUPLICATE_ROUND_SEQUENCE);
         }
 
-        if (request.getStartDate() != null && request.getEndDate() != null
-                && request.getEndDate().isBefore(request.getStartDate())) {
-            throw new AppException(ErrorCode.INVALID_ROUND_DATES);
-        }
-
         LocalDateTime startDate = request.getStartDate() != null ? request.getStartDate() : round.getStartDate();
-        LocalDateTime endDate = request.getEndDate() != null ? request.getEndDate() : round.getEndDate();
 
-        if ((request.getStartDate() != null || request.getEndDate() != null)
-                && (startDate == null || endDate == null || endDate.isBefore(startDate))) {
-            throw new AppException(ErrorCode.INVALID_ROUND_DATES);
-        }
-
-        if (startDate != null && endDate != null
-                && (startDate.isBefore(tournament.getCompetitionStartAt())
-                || endDate.toLocalDate().isAfter(tournament.getEndDate()))) {
+        if (request.getStartDate() != null && startDate.isBefore(tournament.getCompetitionStartAt())) {
             throw new AppException(ErrorCode.ROUND_DATES_OUT_OF_TOURNAMENT);
         }
 
-        int gapDays = tournament.getMinRoundGapDays();
-        List<Round> allRounds = roundRepository
-                .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournament.getTournamentId());
-        for (Round r : allRounds) {
-            if (r.getRoundId().equals(round.getRoundId())) continue;
-            if (startDate == null || endDate == null || r.getStartDate() == null || r.getEndDate() == null) continue;
-            if (r.getSequenceOrder() < round.getSequenceOrder()
-                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
-                    r.getEndDate(), startDate, gapDays)) {
-                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
-            }
-            if (r.getSequenceOrder() > round.getSequenceOrder()
-                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
-                    endDate, r.getStartDate(), gapDays)) {
-                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
+        if (request.getStartDate() != null) {
+            List<Round> allRounds = roundRepository
+                    .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournament.getTournamentId());
+            for (Round r : allRounds) {
+                if (r.getRoundId().equals(round.getRoundId())) continue;
+                if (r.getEndDate() == null) continue;
+                if (r.getSequenceOrder() < round.getSequenceOrder()
+                        && startDate.isBefore(r.getEndDate())) {
+                    throw new AppException(ErrorCode.INVALID_ROUND_DATES);
+                }
             }
         }
 
@@ -265,7 +278,7 @@ public class RoundServiceImpl implements RoundService {
         Tournament tournament = round.getTournament();
         boolean tournamentEditable = tournament.getStatus() == TournamentStatus.DRAFT
                 || tournament.getPhase() == TournamentPhase.SCHEDULING;
-        if (!tournamentEditable || round.getStatus() != com.swp391.horseracing.enums.RoundStatus.SCHEDULING) {
+        if (!tournamentEditable || round.getStatus() != RoundStatus.SCHEDULING) {
             throw new AppException(ErrorCode.HEAD_REFEREE_ASSIGNMENT_LOCKED);
         }
     }
@@ -287,6 +300,7 @@ public class RoundServiceImpl implements RoundService {
                 || request.getMaxRaces() != null
                 || request.getMaxEntries() != null
                 || request.getMinEntries() != null
+                || request.getQualifiersPerRace() != null
                 || request.getStatus() != null
                 || request.getHeadRefereeId() != null) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
