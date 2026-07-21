@@ -96,9 +96,6 @@ public class CreateTournamentRequest {
     @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
     Integer predictionTop3PerfectBonusPoints = 50;
 
-    @Min(value = 7, message = "Min round gap days must be at least 7")
-    Integer minRoundGapDays = 7;
-
     @NotNull(message = "Max approved entries is required")
     @Min(value = 8, message = "Max approved entries must be at least 8")
     Integer maxApprovedEntries;
@@ -113,28 +110,29 @@ public class CreateTournamentRequest {
     @Min(value = 1, message = "Prediction card open hours must be at least 1")
     Integer predictionCardOpenHoursBeforeFirstRace = 24;
 
-    @Min(value = 0, message = "Inspection open minutes must be at least 0")
-    Integer inspectionOpenMinutesBefore = 90;
+    @Min(value = 30, message = "Inspection open minutes must be between 30 and 90")
+    @Max(value = 90, message = "Inspection open minutes must be between 30 and 90")
+    Integer inspectionOpenMinutesBefore = 60;
 
-    @Min(value = 0, message = "Inspection close minutes must be at least 0")
-    Integer inspectionCloseMinutesBefore = 30;
+    @Min(value = 1, message = "Inspection close minutes must be at least 1")
+    Integer inspectionCloseMinutesBefore = 5;
 
     @Min(value = 1, message = "Max races per day must be at least 1")
     @Max(value = 9, message = "Max races per day must be at most 9")
     Integer maxRacesPerDay = 9;
 
-    @Min(value = 30, message = "Min race interval minutes must be at least 30")
-    @Max(value = 60, message = "Min race interval minutes must be at most 60")
-    Integer minRaceIntervalMinutes = 35;
+    @Min(value = 1, message = "Min race interval minutes must be at least 1")
+    @Max(value = 30, message = "Min race interval minutes must be at most 30")
+    Integer minRaceIntervalMinutes = 30;
 
     @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
     Integer startEarlyToleranceMinutes = 0;
 
-    @Min(value = 0, message = "Start late tolerance minutes must be at least 0")
+    @Min(value = 30, message = "Start late tolerance minutes must be at least 0")
     Integer startLateToleranceMinutes = 30;
 
     @Min(value = 1, message = "Default race operational minutes must be at least 1")
-    Integer defaultRaceOperationalMinutes = 30;
+    Integer defaultRaceOperationalMinutes = 5;
 
     LocalTime raceDayStartTime = LocalTime.of(8, 0);
 

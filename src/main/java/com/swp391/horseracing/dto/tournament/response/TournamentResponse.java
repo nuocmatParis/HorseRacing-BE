@@ -73,7 +73,6 @@ public class TournamentResponse {
     LocalDateTime schedulingDeadlineAt;
     LocalDateTime competitionStartAt;
     String currentRoundName;
-    int minRoundGapDays;
     UUID createdById;
     String createdByName;
     boolean overdue;

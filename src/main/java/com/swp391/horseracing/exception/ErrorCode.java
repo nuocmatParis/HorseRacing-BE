@@ -364,6 +364,8 @@ public enum ErrorCode {
     RACE_LANES_INCOMPLETE(1591, HttpStatus.BAD_REQUEST, "Every race entry must have a unique valid lane before publishing schedule"),
     RACE_REQUIRES_EXACTLY_ONE_REFEREE(1592, HttpStatus.CONFLICT, "Race must have exactly one direct referee"),
 
+    ROUND_ALREADY_SCHEDULED(1593, HttpStatus.BAD_REQUEST, "Round is already scheduled/published"),
+
     //Contract
     TOURNAMENT_NOT_MATCH(1601, HttpStatus.BAD_REQUEST, "Tournament not match"),
 
@@ -532,8 +534,6 @@ public enum ErrorCode {
     NOTIFICATION_EVENT_INVALID(1902, HttpStatus.BAD_REQUEST, "Notification event is invalid"),
     NOTIFICATION_PAYLOAD_INVALID(1903, HttpStatus.BAD_REQUEST, "Notification event payload is invalid"),
 
-    ROUND_GAP_TOO_SHORT(1819, HttpStatus.BAD_REQUEST, "Insufficient gap between rounds"),
-
     FILE_UPLOAD_FAILED(2001, HttpStatus.INTERNAL_SERVER_ERROR, "File upload failed"),
 
     APPROVED_ENTRIES_EXCEED_MAXIMUM(2107, HttpStatus.BAD_REQUEST, "Approved entries exceed the tournament capacity"),
@@ -555,7 +555,6 @@ public enum ErrorCode {
     SCHEDULING_PERIOD_TOO_SHORT(2126, HttpStatus.BAD_REQUEST, "Scheduling period must be at least 4 calendar days"),
     TOURNAMENT_START_DATE_IMMUTABLE(2127, HttpStatus.BAD_REQUEST, "Tournament start date cannot be changed after creation"),
     ADVANCED_ROUND_ENTRIES_MANAGED_BY_RESULTS(2128, HttpStatus.CONFLICT, "Entries after the first round are created only from official qualifiers"),
-    TOURNAMENT_DATE_RANGE_INVALID(2129, HttpStatus.BAD_REQUEST, "Tournament date range is too short for the scheduled races"),
 
     // SPECTATOR HORSE FOLLOW
     HORSE_ALREADY_FOLLOWED(2201, HttpStatus.CONFLICT, "Horse is already followed"),

@@ -105,11 +105,11 @@ public class Tournament {
 
     @Builder.Default
     @Column(name = "inspection_open_minutes_before", nullable = false)
-    int inspectionOpenMinutesBefore = 90;
+    int inspectionOpenMinutesBefore = 60;
 
     @Builder.Default
     @Column(name = "inspection_close_minutes_before", nullable = false)
-    int inspectionCloseMinutesBefore = 30;
+    int inspectionCloseMinutesBefore = 5;
 
     @Builder.Default
     @Column(name = "max_races_per_day", nullable = false)
@@ -117,7 +117,7 @@ public class Tournament {
 
     @Builder.Default
     @Column(name = "min_race_interval_minutes", nullable = false)
-    int minRaceIntervalMinutes = 35;
+    int minRaceIntervalMinutes = 30;
 
     @Builder.Default
     @Column(name = "start_early_tolerance_minutes", nullable = false)
@@ -129,7 +129,7 @@ public class Tournament {
 
     @Builder.Default
     @Column(name = "default_race_operational_minutes", nullable = false)
-    int defaultRaceOperationalMinutes = 30;
+    int defaultRaceOperationalMinutes = 5;
 
     @Builder.Default
     @Column(name = "race_day_start_time", nullable = false)
@@ -184,10 +184,6 @@ public class Tournament {
 
     @Column(name = "current_round_name", length = 100)
     String currentRoundName;
-
-    @Builder.Default
-    @Column(name = "min_round_gap_days", nullable = false)
-    int minRoundGapDays = 7;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "race_class", length = 50)

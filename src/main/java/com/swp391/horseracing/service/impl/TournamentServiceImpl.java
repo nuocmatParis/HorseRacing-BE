@@ -12,7 +12,6 @@ import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
-import com.swp391.horseracing.policy.RoundSchedulePolicy;
 import com.swp391.horseracing.policy.TournamentTimelinePolicy;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
@@ -77,9 +76,6 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer maxEntries = request.getMaxApprovedEntries();
         validateMaxApprovedEntries(maxEntries);
-        if (request.getMinRoundGapDays() == null || request.getMinRoundGapDays() < 7) {
-            throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
-        }
 
         if (tournamentRepository.existsByName(request.getName())) {
             throw new AppException(ErrorCode.TOURNAMENT_NAME_EXISTS);
@@ -195,7 +191,7 @@ public class TournamentServiceImpl implements TournamentService {
         Integer startLate = request.getStartLateToleranceMinutes() != null ? request.getStartLateToleranceMinutes() : tournament.getStartLateToleranceMinutes();
         Integer operational = request.getDefaultRaceOperationalMinutes() != null ? request.getDefaultRaceOperationalMinutes() : tournament.getDefaultRaceOperationalMinutes();
         Integer openHours = request.getPredictionCardOpenHoursBeforeFirstRace() != null ? request.getPredictionCardOpenHoursBeforeFirstRace() : tournament.getPredictionCardOpenHoursBeforeFirstRace();
-        
+
         LocalTime dayStart = request.getRaceDayStartTime() != null ? request.getRaceDayStartTime() : tournament.getRaceDayStartTime();
         LocalTime dayEnd = request.getRaceDayEndTime() != null ? request.getRaceDayEndTime() : tournament.getRaceDayEndTime();
         Boolean applyBreak = request.getApplyBreakTime() != null ? request.getApplyBreakTime() : tournament.getApplyBreakTime();
@@ -252,10 +248,6 @@ public class TournamentServiceImpl implements TournamentService {
                 effectiveMaxEntries,
                 false
         );
-        if (request.getMinRoundGapDays() != null && request.getMinRoundGapDays() < 7) {
-            throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
-        }
-
         tournamentMapper.updateTournament(request, tournament);
         tournament.setMaxApprovedHorses(tournament.getMaxApprovedEntries());
         tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
@@ -380,7 +372,6 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
         }
         raceService.validateRoundScheduleForPublication(activeRound.getRoundId());
-        validateFinalRoundEndsInsideTournament(tournament, activeRound, racesToPublish);
 
         for (Race race : racesToPublish) {
             if (race.getStatus() != RoundStatus.SCHEDULING && race.getStatus() != RoundStatus.SCHEDULED) {
@@ -405,34 +396,6 @@ public class TournamentServiceImpl implements TournamentService {
             int refereeCount = raceRefereeRepository.countByRace_RaceId(race.getRaceId());
             if (refereeCount != 1) {
                 throw new AppException(ErrorCode.RACE_REQUIRES_EXACTLY_ONE_REFEREE);
-            }
-        }
-
-        // Validate gap between active round and previous round
-        int gapDays = tournament.getMinRoundGapDays();
-        if (activeRound.getSequenceOrder() > 1) {
-            Round prevRound = orderedRounds.get(activeRound.getSequenceOrder() - 2);
-
-            LocalDateTime lastRaceEnd = null;
-            for (Race race : raceRepository.findByRound_RoundId(prevRound.getRoundId())) {
-                if (race.getStatus() != RoundStatus.CANCELLED && race.getEndTime() != null
-                        && (lastRaceEnd == null || race.getEndTime().isAfter(lastRaceEnd))) {
-                    lastRaceEnd = race.getEndTime();
-                }
-            }
-
-            LocalDateTime firstRaceStart = null;
-            for (Race race : racesToPublish) {
-                if (race.getStatus() != RoundStatus.CANCELLED && race.getStartTime() != null
-                        && (firstRaceStart == null || race.getStartTime().isBefore(firstRaceStart))) {
-                    firstRaceStart = race.getStartTime();
-                }
-            }
-
-            if (lastRaceEnd != null && firstRaceStart != null
-                    && !RoundSchedulePolicy.hasMinimumCalendarDayGap(
-                    lastRaceEnd, firstRaceStart, gapDays)) {
-                throw new AppException(ErrorCode.ROUND_GAP_TOO_SHORT);
             }
         }
 
@@ -465,30 +428,6 @@ public class TournamentServiceImpl implements TournamentService {
         Tournament savedTournament = tournamentRepository.save(tournament);
         notificationEventService.schedulePublished(savedTournament);
         return toResponse(savedTournament);
-    }
-
-    private void validateFinalRoundEndsInsideTournament(Tournament tournament,
-                                                        Round activeRound,
-                                                        List<Race> racesToPublish) {
-        if (!activeRound.isFinal()) {
-            return;
-        }
-
-        LocalDateTime finalRaceEnd = null;
-        for (Race race : racesToPublish) {
-            if (race.getEndTime() == null) {
-                throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
-            }
-            if (finalRaceEnd == null || race.getEndTime().isAfter(finalRaceEnd)) {
-                finalRaceEnd = race.getEndTime();
-            }
-        }
-
-        LocalDateTime tournamentEnd = tournament.getEndDate()
-                .atTime(tournament.getRaceDayEndTime());
-        if (finalRaceEnd == null || finalRaceEnd.isAfter(tournamentEnd)) {
-            throw new AppException(ErrorCode.TOURNAMENT_DATE_RANGE_INVALID);
-        }
     }
 
     @Override
@@ -693,22 +632,23 @@ public class TournamentServiceImpl implements TournamentService {
             LocalTime dayStart, LocalTime dayEnd,
             Boolean applyBreak, LocalTime breakStart, LocalTime breakEnd) {
 
-        int io = insOpen != null ? insOpen : 90;
-        int ic = insClose != null ? insClose : 30;
+        int io = insOpen != null ? insOpen : 60;
+        int ic = insClose != null ? insClose : 5;
         int pc = predClose != null ? predClose : 5;
 
-        if (!(io > ic && ic > pc && pc >= 0)) {
+        if (!(io > ic && ic >= pc && pc >= 0)) {
             throw new AppException(ErrorCode.INVALID_INSPECTION_TIMELINE);
         }
 
         int mr = maxRaces != null ? maxRaces : 9;
-        int mi = minInterval != null ? minInterval : 35;
+        int mi = minInterval != null ? minInterval : 30;
         int se = startEarly != null ? startEarly : 0;
         int sl = startLate != null ? startLate : 30;
-        int op = operational != null ? operational : 30;
+        int op = operational != null ? operational : 5;
         int oh = openHours != null ? openHours : 24;
 
-        if (mr < 1 || mr > 9 || mi < 30 || mi > 60 || se < 0 || sl < 0 || op < 1 || oh < 1) {
+        if (mr < 1 || mr > 9 || mi < 1 || mi > 30 || se < 0 || sl < 0 || op < 1 || oh < 1
+                || io < 30 || io > 90 || ic < 1) {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
         }
 
