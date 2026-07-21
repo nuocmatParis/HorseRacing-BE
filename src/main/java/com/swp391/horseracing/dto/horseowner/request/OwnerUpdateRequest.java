@@ -22,11 +22,4 @@ public class OwnerUpdateRequest {
     @NotNull(message = "Address is required")
     String address;
 
-    @NotBlank(message = "License number is required")
-    @Size(max = 50)
-    @Pattern(
-            regexp = "^(OWN)-[A-Z0-9]{8}$",
-            message = "License number must follow format OWN-XXXXXXXX"
-    )
-    String licenseNumber;
 }

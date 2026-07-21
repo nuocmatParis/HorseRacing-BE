@@ -26,14 +26,6 @@ public class JockeyCreationRequest {
     @Positive(message = "Weight must be positive")
     float weight;
 
-    @NotBlank(message = "License number is required")
-    @Size(max = 50,message = "License number must not exceed 50 character")
-    @Pattern(
-            regexp = "^(JOC)-[A-Z0-9]{8}$",
-            message = "License number must follow format JOC-XXXXXXXX"
-    )
-    String licenseNumber;
-
     @NotNull(message = "Specialization is required")
     Specialization specialization;
 

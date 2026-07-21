@@ -36,9 +36,7 @@ public class RoundResponse {
     String headRefereeName;
     LocalDateTime headRefereeAssignedAt;
     Integer expectedEntries;
-    Integer plannedRaceCount;
     Integer qualifiersPerRace;
-    Integer bracketPlanVersion;
     LocalDateTime advancedAt;
     RoundTransitionStatus transitionStatus;
 }

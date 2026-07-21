@@ -34,7 +34,6 @@ public class HorseTournamentRegistrationResponse {
     String ownerName;
     String farmName;
     String ownerAddress;
-    String licenseNumber;
 
     RegistrationStatus status;
     LocalDateTime submittedAt;

@@ -8,10 +8,6 @@ import lombok.experimental.FieldDefaults;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class VeterinarianUpdateRequest {
 
-    @Size(max = 50, message = "License number must not exceed 50 characters")
-    @Pattern(regexp = "^(VET)-[A-Z0-9]{8}$", message = "License number must follow format VET-XXXXXXXX")
-    String licenseNumber;
-
     @Size(max = 100, message = "Specialization must not exceed 100 characters")
     String specialization;
 

@@ -107,8 +107,8 @@ ON DUPLICATE KEY UPDATE
     status = 'ACTIVE',
     role_id = VALUES(role_id);
 
-INSERT INTO horse_owners (owner_id, user_id, farm_name, address, license_number, created_at)
-VALUES ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Trang trại Demo HRTMS', 'Thành phố Hồ Chí Minh', 'OWNER-DEMO-001', @now)
+INSERT INTO horse_owners (owner_id, user_id, farm_name, address, created_at)
+VALUES ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Trang trại Demo HRTMS', 'Thành phố Hồ Chí Minh', @now)
 ON DUPLICATE KEY UPDATE address = VALUES(address);
 
 INSERT INTO spectators (spectator_id, user_id, total_points, created_at)
@@ -121,8 +121,8 @@ INSERT INTO referees (referee_id, user_id, certification_level, years_of_service
 VALUES ('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000005', 'HEAD_REFEREE', 10, 'ASSIGNED', @now)
 ON DUPLICATE KEY UPDATE status = VALUES(status);
 
-INSERT INTO veterinarians (vet_id, user_id, license_number, specialization, years_of_service, status, created_at)
-VALUES ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000006', 'VET-DEMO-001', 'Equine Medicine', 8, 'ASSIGNED', @now)
+INSERT INTO veterinarians (vet_id, user_id, specialization, years_of_service, status, created_at)
+VALUES ('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000006', 'Equine Medicine', 8, 'ASSIGNED', @now)
 ON DUPLICATE KEY UPDATE status = VALUES(status);
 
 INSERT INTO medical_staffs (med_staff_id, user_id, certification, years_of_service, status, created_at)
@@ -130,14 +130,14 @@ VALUES ('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-0000000
 ON DUPLICATE KEY UPDATE status = VALUES(status);
 
 INSERT INTO jockeys
-    (jockey_id, user_id, height, weight, experience_years, license_number,
+    (jockey_id, user_id, height, weight, experience_years,
      specialization, status, total_races, total_wins, jockey_tier,
      tier_updated_at, last_race_at, created_at)
 VALUES
-    ('21000000-0000-0000-0000-000000000101', '10000000-0000-0000-0000-000000000101', 1.62, 52, 8, 'JOCKEY-DEMO-01', 'MILE', 'AVAILABLE', 40, 8, 'PROFESSIONAL', @now, @final_end, @now),
-    ('21000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102', 1.60, 51, 7, 'JOCKEY-DEMO-02', 'SPRINT', 'AVAILABLE', 38, 7, 'PROFESSIONAL', @now, @final_end, @now),
-    ('21000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103', 1.64, 53, 6, 'JOCKEY-DEMO-03', 'MILE', 'AVAILABLE', 35, 6, 'JUNIOR', @now, @final_end, @now),
-    ('21000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104', 1.61, 50, 6, 'JOCKEY-DEMO-04', 'INTERMEDIATE', 'AVAILABLE', 34, 5, 'JUNIOR', @now, @final_end, @now),
+    ('21000000-0000-0000-0000-000000000101', '10000000-0000-0000-0000-000000000101', 1.62, 52, 8, 'MILE', 'AVAILABLE', 40, 8, 'PROFESSIONAL', @now, @final_end, @now),
+    ('21000000-0000-0000-0000-000000000102', '10000000-0000-0000-0000-000000000102', 1.60, 51, 7, 'SPRINT', 'AVAILABLE', 38, 7, 'PROFESSIONAL', @now, @final_end, @now),
+    ('21000000-0000-0000-0000-000000000103', '10000000-0000-0000-0000-000000000103', 1.64, 53, 6, 'MILE', 'AVAILABLE', 35, 6, 'JUNIOR', @now, @final_end, @now),
+    ('21000000-0000-0000-0000-000000000104', '10000000-0000-0000-0000-000000000104', 1.61, 50, 6, 'INTERMEDIATE', 'AVAILABLE', 34, 5, 'JUNIOR', @now, @final_end, @now),
     ('21000000-0000-0000-0000-000000000105', '10000000-0000-0000-0000-000000000105', 1.63, 52, 5, 'JOCKEY-DEMO-05', 'LONG', 'AVAILABLE', 30, 4, 'JUNIOR', @now, @final_end, @now),
     ('21000000-0000-0000-0000-000000000106', '10000000-0000-0000-0000-000000000106', 1.59, 50, 4, 'JOCKEY-DEMO-06', 'SPRINT', 'AVAILABLE', 25, 3, 'APPRENTICE', @now, @final_end, @now),
     ('21000000-0000-0000-0000-000000000107', '10000000-0000-0000-0000-000000000107', 1.65, 53, 4, 'JOCKEY-DEMO-07', 'MILE', 'AVAILABLE', 24, 2, 'APPRENTICE', @now, @final_end, @now),
@@ -236,8 +236,8 @@ INSERT INTO tournaments
      max_races_per_day, min_race_interval_minutes,
      start_early_tolerance_minutes, start_late_tolerance_minutes,
      default_race_operational_minutes, race_day_start_time, race_day_end_time,
-     apply_break_time, break_start_time, break_end_time, max_rounds,
-     status, phase, created_at, published_at,
+      apply_break_time, break_start_time, break_end_time,
+      status, phase, created_at, published_at,
      registration_open_at, registration_close_at, review_deadline_at,
      jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at,
      current_round_name, min_round_gap_days, race_class, distance,
@@ -246,7 +246,7 @@ INSERT INTO tournaments
      planned_round_count, planned_race_count, bracket_plan_status,
      bracket_plan_version, created_by)
 VALUES
-    ('50000000-0000-0000-0000-000000000001', 'DEMO 1 - Race sắp diễn ra', 'Dùng test upcoming race, entry, AI probability, prediction và inspection.', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), NULL, 'Trường đua Demo A', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'ONGOING', 'RACING', DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 11 DAY), DATE_SUB(@now, INTERVAL 7 DAY), DATE_SUB(@now, INTERVAL 3 DAY), @upcoming_start, 'Vòng 1 (Chung Kết)', 7, 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
+    ('50000000-0000-0000-0000-000000000001', 'DEMO 1 - Race sắp diễn ra', 'Dùng test upcoming race, entry, AI probability, prediction và inspection.', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), NULL, 'Trường đua Demo A', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30,       '08:00:00', '18:00:00', 0, NULL, NULL, 'ONGOING', 'RACING', DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 11 DAY), DATE_SUB(@now, INTERVAL 7 DAY), DATE_SUB(@now, INTERVAL 3 DAY), @upcoming_start, 'Vòng 1 (Chung Kết)', 7, 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
     ('50000000-0000-0000-0000-000000000002', 'DEMO 2 - Final chờ publish', 'Dùng test Admin publish report, prediction scoring, prize và final payout.', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 2 DAY), NULL, 'Trường đua Demo B', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'ONGOING', 'RESULT_PENDING', DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 10 DAY), @final_start, 'Vòng 1 (Chung Kết)', 7, 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
     ('50000000-0000-0000-0000-000000000003', 'DEMO 3 - Hồ sơ và contract chờ duyệt', 'Dùng test số liệu pending trên Admin Dashboard.', DATE_ADD(CURRENT_DATE, INTERVAL 20 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), NULL, 'Trường đua Demo C', 100000, 50000, 5000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'OPEN', 'REGISTRATION_REVIEW', DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 4 DAY), DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 1 DAY), DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY), DATE_ADD(@now, INTERVAL 11 DAY), DATE_ADD(@now, INTERVAL 20 DAY), NULL, 7, 'CLASS_5', 'SPRINT_1200M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'CONFIRMED', 1, '10000000-0000-0000-0000-000000000001')
 ON DUPLICATE KEY UPDATE

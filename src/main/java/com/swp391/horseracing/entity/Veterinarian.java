@@ -31,9 +31,6 @@ public class Veterinarian {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     User user;
 
-    @Column(name = "license_number", length = 50)
-    String licenseNumber;
-
     @Column(name = "specialization", length = 100)
     String specialization;
 

@@ -22,13 +22,6 @@ public class JockeyUpdateRequest {
     @Min(value = 0, message = "Experience year must be at least 0")
     int experienceYears;
 
-    @Size(max = 50, message = "License number must not exceed 50 character")
-    @Pattern(
-            regexp = "^(JOC)-[A-Z0-9]{8}$",
-            message = "License number must follow format JOC-XXXXXXXX"
-    )
-    String licenseNumber;
-
     Specialization specialization;
 
 }

@@ -26,7 +26,6 @@ public interface HorseTournamentRegistrationMapper {
     @Mapping(target = "ownerName", source = "owner.user.fullName")
     @Mapping(target = "farmName", source = "owner.farmName")
     @Mapping(target = "ownerAddress", source = "owner.address")
-    @Mapping(target = "licenseNumber", source = "owner.licenseNumber")
     @Mapping(target = "reviewedById", source = "reviewedBy.userId")
     @Mapping(target = "reviewedByName", source = "reviewedBy.fullName")
     HorseTournamentRegistrationResponse toHorseTournamentRegistrationResponse(HorseTournamentRegistration registration);

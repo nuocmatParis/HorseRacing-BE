@@ -9,7 +9,6 @@ import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.enums.TournamentPhase;
-import com.swp391.horseracing.enums.BracketPlanStatus;
 import com.swp391.horseracing.enums.PredictionType;
 import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.exception.AppException;
@@ -43,6 +42,7 @@ public class RoundServiceImpl implements RoundService {
     UserRepository userRepository;
     RefereeRepository refereeRepository;
     RaceRefereeRepository raceRefereeRepository;
+    com.swp391.horseracing.repository.RaceRepository raceRepository;
     RoundMapper roundMapper;
 
     @Override
@@ -59,9 +59,6 @@ public class RoundServiceImpl implements RoundService {
         if (tournament.getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (tournament.getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
-        }
 
         if (roundRepository.existsByTournament_TournamentIdAndSequenceOrder(tournamentId, request.getSequenceOrder())) {
             throw new AppException(ErrorCode.DUPLICATE_ROUND_SEQUENCE);
@@ -71,12 +68,17 @@ public class RoundServiceImpl implements RoundService {
             throw new AppException(ErrorCode.ROUND_NAME_ALREADY_EXISTS);
         }
 
+        if (request.getMinEntries() > request.getMaxEntries()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (Boolean.TRUE.equals(request.getIsFinal())
+                && roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournamentId)) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
         List<Round> existingRounds = roundRepository
                 .findByTournament_TournamentIdOrderBySequenceOrderAsc(tournamentId);
-
-        if (existingRounds.size() >= tournament.getMaxRounds()) {
-            throw new AppException(ErrorCode.MAX_ROUNDS_REACHED);
-        }
 
         if (!existingRounds.isEmpty()) {
             Round lastRound = existingRounds.get(existingRounds.size() - 1);
@@ -96,9 +98,6 @@ public class RoundServiceImpl implements RoundService {
         User currentUser = getCurrentUser();
 
         Round round = roundMapper.toRound(request);
-        if (existingRounds.size() + 1 == tournament.getMaxRounds()) {
-            round.setFinal(true);
-        }
         round.setTournament(tournament);
         round.setCreatedBy(currentUser);
         round.setCreatedAt(LocalDateTime.now());
@@ -134,9 +133,19 @@ public class RoundServiceImpl implements RoundService {
         if (!scheduleEditable) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (tournament.getBracketPlanStatus() == BracketPlanStatus.CONFIRMED
-                || tournament.getBracketPlanStatus() == BracketPlanStatus.LOCKED) {
+        if (tournament.getPhase() == TournamentPhase.SCHEDULING) {
             validateOnlyRoundScheduleChanges(request);
+        }
+
+        if (request.getMinEntries() != null && request.getMaxEntries() != null
+                && request.getMinEntries() > request.getMaxEntries()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (Boolean.TRUE.equals(request.getIsFinal())
+                && !round.isFinal()
+                && roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournament.getTournamentId())) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         if (request.getRoundName() != null && !request.getRoundName().equals(round.getRoundName())
@@ -199,8 +208,9 @@ public class RoundServiceImpl implements RoundService {
         if (round.getTournament().getStatus() != TournamentStatus.DRAFT) {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
-        if (round.getTournament().getBracketPlanStatus() != BracketPlanStatus.NOT_GENERATED) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+
+        if (!raceRepository.findByRound_RoundId(roundId).isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         roundRepository.delete(round);
@@ -279,7 +289,7 @@ public class RoundServiceImpl implements RoundService {
                 || request.getMinEntries() != null
                 || request.getStatus() != null
                 || request.getHeadRefereeId() != null) {
-            throw new AppException(ErrorCode.BRACKET_PLAN_LOCKED);
+            throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
     }
 

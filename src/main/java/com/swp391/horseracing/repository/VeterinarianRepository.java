@@ -21,10 +21,6 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
 
     boolean existsByUser_UserId(UUID userId);
 
-    boolean existsByLicenseNumber(String licenseNumber);
-
-    boolean existsByLicenseNumberAndVetIdNot(String licenseNumber, UUID vetId);
-
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT v

@@ -18,6 +18,5 @@ public class OwnerResponse {
     String fullName;
     String farmName;
     String address;
-    String licenseNumber;
     LocalDateTime createdAt;
 }

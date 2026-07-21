@@ -21,7 +21,6 @@ public class JockeyResponse {
     float height;
     float weight;
     int experienceYears ;
-    String licenseNumber;
     Specialization specialization;
     JockeyStatus status ;
     LocalDateTime createdAt;

@@ -65,7 +65,7 @@ ON DUPLICATE KEY UPDATE
     status = 'ACTIVE';
 
 INSERT INTO jockeys
-    (jockey_id, user_id, height, weight, experience_years, license_number,
+    (jockey_id, user_id, height, weight, experience_years,
      specialization, status, total_races, total_wins, jockey_tier,
      tier_updated_at, last_race_at, created_at)
 SELECT
@@ -74,7 +74,6 @@ SELECT
     1.58 + MOD(n, 8) / 100,
     49 + MOD(n, 5),
     2 + MOD(n, 9),
-    CONCAT('BRACKET-JOCKEY-', LPAD(n, 2, '0')),
     IF(MOD(n, 2) = 0, 'SPRINT', 'MILE'),
     'AVAILABLE', 10 + n, MOD(n, 8),
     IF(n <= 8, 'PROFESSIONAL', IF(n <= 20, 'JUNIOR', 'APPRENTICE')),
@@ -123,8 +122,8 @@ INSERT INTO tournaments
      max_races_per_day, min_race_interval_minutes,
      start_early_tolerance_minutes, start_late_tolerance_minutes,
      default_race_operational_minutes, race_day_start_time, race_day_end_time,
-     apply_break_time, break_start_time, break_end_time, max_rounds,
-     status, phase, created_at, published_at,
+      apply_break_time, break_start_time, break_end_time,
+      status, phase, created_at, published_at,
      registration_open_at, registration_close_at, review_deadline_at,
      jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at,
      current_round_name, min_round_gap_days, race_class, distance,
@@ -139,7 +138,7 @@ VALUES
      'Trường đua Demo Bracket', 100000, 50000, 12000000,
      'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24,
      90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00',
-     0, NULL, NULL, 2, 'ONGOING', 'RESULT_PENDING', DATE_SUB(@now, INTERVAL 35 DAY),
+      0, NULL, NULL, 'ONGOING', 'RESULT_PENDING', DATE_SUB(@now, INTERVAL 35 DAY),
      DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 35 DAY),
      DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY),
      DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), @race_a_start,

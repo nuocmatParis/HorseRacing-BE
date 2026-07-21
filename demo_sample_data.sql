@@ -136,10 +136,10 @@ VALUES
  NULL, 'ACTIVE', '00000000-0000-0000-0000-000000000004', @account_created_at);
 
 INSERT INTO horse_owners
-    (owner_id, user_id, farm_name, address, license_number, created_at)
+    (owner_id, user_id, farm_name, address, created_at)
 VALUES
-(@owner1_id, @owner1_user_id, 'Trang trại Full Flow', 'TP. Hồ Chí Minh', 'OWN-0001', @account_created_at),
-(@owner2_id, @owner2_user_id, 'Trang trại Bracket', 'Đà Nẵng', 'OWN-0002', @account_created_at);
+(@owner1_id, @owner1_user_id, 'Trang trại Full Flow', 'TP. Hồ Chí Minh', @account_created_at),
+(@owner2_id, @owner2_user_id, 'Trang trại Bracket', 'Đà Nẵng', @account_created_at);
 
 INSERT INTO spectators (spectator_id, user_id, total_points, created_at)
 VALUES
@@ -186,11 +186,11 @@ BEGIN
              '00000000-0000-0000-0000-000000000003', @account_created_at);
         INSERT INTO jockeys
             (jockey_id, user_id, height, weight, experience_years,
-             license_number, specialization, status, total_races, total_wins,
+             specialization, status, total_races, total_wins,
              jockey_tier, tier_updated_at, created_at)
         VALUES
             (v_profile_id, v_user_id, 1.60 + MOD(i, 8) / 100,
-             49 + MOD(i, 5), 2 + MOD(i, 9), CONCAT('JOC-', LPAD(i, 4, '0')),
+             49 + MOD(i, 5), 2 + MOD(i, 9),
              'MILE', 'AVAILABLE', 10 + i, MOD(i, 7),
              CASE MOD(i, 4)
                  WHEN 0 THEN 'ELITE'
@@ -247,10 +247,10 @@ BEGIN
              CONCAT('093', LPAD(i, 7, '0')), 'ACTIVE',
              '00000000-0000-0000-0000-000000000006', @account_created_at);
         INSERT INTO veterinarians
-            (vet_id, user_id, license_number, specialization,
+            (vet_id, user_id, specialization,
              years_of_service, status, created_at)
         VALUES
-            (v_profile_id, v_user_id, CONCAT('VET-', LPAD(i, 4, '0')),
+            (v_profile_id, v_user_id,
              'Equine Medicine', 5 + i, 'AVAILABLE', @account_created_at);
         SET i = i + 1;
     END WHILE;
@@ -318,8 +318,8 @@ BEGIN
          max_races_per_day, min_race_interval_minutes,
          start_early_tolerance_minutes, start_late_tolerance_minutes,
          default_race_operational_minutes, race_day_start_time,
-         race_day_end_time, apply_break_time, break_start_time, break_end_time,
-         max_rounds, status, phase, created_at, published_at,
+          race_day_end_time, apply_break_time, break_start_time, break_end_time,
+          status, phase, created_at, published_at,
          registration_open_at, registration_close_at, review_deadline_at,
          jockey_matching_deadline_at, scheduling_deadline_at,
          competition_start_at, current_round_name, min_round_gap_days,
@@ -339,8 +339,8 @@ BEGIN
          9, 35,
          185, 0,
          180, '00:00:00', '23:59:59',
-         0, NULL, NULL,
-         p_round_count, 'ONGOING', 'RACING',
+          0, NULL, NULL,
+          'ONGOING', 'RACING',
          DATE_SUB(NOW(), INTERVAL 36 DAY),
          DATE_SUB(NOW(), INTERVAL 35 DAY),
          DATE_SUB(NOW(), INTERVAL 35 DAY),

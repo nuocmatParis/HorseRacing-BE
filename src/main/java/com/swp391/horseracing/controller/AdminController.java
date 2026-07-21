@@ -344,25 +344,4 @@ public class AdminController {
                 .build();
     }
 
-    @GetMapping("/tournaments/{id}/bracket-preview")
-    public ApiResponse<BracketPreviewResponse> getBracketPreview(@PathVariable UUID id) {
-        return ApiResponse.<BracketPreviewResponse>builder()
-                .result(tournamentService.getBracketPreview(id))
-                .build();
-    }
-
-    @GetMapping("/tournaments/{id}/schedule-proposal")
-    public ApiResponse<TournamentScheduleProposalResponse> getScheduleProposal(@PathVariable UUID id) {
-        return ApiResponse.<TournamentScheduleProposalResponse>builder()
-                .result(tournamentService.getScheduleProposal(id))
-                .build();
-    }
-
-    @PostMapping("/tournaments/{id}/bracket-confirm")
-    public ApiResponse<TournamentResponse> confirmBracket(@PathVariable UUID id,
-                                                           @Valid @RequestBody ConfirmBracketRequest request) {
-        return ApiResponse.<TournamentResponse>builder()
-                .result(tournamentService.confirmBracket(id, request))
-                .build();
-    }
 }

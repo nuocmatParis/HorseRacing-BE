@@ -247,16 +247,21 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         EligibilityOperator operator = rule.getConditionOperator();
         String value = rule.getConditionValue();
 
-        boolean passed = switch (condition) {
-            case AGE -> {
-                int age = java.time.Period.between(jockey.getUser().getDob(), java.time.LocalDate.now()).getYears();
-                yield compareInt(age, operator, Integer.parseInt(value));
-            }
-            case WEIGHT -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
-            case EXPERIENCE_YEARS -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
-            case JOCKEY_TIER -> compareJockeyTier(jockey.getJockeyTier(), operator, value);
-            default -> true;
-        };
+        boolean passed;
+        try {
+            passed = switch (condition) {
+                case AGE -> {
+                    int age = java.time.Period.between(jockey.getUser().getDob(), java.time.LocalDate.now()).getYears();
+                    yield compareInt(age, operator, Integer.parseInt(value));
+                }
+                case WEIGHT -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
+                case EXPERIENCE_YEARS -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
+                case JOCKEY_TIER -> compareJockeyTier(jockey.getJockeyTier(), operator, value);
+                default -> true;
+            };
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+        }
 
         if (!passed) {
             throw new AppException(ErrorCode.JOCKEY_NOT_ELIGIBLE);
@@ -314,13 +319,18 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         EligibilityOperator operator = rule.getConditionOperator();
         String value = rule.getConditionValue();
 
-        boolean passed = switch (condition) {
-            case AGE -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
-            case WEIGHT -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
-            case WIN_RATE -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
-            case BREED -> compareBreed(horse.getBreed(), operator, value);
-            default -> true;
-        };
+        boolean passed;
+        try {
+            passed = switch (condition) {
+                case AGE -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
+                case WEIGHT -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
+                case WIN_RATE -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
+                case BREED -> compareBreed(horse.getBreed(), operator, value);
+                default -> true;
+            };
+        } catch (IllegalArgumentException e) {
+            throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+        }
 
         if (!passed) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
