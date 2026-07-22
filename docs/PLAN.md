@@ -20,7 +20,7 @@ registrationOpenAt
 - BE chưa kiểm tra thời lượng tối thiểu của từng giai đoạn.
 - BE chưa bắt buộc `schedulingDeadlineAt` phải trước Race đầu tiên.
 - FE đang gợi ý timeline cố định bằng cách trừ `28, 14, 10, 6, 2` ngày từ `startDate`; chưa phụ thuộc `maxApprovedEntries`.
-- Việc kiểm tra `endDate` hiện đã mô phỏng số Round, số Race, khung giờ đua, số Race tối đa mỗi ngày và `minRoundGapDays`.
+- Việc kiểm tra `endDate` hiện đã mô phỏng số Round, số Race, khung giờ đua và số Race tối đa mỗi ngày.
 
 ## 2. Câu hỏi 1 — Ý nghĩa của startDate
 
@@ -219,7 +219,7 @@ Ví dụ tổng quát, nếu toàn bộ Race của mỗi Round chạy hết tron
 | 64 | 4 → 2 → 1 | 3 | startDate + 14 ngày |
 | 128 | 8 → 4 → 2 → 1 | 4 | startDate + 21 ngày |
 
-Nếu một Round không thể chạy hết trong một ngày thì hệ thống phải tính từ thời điểm kết thúc Race cuối cùng của Round đó rồi mới cộng `minRoundGapDays`.
+Nếu một Round không thể chạy hết trong một ngày thì hệ thống phải tính từ thời điểm kết thúc Race cuối cùng của Round đó.
 
 ```text
 [ ] Đồng ý cách tính trên. Khuyến nghị.

@@ -251,7 +251,7 @@ INSERT INTO tournaments
      status, phase, created_at, published_at,
      registration_open_at, registration_close_at, review_deadline_at,
      jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at,
-     current_round_name, min_round_gap_days, race_class, distance,
+      current_round_name, race_class, distance,
      top_weight_lbs, min_weight_lbs, equipment_weight_kg, handicap_enabled,
      max_approved_horses, max_approved_jockeys, max_approved_entries,
      planned_round_count, planned_race_count, bracket_plan_status,
@@ -278,7 +278,7 @@ VALUES
      'DRAFT', 'DRAFT', @now, NULL,
      @reg_open, @reg_close, @review_dead,
      @jockey_dead, @sched_dead, @comp_start,
-     NULL, 7, 'CLASS_3', 'MILE_1600M',
+      NULL, 'CLASS_3', 'MILE_1600M',
      -- Handicap disabled
      0, 0, 0.0, 0,
      -- Max approved

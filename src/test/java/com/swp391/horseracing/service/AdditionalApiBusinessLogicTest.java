@@ -41,6 +41,8 @@ import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
+import com.swp391.horseracing.repository.PhaseTimingConfigRepository;
+import com.swp391.horseracing.repository.TournamentPhaseConfigRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.repository.WalletRepository;
@@ -103,6 +105,8 @@ class AdditionalApiBusinessLogicTest {
     @Mock RaceRepository raceRepository;
     @Mock RaceRefereeRepository raceRefereeRepository;
     @Mock RaceService raceService;
+    @Mock PhaseTimingConfigRepository phaseTimingConfigRepository;
+    @Mock TournamentPhaseConfigRepository tournamentPhaseConfigRepository;
 
     @InjectMocks ContractServiceImpl contractService;
     @InjectMocks TournamentRegistrationServiceImpl registrationService;

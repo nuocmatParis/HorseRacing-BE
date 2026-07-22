@@ -47,10 +47,6 @@ public class Race {
     @Column(name = "sequence_order", nullable = false)
     int sequenceOrder;
 
-    @Builder.Default
-    @Column(name = "max_entries", nullable = false)
-    int maxEntries = 16;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 50)
     RoundStatus status;

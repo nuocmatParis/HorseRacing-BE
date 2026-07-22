@@ -112,10 +112,6 @@ public class Tournament {
     int inspectionCloseMinutesBefore = 5;
 
     @Builder.Default
-    @Column(name = "max_races_per_day", nullable = false)
-    int maxRacesPerDay = 9;
-
-    @Builder.Default
     @Column(name = "min_race_interval_minutes", nullable = false)
     int minRaceIntervalMinutes = 30;
 
@@ -217,6 +213,18 @@ public class Tournament {
 
     @Column(name = "max_approved_entries", nullable = false)
     Integer maxApprovedEntries;
+
+    @Builder.Default
+    @Column(name = "qualifiers_per_race", nullable = false)
+    int qualifiersPerRace = 4;
+
+    @Builder.Default
+    @Column(name = "max_entries_per_race", nullable = false)
+    int maxEntriesPerRace = 16;
+
+    @Builder.Default
+    @Column(name = "min_entries_per_race", nullable = false)
+    int minEntriesPerRace = 8;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
