@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -95,10 +96,6 @@ public class UpdateTournamentRequest {
     @Min(value = 0, message = "Inspection close minutes must be at least 0")
     Integer inspectionCloseMinutesBefore;
 
-    @Min(value = 1, message = "Max races per day must be at least 1")
-    @Max(value = 9, message = "Max races per day must be at most 9")
-    Integer maxRacesPerDay;
-
     @Min(value = 1, message = "Min race interval minutes must be at least 1")
     @Max(value = 30, message = "Min race interval minutes must be at most 30")
     Integer minRaceIntervalMinutes;
@@ -132,7 +129,12 @@ public class UpdateTournamentRequest {
 
     LocalDateTime schedulingDeadlineAt;
 
-    @Min(value = 8, message = "Max approved entries must be at least 8")
+    @Min(value = 1, message = "Max approved entries must be at least 1")
     Integer maxApprovedEntries;
 
+    @Min(value = 1, message = "Qualifiers per race must be at least 1")
+    @Max(value = 16, message = "Qualifiers per race must be at most 16")
+    Integer qualifiersPerRace;
+
+    Map<String, Integer> phaseConfigs;
 }

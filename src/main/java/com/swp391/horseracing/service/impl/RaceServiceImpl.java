@@ -628,10 +628,6 @@ public class RaceServiceImpl implements RaceService {
                     tournament.getTournamentId(), startOfDay, endOfDay, RoundStatus.CANCELLED);
         }
         
-        if (count >= tournament.getMaxRacesPerDay()) {
-            throw new AppException(ErrorCode.MAX_RACES_PER_DAY_EXCEEDED);
-        }
-        
         // 2. Operating Hours
         LocalTime startLocalTime = newStartTime.toLocalTime();
         LocalTime endLocalTime = newEndTime.toLocalTime();
@@ -990,36 +986,28 @@ public class RaceServiceImpl implements RaceService {
         
         int daysChecked = 0;
         while (!searchDate.isAfter(endDate) && proposals.size() < 10 && daysChecked < 30) {
-            LocalDateTime startOfDay = searchDate.atStartOfDay();
-            LocalDateTime endOfDay = searchDate.atTime(23, 59, 59, 999999999);
-            
-            long count = raceRepository.countByRound_Tournament_TournamentIdAndStartTimeBetweenAndStatusNotAndRaceIdNot(
-                    tournament.getTournamentId(), startOfDay, endOfDay, RoundStatus.CANCELLED, raceId);
-            
-            if (count < tournament.getMaxRacesPerDay()) {
-                LocalTime raceTime = tournament.getRaceDayStartTime();
-                LocalTime dayEndTime = tournament.getRaceDayEndTime();
-                
-                while (raceTime.isBefore(dayEndTime)) {
-                    LocalDateTime startCandidate = LocalDateTime.of(searchDate, raceTime);
-                    LocalDateTime endCandidate = startCandidate.plusMinutes(tournament.getDefaultRaceOperationalMinutes());
-                    
-                    if (endCandidate.toLocalTime().isAfter(dayEndTime)) {
-                        break;
-                    }
-                    
-                    if (startCandidate.isAfter(LocalDateTime.now())) {
-                        try {
-                            validateRaceScheduleConstraints(round, startCandidate, endCandidate, raceId);
-                            validateRescheduleConflictsInternal(race, startCandidate, endCandidate);
-                            proposals.add(startCandidate);
-                        } catch (AppException e) {
-                            // ignore and try next candidate
-                        }
-                    }
-                    
-                    raceTime = raceTime.plusMinutes(30);
+            LocalTime raceTime = tournament.getRaceDayStartTime();
+            LocalTime dayEndTime = tournament.getRaceDayEndTime();
+
+            while (raceTime.isBefore(dayEndTime)) {
+                LocalDateTime startCandidate = LocalDateTime.of(searchDate, raceTime);
+                LocalDateTime endCandidate = startCandidate.plusMinutes(tournament.getDefaultRaceOperationalMinutes());
+
+                if (endCandidate.toLocalTime().isAfter(dayEndTime)) {
+                    break;
                 }
+
+                if (startCandidate.isAfter(LocalDateTime.now())) {
+                    try {
+                        validateRaceScheduleConstraints(round, startCandidate, endCandidate, raceId);
+                        validateRescheduleConflictsInternal(race, startCandidate, endCandidate);
+                        proposals.add(startCandidate);
+                    } catch (AppException e) {
+                        // ignore and try next candidate
+                    }
+                }
+
+                raceTime = raceTime.plusMinutes(30);
             }
             searchDate = searchDate.plusDays(1);
             daysChecked++;

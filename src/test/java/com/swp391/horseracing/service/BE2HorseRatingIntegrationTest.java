@@ -54,9 +54,7 @@ public class BE2HorseRatingIntegrationTest {
                 try {
                     stmt.execute("ALTER TABLE tournaments ADD COLUMN current_round_name VARCHAR(100) NULL");
                 } catch (Exception ignored) {}
-                try {
-                    stmt.execute("ALTER TABLE tournaments ADD COLUMN min_round_gap_days INT NOT NULL DEFAULT 1");
-                } catch (Exception ignored) {}
+
             } catch (Exception ignored) {}
 
             org.flywaydb.core.Flyway flyway = org.flywaydb.core.Flyway.configure()

@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -97,7 +98,7 @@ public class CreateTournamentRequest {
     Integer predictionTop3PerfectBonusPoints = 50;
 
     @NotNull(message = "Max approved entries is required")
-    @Min(value = 8, message = "Max approved entries must be at least 8")
+    @Min(value = 1, message = "Max approved entries must be at least 1")
     Integer maxApprovedEntries;
 
 
@@ -116,10 +117,6 @@ public class CreateTournamentRequest {
 
     @Min(value = 1, message = "Inspection close minutes must be at least 1")
     Integer inspectionCloseMinutesBefore = 5;
-
-    @Min(value = 1, message = "Max races per day must be at least 1")
-    @Max(value = 9, message = "Max races per day must be at most 9")
-    Integer maxRacesPerDay = 9;
 
     @Min(value = 1, message = "Min race interval minutes must be at least 1")
     @Max(value = 30, message = "Min race interval minutes must be at most 30")
@@ -158,4 +155,11 @@ public class CreateTournamentRequest {
 
     @NotNull(message = "Scheduling deadline is required")
     LocalDateTime schedulingDeadlineAt;
+
+    @NotNull(message = "Qualifiers per race is required")
+    @Min(value = 1, message = "Qualifiers per race must be at least 1")
+    @Max(value = 16, message = "Qualifiers per race must be at most 16")
+    Integer qualifiersPerRace = 4;
+
+    Map<String, Integer> phaseConfigs;
 }
