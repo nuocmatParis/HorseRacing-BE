@@ -338,7 +338,6 @@ CONFIRMED
 ├─ WITHDRAWN_BEFORE_SCHEDULE
 ├─ WITHDRAWN_AFTER_SCHEDULE
 ├─ FINISHED
-├─ DID_NOT_FINISH
 └─ DISQUALIFIED
 ```
 
@@ -365,13 +364,13 @@ Mỗi entry cần:
 ### 6.5. Result, report và prediction
 
 ```text
-RaceResultStatus: FINISHED / DID_NOT_FINISH / DISQUALIFIED
+RaceResultStatus: FINISHED / DISQUALIFIED
 RaceReport: DRAFT → SUBMITTED_TO_HEAD → SIGNED → PUBLISHED
 Prediction: PENDING → SCORED / VOIDED / CANCELLED
 ```
 
 - `SCRATCHED` trước start không có result thi đấu.
-- DNF và DISQUALIFIED sau start vẫn nằm trong result và prediction vẫn được chấm.
+- `DISQUALIFIED` sau start bao gồm vi phạm hoặc không hoàn thành; prediction vẫn được chấm.
 - Cancel toàn race làm prediction `VOIDED`.
 - Publish report kích hoạt scoring, rating, round transition và payout nếu là Final.
 
@@ -449,8 +448,9 @@ Các bảng dưới đây liệt kê theo route thực tế. URL đều tính t�
 
 | Method | Endpoint | Quyền | Chức năng |
 |---|---|---|---|
-| POST | `/api/admin/tournaments` | Admin | Tạo Tournament ở `DRAFT`; body `CreateTournamentRequest`. |
-| PUT | `/api/admin/tournaments/{id}` | Admin | Cập nhật Tournament khi nghiệp vụ cho phép. |
+| GET | `/api/admin/tournaments/rating-config/default` | Admin | Lấy bộ Rating mặc định để điền form tạo giải. |
+| POST | `/api/admin/tournaments` | Admin | Tạo Tournament ở `DRAFT`; `ratingConfig` là tùy chọn và mặc định được snapshot từ cấu hình hệ thống. |
+| PUT | `/api/admin/tournaments/{id}` | Admin | Cập nhật Tournament và `ratingConfig` khi còn `DRAFT`. |
 | DELETE | `/api/admin/tournaments/{id}` | Admin | Xóa Tournament chưa bị khóa bởi lifecycle. |
 | GET | `/api/admin/tournaments/{id}/bracket-preview` | Admin | Xem cấu trúc bracket dự kiến, số round/race và version. |
 | GET | `/api/admin/tournaments/{id}/schedule-proposal` | Admin | Xem đề xuất lịch dựa trên capacity, ngày, giờ, break và khoảng cách race. |
@@ -467,7 +467,7 @@ Các bảng dưới đây liệt kê theo route thực tế. URL đều tính t�
 | POST | `/api/admin/rounds/{roundId}/races` | Admin | Tạo Race trong Round. |
 | PUT | `/api/admin/races/{raceId}` | Admin | Sửa Race và lịch thi đấu. |
 | DELETE | `/api/admin/races/{raceId}` | Admin | Xóa Race. |
-| POST | `/api/admin/tournaments/{id}/publish` | Admin | Validate cấu hình rồi publish: `DRAFT → REGISTRATION_OPEN`. |
+| POST | `/api/admin/tournaments/{id}/publish` | Admin | Validate, khóa Rating config rồi publish: `DRAFT → REGISTRATION_OPEN`. |
 | POST | `/api/admin/tournaments/{id}/close-registration` | Admin | Đóng đăng ký có chủ đích trước/chạm deadline theo rule. |
 | POST | `/api/admin/tournaments/{id}/complete-review` | Admin | Kết thúc duyệt ngựa và chuyển sang matching. |
 | POST | `/api/admin/tournaments/{id}/complete-matching` | Admin | Validate contract/bracket, tạo/phân entry vòng đầu và chuyển scheduling. |
@@ -997,7 +997,7 @@ PERFORMANCE_OUTLIER
 | Module | Request DTO |
 |---|---|
 | Auth | `UserCreationRequest`, `VerifyEmail`, `ResendOtp`, `AuthRequest` |
-| Tournament | `CreateTournamentRequest`, `UpdateTournamentRequest`, `ConfirmBracketRequest` |
+| Tournament | `CreateTournamentRequest`, `UpdateTournamentRequest`, `TournamentRatingConfigRequest`, `ConfirmBracketRequest` |
 | Round/Race | `CreateRoundRequest`, `UpdateRoundRequest`, `CreateRaceRequest`, `UpdateRaceRequest` |
 | Prize/Eligibility | `CreatePrizeStructureRequest`, `UpdatePrizeStructureRequest`, `CreateEligibilityRequest`, `UpdateEligibilityRequest` |
 | Cancel/Postpone | `CancelRaceRequest`, `RescheduleRaceRequest` |
@@ -1117,6 +1117,7 @@ Sau publish, kiểm tra:
 | `V7__add_tournament_distance_and_enum_conversions.sql` | Distance Tournament và chuyển enum. |
 | `V8__add_tournament_competition_start.sql` | `competition_start_at`. |
 | `V16__replace_automatic_horse_rating_with_referee_rating.sql` | Bỏ thành phần tự tính; lưu điểm Rating do trọng tài nhập và lý do Head Referee điều chỉnh. |
+| `V21__add_tournament_rating_policy_and_merge_dnf.sql` | Snapshot Rating theo Tournament, khóa khi publish và quy đổi dữ liệu DNF cũ sang `DISQUALIFIED`. |
 | `V9__add_transaction_performer_audit.sql` | Audit user thực hiện transaction. |
 | `V10__increase_payment_purpose_length.sql` | Mở rộng payment purpose. |
 | `V11__create_spectator_horse_follows.sql` | Follow horse của Spectator. |

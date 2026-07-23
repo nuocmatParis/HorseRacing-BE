@@ -23,8 +23,6 @@ public class HorseRatingProperties {
     private int fourthFifthMax = 2;
     private int otherMin = -8;
     private int otherMax = 0;
-    private int dnfMin = -8;
-    private int dnfMax = 0;
     private int disqualifiedMin = -8;
     private int disqualifiedMax = 0;
     private int policyVersion = 1;
@@ -36,14 +34,12 @@ public class HorseRatingProperties {
                 && thirdMin <= thirdMax
                 && fourthFifthMin <= fourthFifthMax
                 && otherMin <= otherMax
-                && dnfMin <= dnfMax
                 && disqualifiedMin <= disqualifiedMax
                 && firstMin >= 0
                 && secondMin >= 0
                 && thirdMin >= 0
                 && fourthFifthMin >= 0
                 && otherMax <= 0
-                && dnfMax <= 0
                 && disqualifiedMax <= 0
                 && policyVersion >= 1;
     }

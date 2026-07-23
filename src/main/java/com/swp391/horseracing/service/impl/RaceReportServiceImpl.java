@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.Map;
-import java.util.stream.Collectors;
 import com.swp391.horseracing.mapper.RaceReportMapper;
 import com.swp391.horseracing.mapper.RaceResultMapper;
 import com.swp391.horseracing.repository.*;
@@ -317,7 +316,6 @@ public class RaceReportServiceImpl implements RaceReportService {
 
                 RaceResultStatus resultStatus = result.getStatus();
                 if (resultStatus != RaceResultStatus.FINISHED
-                        && resultStatus != RaceResultStatus.DID_NOT_FINISH
                         && resultStatus != RaceResultStatus.DISQUALIFIED) {
                     throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
                 }
@@ -328,7 +326,8 @@ public class RaceReportServiceImpl implements RaceReportService {
                     }
                 }
                 horseRatingService.validateRatingChange(
-                        resultStatus, result.getRank(), result.getRatingChange());
+                        result.getRace(), resultStatus,
+                        result.getRank(), result.getRatingChange());
             } else {
                 RaceResult result = resultMap.get(entry.getEntryId());
                 if (result != null) {
@@ -854,10 +853,13 @@ public class RaceReportServiceImpl implements RaceReportService {
         raceRepository.findById(raceId)
                 .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
-        return raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId)
-                .stream()
-                .map(raceResultMapper::toRaceResultResponse)
-                .toList();
+        List<RaceResultResponse> responses = new ArrayList<>();
+        List<RaceResult> results =
+                raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId);
+        for (RaceResult result : results) {
+            responses.add(raceResultMapper.toRaceResultResponse(result));
+        }
+        return responses;
     }
 
 }

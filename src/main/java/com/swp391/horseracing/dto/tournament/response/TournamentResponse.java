@@ -46,6 +46,7 @@ public class TournamentResponse {
     int predictionTop3ExactPositionPoints;
     int predictionTop3CorrectHorsePoints;
     int predictionTop3PerfectBonusPoints;
+    TournamentRatingConfigResponse ratingConfig;
     int predictionOpenMinutesBefore;
     int predictionCloseMinutesBefore;
     int predictionCardOpenHoursBeforeFirstRace;

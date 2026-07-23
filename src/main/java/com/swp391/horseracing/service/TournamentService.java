@@ -3,6 +3,7 @@ package com.swp391.horseracing.service;
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
+import com.swp391.horseracing.dto.tournament.response.TournamentRatingConfigResponse;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,6 +32,8 @@ public interface TournamentService {
     List<TournamentResponse> getAll();
 
     TournamentResponse getById(UUID id);
+
+    TournamentRatingConfigResponse getDefaultRatingConfig();
 
     TournamentResponse closeRegistration(UUID id);
 

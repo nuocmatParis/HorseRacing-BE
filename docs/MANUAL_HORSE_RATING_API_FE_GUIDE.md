@@ -67,17 +67,78 @@ Tên `field` có thể chứa thêm tên method hoặc index phần tử tùy re
 | Hạng 3 | +1 đến +4 |
 | Hạng 4-5 | 0 đến +2 |
 | Hạng 6 trở xuống | -8 đến 0 |
-| `DID_NOT_FINISH` | -8 đến 0 |
 | `DISQUALIFIED` | -8 đến 0 |
+
+Đây là bộ mặc định. FE phải lấy khoảng thực tế từ `tournament.ratingConfig` vì Admin có thể tùy chỉnh khi Tournament còn `DRAFT`.
 
 Quy tắc dữ liệu kết quả:
 
 - `FINISHED`: bắt buộc có `finishTime` và `rank` hợp lệ.
-- `DID_NOT_FINISH`: `finishTime = null`, `rank = null`.
-- `DISQUALIFIED`: `finishTime` và `rank` có thể là `null`.
+- `DISQUALIFIED`: entry bị loại; `finishTime = null`, `rank = null`.
+- `SCRATCHED`/withdrawn trước khi xuất phát không tạo RaceResult và không đổi Rating.
 - Mọi kết quả đều phải có `ratingChange` trước khi report được gửi hoặc ký.
 - `ratingChange` phải là số nguyên.
 - Rank của các entry `FINISHED` không được trùng nhau.
+
+### 3.1. Thời điểm hiển thị cấu hình Rating của Tournament
+
+Không hiển thị phần cấu hình Rating trong form tạo Tournament.
+
+Luồng FE:
+
+```text
+Admin tạo Tournament
+→ POST /api/admin/tournaments không cần gửi ratingConfig
+→ BE lấy bộ mặc định và lưu một bản riêng vào Tournament
+→ FE chuyển sang trang chi tiết/cấu hình Tournament
+→ Hiển thị mục "Quy tắc thay đổi Rating"
+```
+
+Response tạo Tournament và `GET /api/tournaments/{tournamentId}` đều trả
+`ratingConfig` thực tế đã lưu của Tournament.
+
+Khi Tournament còn `DRAFT` và `ratingConfig.locked = false`, FE cho phép Admin
+chỉnh cấu hình bằng:
+
+```http
+PUT /api/admin/tournaments/{tournamentId}
+```
+
+```json
+{
+  "ratingConfig": {
+    "firstMin": 6,
+    "firstMax": 12,
+    "secondMin": 2,
+    "secondMax": 5,
+    "thirdMin": 1,
+    "thirdMax": 4,
+    "fourthFifthMin": 0,
+    "fourthFifthMax": 2,
+    "otherMin": -8,
+    "otherMax": 0,
+    "disqualifiedMin": -8,
+    "disqualifiedMax": 0
+  }
+}
+```
+
+Sau `POST /api/admin/tournaments/{tournamentId}/publish`, BE khóa policy:
+
+```text
+ratingConfig.locked = true
+ratingConfig.lockedAt = thời điểm publish
+```
+
+Từ thời điểm này FE chỉ hiển thị read-only. `policyVersion` tăng khi Admin thay
+đổi một hoặc nhiều khoảng điểm trước khi khóa.
+
+API mặc định sau đây chỉ dùng cho chức năng xem/reset về bộ mặc định trong trang
+cấu hình sau khi tạo Tournament; không bắt buộc gọi trên form tạo:
+
+```http
+GET /api/admin/tournaments/rating-config/default
+```
 
 ---
 
@@ -110,6 +171,11 @@ Quy tắc dữ liệu kết quả:
 
 | Method | Endpoint | Chức năng |
 |---|---|---|
+| `GET` | `/api/admin/tournaments/rating-config/default` | Lấy bộ Rating mặc định để xem hoặc reset sau khi tạo giải |
+| `POST` | `/api/admin/tournaments` | Tạo Tournament; có thể bỏ `ratingConfig` để BE tự lưu bộ mặc định |
+| `GET` | `/api/tournaments/{id}` | Lấy `ratingConfig` thực tế đã lưu của Tournament |
+| `PUT` | `/api/admin/tournaments/{id}` | Chỉnh `ratingConfig` khi Tournament còn `DRAFT` |
+| `POST` | `/api/admin/tournaments/{id}/publish` | Publish Tournament và khóa `ratingConfig` |
 | `GET` | `/api/admin/races/{raceId}/report` | Lấy report đã ký để chuẩn bị công bố |
 | `GET` | `/api/admin/races/{raceId}/rating-preview` | Xem Rating sẽ được áp dụng |
 | `POST` | `/api/admin/races/{raceId}/report/publish` | Công bố report và áp dụng Rating |
@@ -196,7 +262,7 @@ Content-Type: application/json
     "entryId": "a0000000-0000-0000-0000-000000000202",
     "finishTime": null,
     "rank": null,
-    "status": "DID_NOT_FINISH",
+    "status": "DISQUALIFIED",
     "ratingChange": -4
   }
 ]
@@ -213,7 +279,7 @@ Response là danh sách `RaceResultResponse`, cùng cấu trúc với mục 5.
 - Phải thuộc khoảng theo status/rank.
 - `FINISHED` phải có thời gian không âm và rank từ 1 trở lên.
 - Không được có hai entry `FINISHED` cùng rank.
-- Với DNF/DQ, gửi `finishTime = null` và `rank = null`.
+- Với `DISQUALIFIED`, gửi `finishTime = null` và `rank = null`.
 
 ---
 
@@ -484,7 +550,7 @@ Chỉ gọi được khi report là `SIGNED`.
         "horseId": "40000000-0000-0000-0000-000000000202",
         "horseName": "Horse 02",
         "finishPosition": null,
-        "resultStatus": "DID_NOT_FINISH",
+        "resultStatus": "DISQUALIFIED",
         "oldRating": 75,
         "minimumAllowedChange": -8,
         "maximumAllowedChange": 0,
@@ -504,7 +570,7 @@ Chỉ gọi được khi report là `SIGNED`.
 | Ngựa | Hạng | Kết quả | Rating cũ | Khoảng | Thay đổi | Lý do | Rating mới | Class |
 |---|---:|---|---:|---|---:|---|---:|---|
 | Horse 01 | 1 | Hoàn thành | 80 | +6 đến +12 | +10 | Xem lại camera | 90 | CLASS_2 |
-| Horse 02 | - | DNF | 75 | -8 đến 0 | -4 | Không điều chỉnh | 71 | CLASS_3 |
+| Horse 02 | - | Không được công nhận kết quả | 75 | -8 đến 0 | -4 | Không điều chỉnh | 71 | CLASS_3 |
 
 Admin không được chỉnh Rating tại màn preview.
 
@@ -702,30 +768,40 @@ FE không hiển thị JSON thô và không chỉ dựa vào HTTP status. Phải
 ## 18. Utility validation FE đề xuất
 
 ```javascript
-export function getHorseRatingRange(status, rank) {
-  if (status === "DID_NOT_FINISH") {
-    return { minimum: -8, maximum: 0 };
-  }
-
+export function getHorseRatingRange(status, rank, ratingConfig) {
   if (status === "DISQUALIFIED") {
-    return { minimum: -8, maximum: 0 };
+    return {
+      minimum: ratingConfig.disqualifiedMin,
+      maximum: ratingConfig.disqualifiedMax
+    };
   }
 
   const numericRank = Number(rank);
 
-  if (numericRank === 1) return { minimum: 6, maximum: 12 };
-  if (numericRank === 2) return { minimum: 2, maximum: 5 };
-  if (numericRank === 3) return { minimum: 1, maximum: 4 };
+  if (numericRank === 1) {
+    return { minimum: ratingConfig.firstMin, maximum: ratingConfig.firstMax };
+  }
+  if (numericRank === 2) {
+    return { minimum: ratingConfig.secondMin, maximum: ratingConfig.secondMax };
+  }
+  if (numericRank === 3) {
+    return { minimum: ratingConfig.thirdMin, maximum: ratingConfig.thirdMax };
+  }
   if (numericRank === 4 || numericRank === 5) {
-    return { minimum: 0, maximum: 2 };
+    return {
+      minimum: ratingConfig.fourthFifthMin,
+      maximum: ratingConfig.fourthFifthMax
+    };
   }
 
-  if (numericRank >= 6) return { minimum: -8, maximum: 0 };
+  if (numericRank >= 6) {
+    return { minimum: ratingConfig.otherMin, maximum: ratingConfig.otherMax };
+  }
 
   return null;
 }
 
-export function validateHorseRating(status, rank, value) {
+export function validateHorseRating(status, rank, value, ratingConfig) {
   if (value === "" || value === null || value === undefined) {
     return "Vui lòng nhập điểm Rating.";
   }
@@ -735,7 +811,7 @@ export function validateHorseRating(status, rank, value) {
     return "Điểm Rating phải là số nguyên.";
   }
 
-  const range = getHorseRatingRange(status, rank);
+  const range = getHorseRatingRange(status, rank, ratingConfig);
   if (!range) {
     return "Vui lòng nhập trạng thái và thứ hạng hợp lệ trước.";
   }
@@ -748,7 +824,9 @@ export function validateHorseRating(status, rank, value) {
 }
 ```
 
-BE luôn là nguồn validation cuối cùng. Nếu cấu hình BE thay đổi, utility FE cũng phải được cập nhật vì hiện chưa có API public trả Rating policy trước khi nhập kết quả.
+BE luôn là nguồn validation cuối cùng. FE lấy Rating policy thực tế từ
+`ratingConfig` trong response Tournament, không dùng khoảng điểm viết cố định
+trong mã FE.
 
 ---
 
@@ -773,6 +851,10 @@ BE luôn là nguồn validation cuối cùng. Nếu cấu hình BE thay đổi, 
 
 ### Admin
 
+- [ ] Không hiển thị cấu hình Rating trong form tạo Tournament.
+- [ ] Sau khi tạo, hiển thị `ratingConfig` tại trang chi tiết/cấu hình Tournament.
+- [ ] Chỉ cho chỉnh khi Tournament còn `DRAFT` và `ratingConfig.locked = false`.
+- [ ] Sau khi publish Tournament, hiển thị policy read-only cùng `policyVersion` và `lockedAt`.
 - [ ] Preview chỉ dùng field thủ công mới.
 - [ ] Bỏ các cột công thức Rating tự động cũ.
 - [ ] Không cho Admin chỉnh điểm.

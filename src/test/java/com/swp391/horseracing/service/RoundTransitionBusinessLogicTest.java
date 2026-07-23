@@ -111,10 +111,10 @@ class RoundTransitionBusinessLogicTest {
         when(raceResultRepository.findByRace_RaceIdOrderByRankAsc(fixture.firstRace.getRaceId()))
                 .thenReturn(createResults(fixture.firstRace, 4, 0));
         List<RaceResult> secondRaceResults = createResults(fixture.secondRace, 3, 4);
-        RaceResult didNotFinish = createResults(fixture.secondRace, 1, 7).get(0);
-        didNotFinish.setRank(null);
-        didNotFinish.setStatus(RaceResultStatus.DID_NOT_FINISH);
-        secondRaceResults.add(didNotFinish);
+        RaceResult disqualified = createResults(fixture.secondRace, 1, 7).get(0);
+        disqualified.setRank(null);
+        disqualified.setStatus(RaceResultStatus.DISQUALIFIED);
+        secondRaceResults.add(disqualified);
         when(raceResultRepository.findByRace_RaceIdOrderByRankAsc(fixture.secondRace.getRaceId()))
                 .thenReturn(secondRaceResults);
 

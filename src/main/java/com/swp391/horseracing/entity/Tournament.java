@@ -92,6 +92,61 @@ public class Tournament {
     int predictionTop3PerfectBonusPoints = 50;
 
     @Builder.Default
+    @Column(name = "rating_first_min", nullable = false)
+    int ratingFirstMin = 6;
+
+    @Builder.Default
+    @Column(name = "rating_first_max", nullable = false)
+    int ratingFirstMax = 12;
+
+    @Builder.Default
+    @Column(name = "rating_second_min", nullable = false)
+    int ratingSecondMin = 2;
+
+    @Builder.Default
+    @Column(name = "rating_second_max", nullable = false)
+    int ratingSecondMax = 5;
+
+    @Builder.Default
+    @Column(name = "rating_third_min", nullable = false)
+    int ratingThirdMin = 1;
+
+    @Builder.Default
+    @Column(name = "rating_third_max", nullable = false)
+    int ratingThirdMax = 4;
+
+    @Builder.Default
+    @Column(name = "rating_fourth_fifth_min", nullable = false)
+    int ratingFourthFifthMin = 0;
+
+    @Builder.Default
+    @Column(name = "rating_fourth_fifth_max", nullable = false)
+    int ratingFourthFifthMax = 2;
+
+    @Builder.Default
+    @Column(name = "rating_other_min", nullable = false)
+    int ratingOtherMin = -8;
+
+    @Builder.Default
+    @Column(name = "rating_other_max", nullable = false)
+    int ratingOtherMax = 0;
+
+    @Builder.Default
+    @Column(name = "rating_disqualified_min", nullable = false)
+    int ratingDisqualifiedMin = -8;
+
+    @Builder.Default
+    @Column(name = "rating_disqualified_max", nullable = false)
+    int ratingDisqualifiedMax = 0;
+
+    @Builder.Default
+    @Column(name = "rating_policy_version", nullable = false)
+    int ratingPolicyVersion = 1;
+
+    @Column(name = "rating_policy_locked_at")
+    LocalDateTime ratingPolicyLockedAt;
+
+    @Builder.Default
     @Column(name = "prediction_open_minutes_before", nullable = false)
     int predictionOpenMinutesBefore = 120;
 

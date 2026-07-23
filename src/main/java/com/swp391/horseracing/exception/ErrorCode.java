@@ -530,6 +530,7 @@ public enum ErrorCode {
     HORSE_RATING_CHANGE_OUT_OF_RANGE(1819, HttpStatus.BAD_REQUEST, "Horse rating change is outside the allowed range for this result"),
     RACE_HAS_NOT_FINISHED(1820, HttpStatus.BAD_REQUEST, "Race has not finished yet"),
     HORSE_RATING_ADJUSTMENT_REASON_REQUIRED(1821, HttpStatus.BAD_REQUEST, "A reason is required when the Head Referee changes horse rating"),
+    INVALID_HORSE_RATING_CONFIG(1822, HttpStatus.BAD_REQUEST, "Tournament horse rating configuration is invalid"),
 
     // NOTIFICATION
     NOTIFICATION_NOT_FOUND(1901, HttpStatus.NOT_FOUND, "Notification not found"),
