@@ -15,6 +15,7 @@ import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RoundMapper;
+import com.swp391.horseracing.policy.TournamentTimelinePolicy;
 import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
@@ -65,10 +66,6 @@ public class RoundServiceImpl implements RoundService {
             throw new AppException(ErrorCode.ROUND_NAME_ALREADY_EXISTS);
         }
 
-        if (request.getMinEntries() > request.getMaxEntries()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
         if (Boolean.TRUE.equals(request.getIsFinal())) {
             if (roundRepository.existsByTournament_TournamentIdAndIsFinalTrue(tournamentId)) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -83,10 +80,6 @@ public class RoundServiceImpl implements RoundService {
             if (request.getQualifiersPerRace() == null || request.getQualifiersPerRace() < 1) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
-        }
-
-        if (request.getQualifiersPerRace() != null && request.getQualifiersPerRace() > request.getMaxEntries()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
         }
 
         List<Round> existingRounds = roundRepository
@@ -109,6 +102,19 @@ public class RoundServiceImpl implements RoundService {
         round.setTournament(tournament);
         round.setCreatedBy(currentUser);
         round.setCreatedAt(LocalDateTime.now());
+
+        if (round.getMaxEntries() == 0) {
+            round.setMaxEntries(tournament.getMaxEntriesPerRace());
+        }
+        if (round.getMinEntries() == 0) {
+            round.setMinEntries(tournament.getMinEntriesPerRace());
+        }
+        if (round.getMinEntries() > round.getMaxEntries()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+        if (request.getQualifiersPerRace() != null && request.getQualifiersPerRace() > round.getMaxEntries()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
 
         Round saved = roundRepository.save(round);
 
