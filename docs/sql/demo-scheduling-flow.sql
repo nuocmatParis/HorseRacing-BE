@@ -313,7 +313,7 @@ INSERT INTO tournaments
      prediction_open_minutes_before, prediction_close_minutes_before,
      prediction_card_open_hours_before_first_race,
      inspection_open_minutes_before, inspection_close_minutes_before,
-     max_races_per_day, min_race_interval_minutes,
+     min_race_interval_minutes,
      start_early_tolerance_minutes, start_late_tolerance_minutes,
      default_race_operational_minutes, race_day_start_time, race_day_end_time,
      apply_break_time, break_start_time, break_end_time,
@@ -340,7 +340,7 @@ VALUES
      -- Inspection timing (defaults)
      90, 30,
      -- Race day config (defaults)
-     9, 35, 0, 30, 30,
+     35, 0, 30, 30,
      '08:00:00', '18:00:00',
      0, NULL, NULL,
      -- Status: DRAFT, phase: DRAFT, bracket NOT_GENERATED

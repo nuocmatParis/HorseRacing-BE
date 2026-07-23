@@ -8,7 +8,7 @@
 --   3. Có race sắp chạy với 8 entry + AI winProbability để Spectator dự đoán Top 3.
 --   4. Có Final Race đã FINISHED, report đã Signed để Admin bấm Publish và kiểm
 --      tra scoring, prize payout, Jockey final payout, transaction, wallet balance.
---   5. Có FINISHED / DID_NOT_FINISH / DISQUALIFIED, violation, appeal và evidence.
+--   5. Có FINISHED / DISQUALIFIED, violation, appeal và evidence.
 --
 -- Cách dùng:
 --   - Khởi động BE một lần để Hibernate/Flyway tạo đủ schema mới nhất.
@@ -233,7 +233,7 @@ INSERT INTO tournaments
      prediction_open_minutes_before, prediction_close_minutes_before,
      prediction_card_open_hours_before_first_race,
      inspection_open_minutes_before, inspection_close_minutes_before,
-     max_races_per_day, min_race_interval_minutes,
+     min_race_interval_minutes,
      start_early_tolerance_minutes, start_late_tolerance_minutes,
      default_race_operational_minutes, race_day_start_time, race_day_end_time,
       apply_break_time, break_start_time, break_end_time,
@@ -246,9 +246,9 @@ INSERT INTO tournaments
      planned_round_count, planned_race_count, bracket_plan_status,
      bracket_plan_version, created_by)
 VALUES
-    ('50000000-0000-0000-0000-000000000001', 'DEMO 1 - Race sắp diễn ra', 'Dùng test upcoming race, entry, AI probability, prediction và inspection.', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), NULL, 'Trường đua Demo A', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30,       '08:00:00', '18:00:00', 0, NULL, NULL, 'ONGOING', 'RACING', DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 11 DAY), DATE_SUB(@now, INTERVAL 7 DAY), DATE_SUB(@now, INTERVAL 3 DAY), @upcoming_start, 'Vòng 1 (Chung Kết)', 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
-    ('50000000-0000-0000-0000-000000000002', 'DEMO 2 - Final chờ publish', 'Dùng test Admin publish report, prediction scoring, prize và final payout.', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 2 DAY), NULL, 'Trường đua Demo B', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'ONGOING', 'RESULT_PENDING', DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 10 DAY), @final_start, 'Vòng 1 (Chung Kết)', 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
-    ('50000000-0000-0000-0000-000000000003', 'DEMO 3 - Hồ sơ và contract chờ duyệt', 'Dùng test số liệu pending trên Admin Dashboard.', DATE_ADD(CURRENT_DATE, INTERVAL 20 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), NULL, 'Trường đua Demo C', 100000, 50000, 5000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 9, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'OPEN', 'REGISTRATION_REVIEW', DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 4 DAY), DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 1 DAY), DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY), DATE_ADD(@now, INTERVAL 11 DAY), DATE_ADD(@now, INTERVAL 20 DAY), NULL, 'CLASS_5', 'SPRINT_1200M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'CONFIRMED', 1, '10000000-0000-0000-0000-000000000001')
+    ('50000000-0000-0000-0000-000000000001', 'DEMO 1 - Race sắp diễn ra', 'Dùng test upcoming race, entry, AI probability, prediction và inspection.', CURRENT_DATE, DATE_ADD(CURRENT_DATE, INTERVAL 14 DAY), NULL, 'Trường đua Demo A', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 35, 0, 30, 30,       '08:00:00', '18:00:00', 0, NULL, NULL, 'ONGOING', 'RACING', DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 11 DAY), DATE_SUB(@now, INTERVAL 7 DAY), DATE_SUB(@now, INTERVAL 3 DAY), @upcoming_start, 'Vòng 1 (Chung Kết)', 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
+    ('50000000-0000-0000-0000-000000000002', 'DEMO 2 - Final chờ publish', 'Dùng test Admin publish report, prediction scoring, prize và final payout.', DATE_SUB(CURRENT_DATE, INTERVAL 2 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 2 DAY), NULL, 'Trường đua Demo B', 100000, 50000, 10000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'ONGOING', 'RESULT_PENDING', DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 30 DAY), DATE_SUB(@now, INTERVAL 25 DAY), DATE_SUB(@now, INTERVAL 20 DAY), DATE_SUB(@now, INTERVAL 15 DAY), DATE_SUB(@now, INTERVAL 10 DAY), @final_start, 'Vòng 1 (Chung Kết)', 'CLASS_1', 'MILE_1600M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, '10000000-0000-0000-0000-000000000001'),
+    ('50000000-0000-0000-0000-000000000003', 'DEMO 3 - Hồ sơ và contract chờ duyệt', 'Dùng test số liệu pending trên Admin Dashboard.', DATE_ADD(CURRENT_DATE, INTERVAL 20 DAY), DATE_ADD(CURRENT_DATE, INTERVAL 30 DAY), NULL, 'Trường đua Demo C', 100000, 50000, 5000000, 'THOROUGHBRED', 2, 12, 100, 30, 10, 50, 120, 5, 24, 90, 30, 35, 0, 30, 30, '08:00:00', '18:00:00', 0, NULL, NULL, 1, 'OPEN', 'REGISTRATION_REVIEW', DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 4 DAY), DATE_SUB(@now, INTERVAL 5 DAY), DATE_SUB(@now, INTERVAL 1 DAY), DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY), DATE_ADD(@now, INTERVAL 11 DAY), DATE_ADD(@now, INTERVAL 20 DAY), NULL, 'CLASS_5', 'SPRINT_1200M', 135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'CONFIRMED', 1, '10000000-0000-0000-0000-000000000001')
 ON DUPLICATE KEY UPDATE
     phase = VALUES(phase),
     status = VALUES(status),
@@ -472,7 +472,7 @@ VALUES
     ('a0000000-0000-0000-0000-000000000108', '90000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000108', 8, 'CONFIRMED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 2 DAY), DATE_SUB(@now, INTERVAL 2 DAY))
 ON DUPLICATE KEY UPDATE status = 'CONFIRMED', lane_number = VALUES(lane_number);
 
--- Final entries: 6 FINISHED, 1 DNF, 1 DISQUALIFIED.
+-- Final entries: 6 FINISHED, 2 DISQUALIFIED.
 INSERT INTO race_entries
     (entry_id, race_id, contract_id, lane_number, status, assigned_by,
      assigned_at, disqualified_at, disqualified_reason, created_at)
@@ -483,7 +483,7 @@ VALUES
     ('a0000000-0000-0000-0000-000000000204', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000204', 4, 'FINISHED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), NULL, NULL, DATE_SUB(@now, INTERVAL 10 DAY)),
     ('a0000000-0000-0000-0000-000000000205', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000205', 5, 'FINISHED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), NULL, NULL, DATE_SUB(@now, INTERVAL 10 DAY)),
     ('a0000000-0000-0000-0000-000000000206', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000206', 6, 'FINISHED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), NULL, NULL, DATE_SUB(@now, INTERVAL 10 DAY)),
-    ('a0000000-0000-0000-0000-000000000207', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000207', 7, 'DID_NOT_FINISH', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), NULL, NULL, DATE_SUB(@now, INTERVAL 10 DAY)),
+    ('a0000000-0000-0000-0000-000000000207', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000207', 7, 'DISQUALIFIED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), @final_end, 'Không hoàn thành sau khi đã xuất phát', DATE_SUB(@now, INTERVAL 10 DAY)),
     ('a0000000-0000-0000-0000-000000000208', '90000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000208', 8, 'DISQUALIFIED', '10000000-0000-0000-0000-000000000001', DATE_SUB(@now, INTERVAL 10 DAY), @final_end, 'Cản trở đối thủ ở đoạn cuối', DATE_SUB(@now, INTERVAL 10 DAY))
 ON DUPLICATE KEY UPDATE status = VALUES(status), lane_number = VALUES(lane_number);
 
@@ -529,7 +529,7 @@ VALUES
     ('c0000000-0000-0000-0000-000000000204', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000204', 96.55, 4, 0, 0, 0, 'NotEligible', 0, NULL, 'FINISHED', 0, '10000000-0000-0000-0000-000000000005', @final_end, @final_end),
     ('c0000000-0000-0000-0000-000000000205', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000205', 97.02, 5, 0, 0, 0, 'NotEligible', 0, NULL, 'FINISHED', 0, '10000000-0000-0000-0000-000000000005', @final_end, @final_end),
     ('c0000000-0000-0000-0000-000000000206', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000206', 98.44, 6, 0, 0, 0, 'NotEligible', 0, NULL, 'FINISHED', 0, '10000000-0000-0000-0000-000000000005', @final_end, @final_end),
-    ('c0000000-0000-0000-0000-000000000207', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000207', NULL, NULL, 0, 0, 0, 'NotEligible', 0, NULL, 'DID_NOT_FINISH', -4, '10000000-0000-0000-0000-000000000005', @final_end, @final_end),
+    ('c0000000-0000-0000-0000-000000000207', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000207', NULL, NULL, 0, 0, 0, 'NotEligible', 0, NULL, 'DISQUALIFIED', -4, '10000000-0000-0000-0000-000000000005', @final_end, @final_end),
     ('c0000000-0000-0000-0000-000000000208', '90000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000208', NULL, NULL, 0, 0, 0, 'NotEligible', 0, NULL, 'DISQUALIFIED', -6, '10000000-0000-0000-0000-000000000005', @final_end, @final_end)
 ON DUPLICATE KEY UPDATE
     finish_time = VALUES(finish_time),
@@ -547,7 +547,7 @@ INSERT INTO race_reports
     (report_id, race_id, referee_id, summary, appeal_note, status,
      signed_by, signed_at, published_by, published_at, created_at)
 VALUES
-    ('d0000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000004', 'Kết quả Final Race đã được xác nhận. Có một DNF và một trường hợp bị loại.', 'Các appeal đã được xử lý trước khi ký.', 'Signed', '20000000-0000-0000-0000-000000000004', DATE_ADD(@final_end, INTERVAL 30 MINUTE), NULL, NULL, @final_end)
+    ('d0000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000004', 'Kết quả Final Race đã được xác nhận. Có hai trường hợp không được công nhận kết quả.', 'Các appeal đã được xử lý trước khi ký.', 'Signed', '20000000-0000-0000-0000-000000000004', DATE_ADD(@final_end, INTERVAL 30 MINUTE), NULL, NULL, @final_end)
 ON DUPLICATE KEY UPDATE
     status = 'Signed',
     published_by = NULL,
