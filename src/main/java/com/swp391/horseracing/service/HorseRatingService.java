@@ -2,6 +2,7 @@ package com.swp391.horseracing.service;
 
 import com.swp391.horseracing.dto.horse.*;
 import com.swp391.horseracing.entity.HorseRatingHistory;
+import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.enums.RaceResultStatus;
 
 import java.util.List;
@@ -13,7 +14,8 @@ public interface HorseRatingService {
     List<HorseRatingHistoryResponse> getRatingHistoryForHorse(UUID horseId);
     RoundRatingSummaryResponse getRoundRatingSummary(UUID roundId);
 
-    void validateRatingChange(RaceResultStatus status, Integer rank, Integer ratingChange);
+    void validateRatingChange(
+            Race race, RaceResultStatus status, Integer rank, Integer ratingChange);
 
     List<HorseRatingHistory> applyManualRatingsForPublish(UUID raceId);
 }

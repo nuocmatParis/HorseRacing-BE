@@ -1,6 +1,5 @@
 package com.swp391.horseracing.service.impl;
 
-import com.swp391.horseracing.config.HorseRatingProperties;
 import com.swp391.horseracing.dto.horse.HorseRatingHistoryResponse;
 import com.swp391.horseracing.dto.horse.HorseRatingPreviewItem;
 import com.swp391.horseracing.dto.horse.RaceRatingChangesResponse;
@@ -13,6 +12,7 @@ import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.RaceReport;
 import com.swp391.horseracing.entity.RaceResult;
 import com.swp391.horseracing.entity.Round;
+import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.RaceResultStatus;
@@ -50,7 +50,6 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class HorseRatingServiceImpl implements HorseRatingService {
 
-    HorseRatingProperties properties;
     RaceRepository raceRepository;
     RaceResultRepository raceResultRepository;
     HorseRepository horseRepository;
@@ -61,12 +60,13 @@ public class HorseRatingServiceImpl implements HorseRatingService {
     HorseOwnerRepository horseOwnerRepository;
 
     @Override
-    public void validateRatingChange(RaceResultStatus status, Integer rank, Integer ratingChange) {
+    public void validateRatingChange(
+            Race race, RaceResultStatus status, Integer rank, Integer ratingChange) {
         if (ratingChange == null) {
             throw new AppException(ErrorCode.HORSE_RATING_CHANGE_REQUIRED);
         }
 
-        RatingRange allowedRange = determineAllowedRange(status, rank);
+        RatingRange allowedRange = determineAllowedRange(race, status, rank);
         if (ratingChange < allowedRange.minimum || ratingChange > allowedRange.maximum) {
             throw new AppException(ErrorCode.HORSE_RATING_CHANGE_OUT_OF_RANGE);
         }
@@ -75,7 +75,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
     @Override
     @Transactional(readOnly = true)
     public RaceRatingPreviewResponse previewForRace(UUID raceId) {
-        requireRace(raceId);
+        Race race = requireRace(raceId);
         RaceReport report = requireRaceReport(raceId);
         if (report.getStatus() != ReportStatus.SIGNED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_SIGNED);
@@ -86,7 +86,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
         return RaceRatingPreviewResponse.builder()
                 .raceId(raceId)
                 .reportStatus(report.getStatus().name())
-                .policyVersion(properties.getPolicyVersion())
+                .policyVersion(race.getRound().getTournament().getRatingPolicyVersion())
                 .changes(changes)
                 .build();
     }
@@ -102,7 +102,8 @@ public class HorseRatingServiceImpl implements HorseRatingService {
 
         List<UUID> horseIds = new ArrayList<>();
         for (RaceResult result : results) {
-            validateRatingChange(result.getStatus(), result.getRank(), result.getRatingChange());
+            validateRatingChange(
+                    race, result.getStatus(), result.getRank(), result.getRatingChange());
             UUID horseId = result.getEntry().getContract().getHorse().getHorseId();
             horseIds.add(horseId);
         }
@@ -147,7 +148,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                     .newRating(newRating)
                     .oldRaceClass(oldRaceClass)
                     .newRaceClass(newRaceClass)
-                    .policyVersion(properties.getPolicyVersion())
+                    .policyVersion(race.getRound().getTournament().getRatingPolicyVersion())
                     .calculatedAt(LocalDateTime.now())
                     .build();
             histories.add(ratingHistoryRepository.save(history));
@@ -158,7 +159,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
     @Override
     @Transactional(readOnly = true)
     public RaceRatingChangesResponse getRatingChangesForRace(UUID raceId) {
-        requireRace(raceId);
+        Race race = requireRace(raceId);
         RaceReport report = requireRaceReport(raceId);
         if (report.getStatus() != ReportStatus.PUBLISHED) {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_PUBLISHED);
@@ -170,7 +171,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
             responses.add(mapToHistoryResponse(history));
         }
 
-        int policyVersion = properties.getPolicyVersion();
+        int policyVersion = race.getRound().getTournament().getRatingPolicyVersion();
         if (!responses.isEmpty()) {
             policyVersion = responses.get(0).getPolicyVersion();
         }
@@ -264,11 +265,13 @@ public class HorseRatingServiceImpl implements HorseRatingService {
     private List<HorseRatingPreviewItem> buildPreviewItems(List<RaceResult> results) {
         List<HorseRatingPreviewItem> items = new ArrayList<>();
         for (RaceResult result : results) {
-            validateRatingChange(result.getStatus(), result.getRank(), result.getRatingChange());
+            validateRatingChange(
+                    result.getRace(), result.getStatus(), result.getRank(), result.getRatingChange());
             Horse horse = result.getEntry().getContract().getHorse();
             int oldRating = horse.getCurrentRating();
             int newRating = Math.max(0, oldRating + result.getRatingChange());
-            RatingRange range = determineAllowedRange(result.getStatus(), result.getRank());
+            RatingRange range = determineAllowedRange(
+                    result.getRace(), result.getStatus(), result.getRank());
             items.add(HorseRatingPreviewItem.builder()
                     .horseId(horse.getHorseId())
                     .horseName(horse.getName())
@@ -291,14 +294,16 @@ public class HorseRatingServiceImpl implements HorseRatingService {
         return RaceRatingChangesResponse.builder()
                 .raceId(race.getRaceId())
                 .reportStatus(reportStatus)
-                .policyVersion(properties.getPolicyVersion())
+                .policyVersion(race.getRound().getTournament().getRatingPolicyVersion())
                 .changes(Collections.emptyList())
                 .build();
     }
 
     private HorseRatingHistoryResponse mapToHistoryResponse(HorseRatingHistory history) {
         RatingRange range = determineAllowedRange(
-                history.getRaceResult().getStatus(), history.getRaceResult().getRank());
+                history.getRace(),
+                history.getRaceResult().getStatus(),
+                history.getRaceResult().getRank());
         return HorseRatingHistoryResponse.builder()
                 .ratingHistoryId(history.getRatingHistoryId())
                 .horseId(history.getHorse().getHorseId())
@@ -320,29 +325,49 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 .build();
     }
 
-    private RatingRange determineAllowedRange(RaceResultStatus status, Integer rank) {
-        if (status == RaceResultStatus.DID_NOT_FINISH) {
-            return new RatingRange(properties.getDnfMin(), properties.getDnfMax());
-        }
+    private RatingRange determineAllowedRange(
+            Race race, RaceResultStatus status, Integer rank) {
+        Tournament tournament = requireRatingTournament(race);
         if (status == RaceResultStatus.DISQUALIFIED) {
-            return new RatingRange(properties.getDisqualifiedMin(), properties.getDisqualifiedMax());
+            return new RatingRange(
+                    tournament.getRatingDisqualifiedMin(),
+                    tournament.getRatingDisqualifiedMax());
         }
         if (status != RaceResultStatus.FINISHED || rank == null || rank < 1) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
         }
         if (rank == 1) {
-            return new RatingRange(properties.getFirstMin(), properties.getFirstMax());
+            return new RatingRange(
+                    tournament.getRatingFirstMin(), tournament.getRatingFirstMax());
         }
         if (rank == 2) {
-            return new RatingRange(properties.getSecondMin(), properties.getSecondMax());
+            return new RatingRange(
+                    tournament.getRatingSecondMin(), tournament.getRatingSecondMax());
         }
         if (rank == 3) {
-            return new RatingRange(properties.getThirdMin(), properties.getThirdMax());
+            return new RatingRange(
+                    tournament.getRatingThirdMin(), tournament.getRatingThirdMax());
         }
         if (rank == 4 || rank == 5) {
-            return new RatingRange(properties.getFourthFifthMin(), properties.getFourthFifthMax());
+            return new RatingRange(
+                    tournament.getRatingFourthFifthMin(),
+                    tournament.getRatingFourthFifthMax());
         }
-        return new RatingRange(properties.getOtherMin(), properties.getOtherMax());
+        return new RatingRange(
+                tournament.getRatingOtherMin(), tournament.getRatingOtherMax());
+    }
+
+    private Tournament requireRatingTournament(Race race) {
+        if (race == null
+                || race.getRound() == null
+                || race.getRound().getTournament() == null) {
+            throw new AppException(ErrorCode.INVALID_HORSE_RATING_CONFIG);
+        }
+        Tournament tournament = race.getRound().getTournament();
+        if (tournament.getRatingPolicyVersion() < 1) {
+            throw new AppException(ErrorCode.INVALID_HORSE_RATING_CONFIG);
+        }
+        return tournament;
     }
 
     private Race requireRace(UUID raceId) {

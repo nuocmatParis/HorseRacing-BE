@@ -50,26 +50,16 @@ Tournament status tương ứng:
 
 ## 3. Cấu hình lịch Race
 
-### 3.1. Số Race tối đa mỗi ngày
+### 3.1. Sức chứa Race trong một ngày
 
-**TARGET**
+Không còn field `maxRacesPerDay`. Số Race có thể xếp trong ngày được suy ra từ:
 
-```java
-int maxRacesPerDay;
-```
+- `raceDayStartTime` và `raceDayEndTime`.
+- `defaultRaceOperationalMinutes`.
+- `minRaceIntervalMinutes`.
+- Khoảng nghỉ giữa ngày nếu được bật.
 
-```text
-Mặc định: 9 race/ngày
-Cho phép cấu hình: 1–9 race/ngày
-```
-
-Rule:
-
-- Đếm trên toàn tournament trong cùng ngày.
-- Không đếm riêng từng round.
-- Không tính race `CANCELLED`.
-- Khi update lịch phải loại trừ chính race đang sửa.
-- `maxRacesPerDay` là mức trần, không bảo đảm luôn xếp đủ số race đó.
+Khi hết slot hợp lệ trong ngày, Race tiếp theo được chuyển sang ngày kế tiếp.
 
 ### 3.2. Khoảng cách giữa hai Race
 
@@ -152,7 +142,7 @@ Rule:
 Round.maxRaces >= 1;
 ```
 
-Đây là giới hạn tổng race của round, độc lập với `maxRacesPerDay`.
+Đây là giới hạn tổng Race của Round, độc lập với sức chứa lịch trong từng ngày.
 
 ---
 
@@ -363,25 +353,22 @@ Phân biệt rõ:
 | Tình huống | Status |
 |---|---|
 | Hoàn thành race | `FINISHED` |
-| Đã xuất phát nhưng không hoàn thành | `DID_NOT_FINISH` |
-| Đã xuất phát nhưng bị loại | `DISQUALIFIED` |
+| Đã xuất phát nhưng kết quả không được công nhận | `DISQUALIFIED` |
 
 `RaceResultStatus` mục tiêu:
 
 ```java
 FINISHED,
-DID_NOT_FINISH,
 DISQUALIFIED
 ```
 
 Rule field:
 
 - `FINISHED`: bắt buộc finish time và rank.
-- `DID_NOT_FINISH`: finish time/rank có thể null.
-- `DISQUALIFIED`: official rank có thể null.
+- `DISQUALIFIED`: dùng chung cho trường hợp vi phạm, bị trọng tài loại hoặc không hoàn thành sau khi đã xuất phát; finish time/rank bằng null.
 - Duplicate rank chỉ kiểm tra result có rank.
 
-Không dùng `SCRATCHED` cho entry đã xuất phát.
+Entry rút hoặc không đủ điều kiện trước khi xuất phát dùng `SCRATCHED`, không tạo RaceResult và không đổi Rating.
 
 ---
 
@@ -497,11 +484,10 @@ predictedRank(entry3) = actualRank(entry3)
 | Tình huống | Prediction |
 |---|---|
 | Entry scratch trước start | Cho sửa; chưa sửa thì `VOIDED` |
-| Đã xuất phát nhưng DNF | Prediction vẫn `SCORED`, selection đó 0 điểm nếu không có top rank |
-| Đã xuất phát nhưng disqualified | Prediction vẫn `SCORED`, selection đó 0 điểm theo official result |
+| Đã xuất phát nhưng kết quả không được công nhận | Prediction vẫn `SCORED`, selection đó 0 điểm |
 | Race cancelled | Toàn bộ prediction `VOIDED` |
 
-DNF/disqualified không làm void toàn prediction vì entry đã tham gia xuất phát.
+`DISQUALIFIED` không làm void toàn prediction vì entry đã tham gia xuất phát.
 
 ---
 
@@ -589,8 +575,8 @@ Nếu race start muộn nhưng vẫn trong tolerance, `endTime` không tự đ�
 - Hệ thống không tự động quyết định lịch mới hoàn toàn.
 - Hệ thống đề xuất ngày và khung giờ khả dụng gần nhất; admin xác nhận rồi mới cập nhật.
 - Ngày đề xuất phải nằm trong `Tournament.startDate–endDate`.
-- Không vượt `maxRacesPerDay`.
-- Validate operating hours, break, daily limit, interval và overlap.
+- Phải còn slot hợp lệ trong operating hours của ngày; nếu không thì chuyển sang ngày kế tiếp.
+- Validate operating hours, break, interval và overlap.
 - Không trùng lịch horse, jockey, referee, veterinarian và medical staff.
 - Medical/vet conflict tính trên inspection window T-90 đến T-30.
 - Horse phải đủ thời gian nghỉ giữa hai race.
@@ -910,7 +896,7 @@ Với từng Race không phải Final:
 1. Chỉ lấy RaceResult status `FINISHED`.
 2. Sắp xếp theo official rank tăng dần.
 3. Lấy bốn entry có rank tốt nhất.
-4. Không lấy `DID_NOT_FINISH` hoặc `DISQUALIFIED` đi tiếp.
+4. Không lấy `DISQUALIFIED` đi tiếp.
 5. Ghép Top 4 của hai Race thành tám entry của Race kế tiếp.
 6. Tạo RaceEntry cho Round tiếp theo.
 7. Chuyển Round tiếp theo sang `SCHEDULING` đúng một lần.
@@ -919,7 +905,7 @@ Transition phải idempotent để request hoặc scheduler chạy lại không 
 
 Nếu một Race không có đủ bốn entry `FINISHED`, hệ thống:
 
-- Không dùng DNF/DQ để lấp chỗ.
+- Không dùng `DISQUALIFIED` để lấp chỗ.
 - Tạm dừng chuyển Round.
 - Thông báo Admin.
 - Chờ áp dụng reserve/wildcard policy sau khi rule đó được chốt.
@@ -968,15 +954,18 @@ Race Final:
 - Sau khi Head Referee ký, Rating bị khóa; Admin chỉ xem và publish.
 - Chỉ khi Admin publish report, hệ thống mới cộng điểm đã ký vào `Horse.currentRating` và tạo lịch sử.
 - Việc áp dụng phải idempotent, không được cộng hai lần cho cùng RaceResult.
+- Các khoảng dưới đây là mặc định hệ thống. Khi tạo Tournament, Admin có thể tùy chỉnh trong `ratingConfig`.
+- Cấu hình Rating chỉ được sửa khi Tournament còn `DRAFT` và bị khóa khi Tournament được publish.
+- Mọi Race trong Tournament phải dùng bản cấu hình đã lưu của Tournament, không đọc lại default toàn hệ thống.
+- Entry `SCRATCHED` hoặc withdrawn trước khi xuất phát không có RaceResult và thay đổi Rating bằng 0.
 
-| Kết quả | Khoảng Rating cho phép |
+| Kết quả | Khoảng Rating mặc định |
 |---|---:|
 | Hạng 1 | +6 đến +12 |
 | Hạng 2 | +2 đến +5 |
 | Hạng 3 | +1 đến +4 |
 | Hạng 4–5 | 0 đến +2 |
 | Hạng 6 trở xuống | -8 đến 0 |
-| DID_NOT_FINISH | -8 đến 0 |
 | DISQUALIFIED | -8 đến 0 |
 
 ---

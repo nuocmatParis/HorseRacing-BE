@@ -20,7 +20,7 @@ Các phần phải sửa trước khi code:
 - Không bỏ hoàn toàn min/max entry khỏi Round.
 - Giữ lifecycle riêng cho Round.
 - Tách sức chứa của Final.
-- Xử lý actual eligible contracts, DNF/DQ và transition sang round tiếp theo.
+- Xử lý actual eligible contracts, disqualified và transition sang round tiếp theo.
 
 ---
 
@@ -272,7 +272,7 @@ Không thể chỉ xóa field khỏi entity và giữ nguyên các service hiệ
 
 ---
 
-## 11. Thiếu xử lý DNF, DQ và thiếu qualifier
+## 11. Xử lý disqualified và thiếu qualifier
 
 Công thức:
 
@@ -282,7 +282,7 @@ qualifiedCount = raceCount × qualifiersPerRace
 
 chỉ đúng khi mỗi Race có đủ entry `FINISHED`.
 
-Khi có `DID_NOT_FINISH` hoặc `DISQUALIFIED`, cần rule:
+Khi có `DISQUALIFIED`, cần rule:
 
 1. Lấy Top N entry `FINISHED` của từng Race.
 2. Nếu thiếu slot, lấy best non-qualified FINISHED của toàn Round.
@@ -290,7 +290,7 @@ Khi có `DID_NOT_FINISH` hoặc `DISQUALIFIED`, cần rule:
 4. Nếu vẫn không đủ min entry cho Round sau thì dừng transition.
 5. Admin xác nhận phương án gộp hoặc giảm Race nếu nghiệp vụ cho phép.
 
-DNF/DQ không được tự động chiếm suất đi tiếp.
+`DISQUALIFIED` không được tự động chiếm suất đi tiếp.
 
 ---
 
@@ -478,6 +478,6 @@ Những phần cần thay đổi:
 - Tách capacity của Final.
 - Revalidate eligible contracts thực tế.
 - Chỉ tạo Race skeleton rồi để Admin xác nhận lịch.
-- Bổ sung DNF/DQ, reserve, idempotency và transition sang Round tiếp theo.
+- Bổ sung disqualified, reserve, idempotency và transition sang Round tiếp theo.
 
 Chỉ nên bắt đầu implement sau khi chốt các điểm trên.

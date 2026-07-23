@@ -10,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -96,6 +97,9 @@ public class CreateTournamentRequest {
 
     @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
     Integer predictionTop3PerfectBonusPoints = 50;
+
+    @Valid
+    TournamentRatingConfigRequest ratingConfig;
 
     @NotNull(message = "Max approved entries is required")
     @Min(value = 1, message = "Max approved entries must be at least 1")

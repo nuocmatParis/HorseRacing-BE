@@ -6,6 +6,7 @@ import com.swp391.horseracing.enums.RaceDistance;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -80,6 +81,9 @@ public class UpdateTournamentRequest {
 
     @Min(value = 0, message = "Prediction TOP 3 perfect bonus points must be at least 0")
     Integer predictionTop3PerfectBonusPoints;
+
+    @Valid
+    TournamentRatingConfigRequest ratingConfig;
 
     @Min(value = 1, message = "Prediction open minutes must be at least 1")
     Integer predictionOpenMinutesBefore;

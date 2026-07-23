@@ -1,7 +1,10 @@
 package com.swp391.horseracing.service.impl;
 
+import com.swp391.horseracing.config.HorseRatingProperties;
 import com.swp391.horseracing.dto.tournament.request.CreateTournamentRequest;
+import com.swp391.horseracing.dto.tournament.request.TournamentRatingConfigRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
+import com.swp391.horseracing.dto.tournament.response.TournamentRatingConfigResponse;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.TournamentPhase;
@@ -43,7 +46,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -67,6 +69,7 @@ public class TournamentServiceImpl implements TournamentService {
     CloudinaryService cloudinaryService;
     PhaseTimingConfigRepository phaseTimingConfigRepository;
     TournamentPhaseConfigRepository tournamentPhaseConfigRepository;
+    HorseRatingProperties horseRatingProperties;
 
     @Override
     @Transactional
@@ -130,6 +133,7 @@ public class TournamentServiceImpl implements TournamentService {
         User currentUser = getCurrentUser();
 
         Tournament tournament = tournamentMapper.toTournament(request);
+        applyInitialRatingConfig(tournament, request.getRatingConfig());
         
         if (!tournament.isHandicapEnabled()) {
             tournament.setTopWeightLbs(0);
@@ -256,6 +260,7 @@ public class TournamentServiceImpl implements TournamentService {
                 phaseConfigs,
                 false
         );
+        applyRatingConfigUpdate(tournament, request.getRatingConfig());
         tournamentMapper.updateTournament(request, tournament);
         tournament.setMaxApprovedHorses(tournament.getMaxApprovedEntries());
         tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
@@ -306,7 +311,9 @@ public class TournamentServiceImpl implements TournamentService {
             throw new AppException(ErrorCode.TOURNAMENT_MISSING_ELIGIBILITY);
         }
 
-        tournament.setPublishedAt(LocalDateTime.now());
+        LocalDateTime publishedAt = LocalDateTime.now();
+        tournament.setPublishedAt(publishedAt);
+        tournament.setRatingPolicyLockedAt(publishedAt);
 
         activatePrizeStructures(id);
 
@@ -492,7 +499,9 @@ public class TournamentServiceImpl implements TournamentService {
 
     private void activatePrizeStructures(UUID tournamentId) {
         List<PrizeStructure> prizes = prizeStructureRepository.findByTournament_TournamentId(tournamentId);
-        prizes.forEach(prize -> prize.setActive(true));
+        for (PrizeStructure prize : prizes) {
+            prize.setActive(true);
+        }
         prizeStructureRepository.saveAll(prizes);
     }
 
@@ -563,14 +572,14 @@ public class TournamentServiceImpl implements TournamentService {
 
     private TournamentResponse toResponse(Tournament tournament) {
         TournamentResponse response = tournamentMapper.toTournamentResponse(tournament);
+        response.setRatingConfig(toRatingConfigResponse(tournament));
         response.setOverdue(calculateOverdue(tournament));
-        Map<String, Integer> configs = tournamentPhaseConfigRepository
-                .findByTournamentTournamentId(tournament.getTournamentId())
-                .stream()
-                .collect(Collectors.toMap(
-                        TournamentPhaseConfig::getPhaseName,
-                        TournamentPhaseConfig::getDurationDays
-                ));
+        List<TournamentPhaseConfig> phaseConfigs = tournamentPhaseConfigRepository
+                .findByTournamentTournamentId(tournament.getTournamentId());
+        Map<String, Integer> configs = new HashMap<>();
+        for (TournamentPhaseConfig phaseConfig : phaseConfigs) {
+            configs.put(phaseConfig.getPhaseName(), phaseConfig.getDurationDays());
+        }
         if (!configs.isEmpty()) {
             response.setPhaseConfigs(configs);
         }
@@ -600,8 +609,10 @@ public class TournamentServiceImpl implements TournamentService {
                 tournament.getTournamentId());
         for (Round round : rounds) {
             List<Race> races = raceRepository.findByRound_RoundId(round.getRoundId());
-            if (races.stream().anyMatch(r -> r.getFinishedAt() == null)) {
-                return false;
+            for (Race race : races) {
+                if (race.getFinishedAt() == null) {
+                    return false;
+                }
             }
         }
         return true;
@@ -649,6 +660,7 @@ public class TournamentServiceImpl implements TournamentService {
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         return toResponse(tournament);
     }
+
     private static final int DEFAULT_INSPECTION_OPEN_MINUTES = 60;
     private static final int DEFAULT_INSPECTION_CLOSE_MINUTES = 5;
     private static final int DEFAULT_PREDICTION_CLOSE_MINUTES = 5;
@@ -664,6 +676,195 @@ public class TournamentServiceImpl implements TournamentService {
     private static final int MAX_INTERVAL_MIN = 30;
     private static final int MIN_INSPECTION_OPEN = 30;
     private static final int MAX_INSPECTION_OPEN = 90;
+
+    @Override
+    public TournamentRatingConfigResponse getDefaultRatingConfig() {
+        return TournamentRatingConfigResponse.builder()
+                .firstMin(horseRatingProperties.getFirstMin())
+                .firstMax(horseRatingProperties.getFirstMax())
+                .secondMin(horseRatingProperties.getSecondMin())
+                .secondMax(horseRatingProperties.getSecondMax())
+                .thirdMin(horseRatingProperties.getThirdMin())
+                .thirdMax(horseRatingProperties.getThirdMax())
+                .fourthFifthMin(horseRatingProperties.getFourthFifthMin())
+                .fourthFifthMax(horseRatingProperties.getFourthFifthMax())
+                .otherMin(horseRatingProperties.getOtherMin())
+                .otherMax(horseRatingProperties.getOtherMax())
+                .disqualifiedMin(horseRatingProperties.getDisqualifiedMin())
+                .disqualifiedMax(horseRatingProperties.getDisqualifiedMax())
+                .policyVersion(horseRatingProperties.getPolicyVersion())
+                .locked(false)
+                .lockedAt(null)
+                .build();
+    }
+
+    private void applyInitialRatingConfig(
+            Tournament tournament, TournamentRatingConfigRequest request) {
+        int firstMin = valueOrDefault(
+                request == null ? null : request.getFirstMin(), horseRatingProperties.getFirstMin());
+        int firstMax = valueOrDefault(
+                request == null ? null : request.getFirstMax(), horseRatingProperties.getFirstMax());
+        int secondMin = valueOrDefault(
+                request == null ? null : request.getSecondMin(), horseRatingProperties.getSecondMin());
+        int secondMax = valueOrDefault(
+                request == null ? null : request.getSecondMax(), horseRatingProperties.getSecondMax());
+        int thirdMin = valueOrDefault(
+                request == null ? null : request.getThirdMin(), horseRatingProperties.getThirdMin());
+        int thirdMax = valueOrDefault(
+                request == null ? null : request.getThirdMax(), horseRatingProperties.getThirdMax());
+        int fourthFifthMin = valueOrDefault(
+                request == null ? null : request.getFourthFifthMin(),
+                horseRatingProperties.getFourthFifthMin());
+        int fourthFifthMax = valueOrDefault(
+                request == null ? null : request.getFourthFifthMax(),
+                horseRatingProperties.getFourthFifthMax());
+        int otherMin = valueOrDefault(
+                request == null ? null : request.getOtherMin(), horseRatingProperties.getOtherMin());
+        int otherMax = valueOrDefault(
+                request == null ? null : request.getOtherMax(), horseRatingProperties.getOtherMax());
+        int disqualifiedMin = valueOrDefault(
+                request == null ? null : request.getDisqualifiedMin(),
+                horseRatingProperties.getDisqualifiedMin());
+        int disqualifiedMax = valueOrDefault(
+                request == null ? null : request.getDisqualifiedMax(),
+                horseRatingProperties.getDisqualifiedMax());
+
+        validateRatingConfig(
+                firstMin, firstMax, secondMin, secondMax, thirdMin, thirdMax,
+                fourthFifthMin, fourthFifthMax, otherMin, otherMax,
+                disqualifiedMin, disqualifiedMax);
+        setRatingConfig(
+                tournament, firstMin, firstMax, secondMin, secondMax, thirdMin, thirdMax,
+                fourthFifthMin, fourthFifthMax, otherMin, otherMax,
+                disqualifiedMin, disqualifiedMax);
+        tournament.setRatingPolicyVersion(horseRatingProperties.getPolicyVersion());
+        tournament.setRatingPolicyLockedAt(null);
+    }
+
+    private void applyRatingConfigUpdate(
+            Tournament tournament, TournamentRatingConfigRequest request) {
+        if (request == null) {
+            return;
+        }
+
+        int firstMin = valueOrDefault(request.getFirstMin(), tournament.getRatingFirstMin());
+        int firstMax = valueOrDefault(request.getFirstMax(), tournament.getRatingFirstMax());
+        int secondMin = valueOrDefault(request.getSecondMin(), tournament.getRatingSecondMin());
+        int secondMax = valueOrDefault(request.getSecondMax(), tournament.getRatingSecondMax());
+        int thirdMin = valueOrDefault(request.getThirdMin(), tournament.getRatingThirdMin());
+        int thirdMax = valueOrDefault(request.getThirdMax(), tournament.getRatingThirdMax());
+        int fourthFifthMin = valueOrDefault(
+                request.getFourthFifthMin(), tournament.getRatingFourthFifthMin());
+        int fourthFifthMax = valueOrDefault(
+                request.getFourthFifthMax(), tournament.getRatingFourthFifthMax());
+        int otherMin = valueOrDefault(request.getOtherMin(), tournament.getRatingOtherMin());
+        int otherMax = valueOrDefault(request.getOtherMax(), tournament.getRatingOtherMax());
+        int disqualifiedMin = valueOrDefault(
+                request.getDisqualifiedMin(), tournament.getRatingDisqualifiedMin());
+        int disqualifiedMax = valueOrDefault(
+                request.getDisqualifiedMax(), tournament.getRatingDisqualifiedMax());
+
+        validateRatingConfig(
+                firstMin, firstMax, secondMin, secondMax, thirdMin, thirdMax,
+                fourthFifthMin, fourthFifthMax, otherMin, otherMax,
+                disqualifiedMin, disqualifiedMax);
+
+        boolean changed = firstMin != tournament.getRatingFirstMin()
+                || firstMax != tournament.getRatingFirstMax()
+                || secondMin != tournament.getRatingSecondMin()
+                || secondMax != tournament.getRatingSecondMax()
+                || thirdMin != tournament.getRatingThirdMin()
+                || thirdMax != tournament.getRatingThirdMax()
+                || fourthFifthMin != tournament.getRatingFourthFifthMin()
+                || fourthFifthMax != tournament.getRatingFourthFifthMax()
+                || otherMin != tournament.getRatingOtherMin()
+                || otherMax != tournament.getRatingOtherMax()
+                || disqualifiedMin != tournament.getRatingDisqualifiedMin()
+                || disqualifiedMax != tournament.getRatingDisqualifiedMax();
+
+        setRatingConfig(
+                tournament, firstMin, firstMax, secondMin, secondMax, thirdMin, thirdMax,
+                fourthFifthMin, fourthFifthMax, otherMin, otherMax,
+                disqualifiedMin, disqualifiedMax);
+        if (changed) {
+            int currentVersion = tournament.getRatingPolicyVersion();
+            tournament.setRatingPolicyVersion(Math.max(1, currentVersion) + 1);
+        }
+    }
+
+    private void validateRatingConfig(
+            int firstMin, int firstMax,
+            int secondMin, int secondMax,
+            int thirdMin, int thirdMax,
+            int fourthFifthMin, int fourthFifthMax,
+            int otherMin, int otherMax,
+            int disqualifiedMin, int disqualifiedMax) {
+        boolean valid = firstMin >= 0
+                && firstMin <= firstMax
+                && secondMin >= 0
+                && secondMin <= secondMax
+                && thirdMin >= 0
+                && thirdMin <= thirdMax
+                && fourthFifthMin >= 0
+                && fourthFifthMin <= fourthFifthMax
+                && otherMin <= otherMax
+                && otherMax <= 0
+                && disqualifiedMin <= disqualifiedMax
+                && disqualifiedMax <= 0;
+        if (!valid) {
+            throw new AppException(ErrorCode.INVALID_HORSE_RATING_CONFIG);
+        }
+    }
+
+    private void setRatingConfig(
+            Tournament tournament,
+            int firstMin, int firstMax,
+            int secondMin, int secondMax,
+            int thirdMin, int thirdMax,
+            int fourthFifthMin, int fourthFifthMax,
+            int otherMin, int otherMax,
+            int disqualifiedMin, int disqualifiedMax) {
+        tournament.setRatingFirstMin(firstMin);
+        tournament.setRatingFirstMax(firstMax);
+        tournament.setRatingSecondMin(secondMin);
+        tournament.setRatingSecondMax(secondMax);
+        tournament.setRatingThirdMin(thirdMin);
+        tournament.setRatingThirdMax(thirdMax);
+        tournament.setRatingFourthFifthMin(fourthFifthMin);
+        tournament.setRatingFourthFifthMax(fourthFifthMax);
+        tournament.setRatingOtherMin(otherMin);
+        tournament.setRatingOtherMax(otherMax);
+        tournament.setRatingDisqualifiedMin(disqualifiedMin);
+        tournament.setRatingDisqualifiedMax(disqualifiedMax);
+    }
+
+    private TournamentRatingConfigResponse toRatingConfigResponse(Tournament tournament) {
+        LocalDateTime lockedAt = tournament.getRatingPolicyLockedAt();
+        return TournamentRatingConfigResponse.builder()
+                .firstMin(tournament.getRatingFirstMin())
+                .firstMax(tournament.getRatingFirstMax())
+                .secondMin(tournament.getRatingSecondMin())
+                .secondMax(tournament.getRatingSecondMax())
+                .thirdMin(tournament.getRatingThirdMin())
+                .thirdMax(tournament.getRatingThirdMax())
+                .fourthFifthMin(tournament.getRatingFourthFifthMin())
+                .fourthFifthMax(tournament.getRatingFourthFifthMax())
+                .otherMin(tournament.getRatingOtherMin())
+                .otherMax(tournament.getRatingOtherMax())
+                .disqualifiedMin(tournament.getRatingDisqualifiedMin())
+                .disqualifiedMax(tournament.getRatingDisqualifiedMax())
+                .policyVersion(tournament.getRatingPolicyVersion())
+                .locked(lockedAt != null)
+                .lockedAt(lockedAt)
+                .build();
+    }
+
+    private int valueOrDefault(Integer value, int defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        return value;
+    }
 
     private void validateSchedulingAndTimeline(
             Integer insOpen, Integer insClose, Integer predClose,
@@ -765,13 +966,15 @@ public class TournamentServiceImpl implements TournamentService {
     private void savePhaseConfigs(UUID tournamentId, Map<String, Integer> configs) {
         tournamentPhaseConfigRepository.deleteByTournamentTournamentId(tournamentId);
         Tournament tournamentRef = tournamentRepository.getReferenceById(tournamentId);
-        List<TournamentPhaseConfig> entities = configs.entrySet().stream()
-                .map(entry -> TournamentPhaseConfig.builder()
+        List<TournamentPhaseConfig> entities = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : configs.entrySet()) {
+            TournamentPhaseConfig entity = TournamentPhaseConfig.builder()
                         .tournament(tournamentRef)
                         .phaseName(entry.getKey())
                         .durationDays(entry.getValue())
-                        .build())
-                .collect(Collectors.toList());
+                        .build();
+            entities.add(entity);
+        }
         tournamentPhaseConfigRepository.saveAll(entities);
     }
 }

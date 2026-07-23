@@ -112,17 +112,16 @@ public class RaceResultServiceImpl implements RaceResultService {
                 }
                 
                 entry.setStatus(RaceEntryStatus.FINISHED);
-            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
-                finishTime = null;
-                rank = null;
-                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
             } else if (status == RaceResultStatus.DISQUALIFIED) {
                 finishTime = null;
                 rank = null;
                 entry.setStatus(RaceEntryStatus.DISQUALIFIED);
+            } else {
+                throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
             }
 
-            horseRatingService.validateRatingChange(status, rank, req.getRatingChange());
+            horseRatingService.validateRatingChange(
+                    race, status, rank, req.getRatingChange());
             
             raceEntryRepository.save(entry);
 
@@ -386,11 +385,6 @@ public class RaceResultServiceImpl implements RaceResultService {
                 result.setFinishTime(finishTime);
                 result.setRank(rank);
                 entry.setStatus(RaceEntryStatus.FINISHED);
-            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
-                result.setFinishTime(null);
-                result.setRank(null);
-                rank = null;
-                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
             } else if (status == RaceResultStatus.DISQUALIFIED) {
                 result.setFinishTime(null);
                 result.setRank(null);
@@ -400,7 +394,7 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
             }
 
-            horseRatingService.validateRatingChange(status, rank, ratingChange);
+            horseRatingService.validateRatingChange(race, status, rank, ratingChange);
             if (updatedByHeadReferee && !Objects.equals(result.getRatingChange(), ratingChange)) {
                 String reason = request.getRatingAdjustmentReason();
                 if (reason == null || reason.isBlank()) {

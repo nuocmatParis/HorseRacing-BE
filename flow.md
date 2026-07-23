@@ -228,7 +228,7 @@ Spectator chọn race
 
 Quy tắc result:
 
-- DNF/DISQUALIFIED sau khi xuất phát vẫn chấm prediction, lựa chọn đó nhận 0 điểm.
+- `DISQUALIFIED` sau khi xuất phát vẫn chấm prediction, lựa chọn đó nhận 0 điểm.
 - Race bị hủy hoàn toàn làm prediction `VOIDED`.
 - Horse bị scratched trước lúc đóng prediction thì người dùng được chọn lại.
 
@@ -290,8 +290,7 @@ Result:
 | Trường hợp | Entry status | Rank/finishTime |
 |---|---|---|
 | Về đích hợp lệ | `FINISHED` | Bắt buộc |
-| Đã xuất phát nhưng không về đích | `DID_NOT_FINISH` | Có thể null |
-| Bị loại do vi phạm | `DISQUALIFIED` | Có thể null |
+| Kết quả không được công nhận sau khi xuất phát | `DISQUALIFIED` | Null |
 | Không đủ điều kiện trước start | `SCRATCHED` | Không tạo kết quả thi đấu |
 
 Nếu quá thời gian start muộn cho phép, race phải được postpone/reschedule thay vì
@@ -368,7 +367,7 @@ Mỗi race lấy Top 4 `FINISHED`; prediction và giải thưởng chung cuộc 
 - Tất cả race của Round hiện tại đã hoàn tất.
 - Tất cả report đã `Published`.
 - Mỗi race có đủ Top 4 hợp lệ.
-- DNF/DISQUALIFIED không đi tiếp.
+- `DISQUALIFIED` không đi tiếp.
 - Round sau có đúng số race theo bracket.
 
 Chuyển Round phải atomic:
@@ -481,5 +480,4 @@ Nếu chỉ có một buổi demo, nên chạy theo thứ tự:
 10. `owner1` và `jockey1`: xem prize/payout transaction.
 11. `admin1`: nạp Quỹ giải thưởng qua VNPay.
 12. `admin1`: publish hai report của bracket 32 để kiểm tra chuyển Top 4 atomic.
-
 

@@ -1,15 +1,20 @@
 package com.swp391.horseracing.service;
 
+import com.swp391.horseracing.config.HorseRatingProperties;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.dto.registration.response.HorseTournamentRegistrationResponse;
+import com.swp391.horseracing.dto.tournament.request.TournamentRatingConfigRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdateTournamentRequest;
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.HorseTournamentRegistration;
 import com.swp391.horseracing.entity.Invoice;
 import com.swp391.horseracing.entity.JockeyHorseContract;
+import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.RaceEntry;
 import com.swp391.horseracing.entity.Tournament;
+import com.swp391.horseracing.entity.TournamentEligibility;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AdvancePayoutStatus;
 import com.swp391.horseracing.enums.ContractPaymentStatus;
@@ -65,6 +70,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -107,6 +113,8 @@ class AdditionalApiBusinessLogicTest {
     @Mock RaceService raceService;
     @Mock PhaseTimingConfigRepository phaseTimingConfigRepository;
     @Mock TournamentPhaseConfigRepository tournamentPhaseConfigRepository;
+    @Mock HorseRatingProperties horseRatingProperties;
+    @Mock CloudinaryService cloudinaryService;
 
     @InjectMocks ContractServiceImpl contractService;
     @InjectMocks TournamentRegistrationServiceImpl registrationService;
@@ -306,6 +314,92 @@ class AdditionalApiBusinessLogicTest {
         assertEquals(TournamentPhase.REGISTRATION_REVIEW, tournament.getPhase());
         assertEquals(RegistrationStatus.REJECTED, unpaid.getStatus());
         verify(invoiceService).cancelInvoice(invoiceId);
+    }
+
+    @Test
+    void updatesTournamentRatingConfigOnlyWhileDraftAndIncrementsVersion() {
+        UUID tournamentId = UUID.randomUUID();
+        LocalDateTime registrationOpenAt = LocalDateTime.now().plusDays(1);
+        LocalDateTime registrationCloseAt = registrationOpenAt.plusDays(3);
+        LocalDateTime reviewDeadlineAt = registrationCloseAt.plusDays(4);
+        LocalDateTime matchingDeadlineAt = reviewDeadlineAt.plusDays(3);
+        LocalDateTime schedulingDeadlineAt = matchingDeadlineAt.plusDays(4);
+
+        Tournament tournament = Tournament.builder()
+                .tournamentId(tournamentId)
+                .name("Rating Config Tournament")
+                .status(TournamentStatus.DRAFT)
+                .phase(TournamentPhase.DRAFT)
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(1))
+                .minHorseAge(3)
+                .maxHorseAge(12)
+                .maxApprovedEntries(8)
+                .registrationOpenAt(registrationOpenAt)
+                .registrationCloseAt(registrationCloseAt)
+                .reviewDeadlineAt(reviewDeadlineAt)
+                .jockeyMatchingDeadlineAt(matchingDeadlineAt)
+                .schedulingDeadlineAt(schedulingDeadlineAt)
+                .ratingPolicyVersion(1)
+                .build();
+
+        TournamentRatingConfigRequest ratingConfig =
+                TournamentRatingConfigRequest.builder()
+                        .firstMin(20)
+                        .firstMax(25)
+                        .disqualifiedMin(-12)
+                        .disqualifiedMax(-4)
+                        .build();
+        UpdateTournamentRequest request = UpdateTournamentRequest.builder()
+                .ratingConfig(ratingConfig)
+                .build();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+        when(tournamentRepository.save(tournament)).thenReturn(tournament);
+        when(tournamentMapper.toTournamentResponse(tournament))
+                .thenReturn(new TournamentResponse());
+
+        TournamentResponse response = tournamentService.update(tournamentId, request);
+
+        assertEquals(20, tournament.getRatingFirstMin());
+        assertEquals(25, tournament.getRatingFirstMax());
+        assertEquals(-12, tournament.getRatingDisqualifiedMin());
+        assertEquals(-4, tournament.getRatingDisqualifiedMax());
+        assertEquals(2, tournament.getRatingPolicyVersion());
+        assertNotNull(response.getRatingConfig());
+        assertEquals(20, response.getRatingConfig().getFirstMin());
+    }
+
+    @Test
+    void publishingTournamentLocksItsRatingConfig() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = Tournament.builder()
+                .tournamentId(tournamentId)
+                .status(TournamentStatus.DRAFT)
+                .phase(TournamentPhase.DRAFT)
+                .ratingPolicyVersion(1)
+                .build();
+        PrizeStructure prizeStructure = new PrizeStructure();
+        TournamentEligibility eligibility = new TournamentEligibility();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+        when(prizeStructureRepository.findByTournament_TournamentId(tournamentId))
+                .thenReturn(List.of(prizeStructure));
+        when(eligibilityRepository.findByTournament_TournamentId(tournamentId))
+                .thenReturn(List.of(eligibility));
+        when(tournamentRepository.save(tournament)).thenReturn(tournament);
+        when(tournamentMapper.toTournamentResponse(tournament))
+                .thenReturn(new TournamentResponse());
+
+        TournamentResponse response = tournamentService.publish(tournamentId);
+
+        assertNotNull(tournament.getRatingPolicyLockedAt());
+        assertEquals(TournamentPhase.REGISTRATION_OPEN, tournament.getPhase());
+        assertEquals(TournamentStatus.OPEN, tournament.getStatus());
+        assertNotNull(response.getRatingConfig());
+        assertEquals(true, response.getRatingConfig().isLocked());
     }
 
 }

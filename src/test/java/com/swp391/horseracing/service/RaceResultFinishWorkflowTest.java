@@ -69,6 +69,10 @@ class RaceResultFinishWorkflowTest {
         secondEntry.setEntryId(UUID.randomUUID());
         secondEntry.setRace(race);
         secondEntry.setStatus(RaceEntryStatus.CONFIRMED);
+        RaceEntry scratchedEntry = new RaceEntry();
+        scratchedEntry.setEntryId(UUID.randomUUID());
+        scratchedEntry.setRace(race);
+        scratchedEntry.setStatus(RaceEntryStatus.SCRATCHED);
 
         RaceResult existingResult = new RaceResult();
         existingResult.setRace(race);
@@ -83,7 +87,7 @@ class RaceResultFinishWorkflowTest {
         when(raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(raceId, referee.getRefereeId()))
                 .thenReturn(true);
         when(raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId))
-                .thenReturn(List.of(firstEntry, secondEntry));
+                .thenReturn(List.of(firstEntry, secondEntry, scratchedEntry));
         when(raceResultRepository.findByRace_RaceId(raceId)).thenReturn(List.of(existingResult));
         when(raceResultRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -91,5 +95,6 @@ class RaceResultFinishWorkflowTest {
 
         assertEquals(RoundStatus.FINISHED, race.getStatus());
         assertEquals(RaceEntryStatus.FINISHED, secondEntry.getStatus());
+        assertEquals(RaceEntryStatus.SCRATCHED, scratchedEntry.getStatus());
     }
 }

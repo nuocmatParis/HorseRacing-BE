@@ -56,6 +56,13 @@ public class AdminController {
                 .build();
     }
 
+    @GetMapping("/tournaments/rating-config/default")
+    public ApiResponse<TournamentRatingConfigResponse> getDefaultTournamentRatingConfig() {
+        return ApiResponse.<TournamentRatingConfigResponse>builder()
+                .result(tournamentService.getDefaultRatingConfig())
+                .build();
+    }
+
     @PostMapping("/tournaments/{id}/rounds")
     public ApiResponse<RoundResponse> createRound(@PathVariable UUID id,
                                                   @RequestBody @Valid CreateRoundRequest request) {

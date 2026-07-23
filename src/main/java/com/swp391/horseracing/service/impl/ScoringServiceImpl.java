@@ -71,7 +71,6 @@ public class ScoringServiceImpl implements ScoringService {
             RaceResult result = resultMap.get(detail.getEntry().getEntryId());
             if (result == null 
                     || result.getStatus() == RaceResultStatus.DISQUALIFIED 
-                    || result.getStatus() == RaceResultStatus.DID_NOT_FINISH
                     || result.getRank() == null 
                     || !result.getRank().equals(detail.getPredictedRank())) {
                 allExactPosition = false;
@@ -98,7 +97,6 @@ public class ScoringServiceImpl implements ScoringService {
 
         if (result == null 
                 || result.getStatus() == RaceResultStatus.DISQUALIFIED 
-                || result.getStatus() == RaceResultStatus.DID_NOT_FINISH
                 || result.getRank() == null) {
             detail.setStatus(PredictionDetailStatus.INCORRECT);
             return -1;

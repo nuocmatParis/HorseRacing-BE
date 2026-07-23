@@ -389,12 +389,9 @@ Trong nghiệp vụ đã chốt trước đó, Race Report được publish thì
 **Cần bạn chốt:** Đây có phải điều kiện chính xác không?
 có 
 
-### 7.2. DNF và Disqualified
+### 7.2. Kết quả không được công nhận
 
-**Đề xuất:** Vẫn trả đầy đủ `DID_NOT_FINISH` và `DISQUALIFIED`; `rank` và `finishTime` có thể là `null`.
-
-**Cần bạn chốt:** Có đồng ý hiển thị hai trường hợp này trong lịch sử kết quả không?
-có 
+**Đã chốt:** Bỏ `DID_NOT_FINISH`. Mọi trường hợp đã xuất phát nhưng không hoàn thành hoặc bị loại dùng `DISQUALIFIED`; `rank` và `finishTime` bằng `null`.
 
 ### 7.3. Tiền thưởng
 
@@ -609,4 +606,3 @@ có
 
 Nếu bạn đồng ý toàn bộ mặc định dưới đây, có thể trả lời ngắn là **“Chốt theo đề xuất”**:
  tôi đã note câu trả ở mỗi câu hỏi rồi 
-
