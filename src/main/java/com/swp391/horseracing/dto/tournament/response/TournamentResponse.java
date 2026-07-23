@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -50,7 +51,6 @@ public class TournamentResponse {
     int predictionCardOpenHoursBeforeFirstRace;
     int inspectionOpenMinutesBefore;
     int inspectionCloseMinutesBefore;
-    int maxRacesPerDay;
     int minRaceIntervalMinutes;
     int startEarlyToleranceMinutes;
     int startLateToleranceMinutes;
@@ -62,6 +62,9 @@ public class TournamentResponse {
     LocalTime breakEndTime;
     Integer maxApprovedJockeys;
     Integer maxApprovedEntries;
+    int qualifiersPerRace;
+    int maxEntriesPerRace;
+    int minEntriesPerRace;
     TournamentStatus status;
     TournamentPhase phase;
     LocalDateTime createdAt;
@@ -73,6 +76,7 @@ public class TournamentResponse {
     LocalDateTime schedulingDeadlineAt;
     LocalDateTime competitionStartAt;
     String currentRoundName;
+    Map<String, Integer> phaseConfigs;
     UUID createdById;
     String createdByName;
     boolean overdue;

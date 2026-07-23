@@ -71,7 +71,7 @@ INSERT INTO tournaments
       status, phase, created_at, published_at,
      registration_open_at, registration_close_at, review_deadline_at,
      jockey_matching_deadline_at, scheduling_deadline_at, competition_start_at,
-     current_round_name, min_round_gap_days, race_class, distance,
+      current_round_name, race_class, distance,
      top_weight_lbs, min_weight_lbs, equipment_weight_kg, handicap_enabled,
      max_approved_horses, max_approved_jockeys, max_approved_entries,
      planned_round_count, planned_race_count, bracket_plan_status,
@@ -88,7 +88,7 @@ VALUES
      DATE_SUB(@now, INTERVAL 1 DAY), DATE_SUB(@now, INTERVAL 1 DAY),
      DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY),
      DATE_ADD(@now, INTERVAL 11 DAY), DATE_ADD(@now, INTERVAL 13 DAY),
-     DATE_ADD(@now, INTERVAL 15 DAY), NULL, 7, 'CLASS_3', 'MILE_1600M',
+      DATE_ADD(@now, INTERVAL 15 DAY), NULL, 'CLASS_3', 'MILE_1600M',
      135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'CONFIRMED', 1, @admin_user),
 
     (@matching_tournament,
@@ -102,7 +102,7 @@ VALUES
      DATE_SUB(@now, INTERVAL 10 DAY), DATE_SUB(@now, INTERVAL 12 DAY),
      DATE_SUB(@now, INTERVAL 8 DAY), DATE_SUB(@now, INTERVAL 4 DAY),
      DATE_ADD(@now, INTERVAL 3 DAY), DATE_ADD(@now, INTERVAL 7 DAY),
-     DATE_ADD(@now, INTERVAL 12 DAY), NULL, 7, 'CLASS_5', 'SPRINT_1200M',
+      DATE_ADD(@now, INTERVAL 12 DAY), NULL, 'CLASS_5', 'SPRINT_1200M',
      135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'CONFIRMED', 1, @admin_user),
 
     (@scheduling_tournament,
@@ -116,7 +116,7 @@ VALUES
      DATE_SUB(@now, INTERVAL 18 DAY), DATE_SUB(@now, INTERVAL 20 DAY),
      DATE_SUB(@now, INTERVAL 16 DAY), DATE_SUB(@now, INTERVAL 12 DAY),
      DATE_SUB(@now, INTERVAL 8 DAY), DATE_SUB(@now, INTERVAL 4 DAY),
-     @schedule_start, 'Vòng 1 (Chung Kết)', 7, 'CLASS_1', 'MILE_1600M',
+      @schedule_start, 'Vòng 1 (Chung Kết)', 'CLASS_1', 'MILE_1600M',
      135, 115, 1.5, 0, 8, 8, 8, 1, 1, 'LOCKED', 1, @admin_user)
 ON DUPLICATE KEY UPDATE phase = VALUES(phase), status = VALUES(status), current_round_name = VALUES(current_round_name);
 

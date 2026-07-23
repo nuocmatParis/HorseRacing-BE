@@ -5,53 +5,73 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TournamentTimelinePolicyTest {
 
     @Test
-    void registrationDaysIncreaseOneDayWheneverCapacityDoubles() {
-        assertEquals(3, TournamentTimelinePolicy.registrationDays(8));
-        assertEquals(4, TournamentTimelinePolicy.registrationDays(16));
-        assertEquals(5, TournamentTimelinePolicy.registrationDays(32));
-        assertEquals(6, TournamentTimelinePolicy.registrationDays(64));
-        assertEquals(7, TournamentTimelinePolicy.registrationDays(128));
+    void minimumRegistrationCloseAtAddsDays() {
+        LocalDateTime openAt = LocalDateTime.of(2026, 7, 14, 8, 0);
+        LocalDateTime result = TournamentTimelinePolicy.minimumRegistrationCloseAt(openAt, 5);
+        assertEquals(LocalDateTime.of(2026, 7, 19, 8, 0), result);
     }
 
     @Test
-    void jockeyMatchingDaysFollowApprovedCapacityTable() {
-        assertEquals(3, TournamentTimelinePolicy.jockeyMatchingDays(8));
-        assertEquals(5, TournamentTimelinePolicy.jockeyMatchingDays(16));
-        assertEquals(6, TournamentTimelinePolicy.jockeyMatchingDays(32));
-        assertEquals(7, TournamentTimelinePolicy.jockeyMatchingDays(64));
-        assertEquals(8, TournamentTimelinePolicy.jockeyMatchingDays(128));
+    void minimumReviewDeadlineAtAddsDays() {
+        LocalDateTime closeAt = LocalDateTime.of(2026, 7, 19, 8, 0);
+        LocalDateTime result = TournamentTimelinePolicy.minimumReviewDeadlineAt(closeAt, 4);
+        assertEquals(LocalDateTime.of(2026, 7, 23, 8, 0), result);
     }
 
     @Test
-    void competitionStartsTwoCalendarDaysAfterSchedulingDeadline() {
+    void minimumJockeyMatchingDeadlineAtAddsDays() {
+        LocalDateTime reviewAt = LocalDateTime.of(2026, 7, 23, 8, 0);
+        LocalDateTime result = TournamentTimelinePolicy.minimumJockeyMatchingDeadlineAt(reviewAt, 6);
+        assertEquals(LocalDateTime.of(2026, 7, 29, 8, 0), result);
+    }
+
+    @Test
+    void minimumSchedulingDeadlineAtAddsDays() {
+        LocalDateTime matchingAt = LocalDateTime.of(2026, 7, 29, 8, 0);
+        LocalDateTime result = TournamentTimelinePolicy.minimumSchedulingDeadlineAt(matchingAt, 4);
+        assertEquals(LocalDateTime.of(2026, 8, 2, 8, 0), result);
+    }
+
+    @Test
+    void competitionStartsAfterBufferDays() {
         LocalDateTime schedulingDeadline = LocalDateTime.of(2026, 7, 30, 18, 0);
-
         LocalDateTime competitionStart = TournamentTimelinePolicy.competitionStartAt(
-                schedulingDeadline, LocalTime.of(8, 0));
-
+                schedulingDeadline, LocalTime.of(8, 0), 2);
         assertEquals(LocalDateTime.of(2026, 8, 1, 8, 0), competitionStart);
     }
 
     @Test
-    void minimumTimelineUsesActualPreviousDeadline() {
-        LocalDateTime registrationOpen = LocalDateTime.of(2026, 7, 14, 8, 0);
-        LocalDateTime registrationClose = TournamentTimelinePolicy
-                .minimumRegistrationCloseAt(registrationOpen, 32);
-        LocalDateTime reviewDeadline = TournamentTimelinePolicy
-                .minimumReviewDeadlineAt(registrationClose);
-        LocalDateTime matchingDeadline = TournamentTimelinePolicy
-                .minimumJockeyMatchingDeadlineAt(reviewDeadline, 32);
-        LocalDateTime schedulingDeadline = TournamentTimelinePolicy
-                .minimumSchedulingDeadlineAt(matchingDeadline);
+    void competitionStartsAfterCustomBufferDays() {
+        LocalDateTime schedulingDeadline = LocalDateTime.of(2026, 7, 30, 18, 0);
+        LocalDateTime competitionStart = TournamentTimelinePolicy.competitionStartAt(
+                schedulingDeadline, LocalTime.of(8, 0), 5);
+        assertEquals(LocalDateTime.of(2026, 8, 4, 8, 0), competitionStart);
+    }
 
-        assertEquals(LocalDateTime.of(2026, 7, 19, 8, 0), registrationClose);
-        assertEquals(LocalDateTime.of(2026, 7, 23, 8, 0), reviewDeadline);
-        assertEquals(LocalDateTime.of(2026, 7, 29, 8, 0), matchingDeadline);
-        assertEquals(LocalDateTime.of(2026, 8, 2, 8, 0), schedulingDeadline);
+    @Test
+    void capacityLevelReturnsZeroForMinEntries() {
+        assertEquals(0, TournamentTimelinePolicy.capacityLevel(8));
+        assertEquals(1, TournamentTimelinePolicy.capacityLevel(16));
+        assertEquals(2, TournamentTimelinePolicy.capacityLevel(32));
+        assertEquals(3, TournamentTimelinePolicy.capacityLevel(64));
+        assertEquals(4, TournamentTimelinePolicy.capacityLevel(128));
+    }
+
+    @Test
+    void validateMaxApprovedEntriesRejectsInvalidValues() {
+        assertThrows(IllegalArgumentException.class,
+                () -> TournamentTimelinePolicy.validateMaxApprovedEntries(0));
+        assertThrows(IllegalArgumentException.class,
+                () -> TournamentTimelinePolicy.validateMaxApprovedEntries(-1));
+        assertDoesNotThrow(() -> TournamentTimelinePolicy.validateMaxApprovedEntries(1));
+        assertDoesNotThrow(() -> TournamentTimelinePolicy.validateMaxApprovedEntries(8));
+        assertDoesNotThrow(() -> TournamentTimelinePolicy.validateMaxApprovedEntries(10));
+        assertDoesNotThrow(() -> TournamentTimelinePolicy.validateMaxApprovedEntries(16));
+        assertDoesNotThrow(() -> TournamentTimelinePolicy.validateMaxApprovedEntries(32));
     }
 }

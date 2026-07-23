@@ -14,6 +14,7 @@ import com.swp391.horseracing.dto.referee.response.RefereeResponse;
 import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
+import com.swp391.horseracing.dto.bracket.BracketPreviewResponse;
 import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.enums.ContractStatus;
 import com.swp391.horseracing.service.*;
@@ -25,6 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -45,6 +47,7 @@ public class AdminController {
     RaceRefereeService raceRefereeService;
     RefereeService refereeService;
     RaceInspectionStaffService raceInspectionStaffService;
+    BracketService bracketService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -341,6 +344,40 @@ public class AdminController {
     public ApiResponse<List<java.time.LocalDateTime>> getRescheduleProposals(@PathVariable UUID raceId) {
         return ApiResponse.<List<java.time.LocalDateTime>>builder()
                 .result(raceService.getRescheduleProposals(raceId))
+                .build();
+    }
+
+    @GetMapping("/phase-timing-defaults")
+    public ApiResponse<Map<String, Integer>> getPhaseTimingDefaults(@RequestParam int capacity) {
+        return ApiResponse.<Map<String, Integer>>builder()
+                .result(tournamentService.getDefaultPhaseConfigs(capacity))
+                .build();
+    }
+
+    @GetMapping("/tournaments/{id}/bracket-preview")
+    public ApiResponse<BracketPreviewResponse> previewBracket(
+            @PathVariable UUID id,
+            @RequestParam int actualEntries) {
+        return ApiResponse.<BracketPreviewResponse>builder()
+                .result(bracketService.preview(id, actualEntries))
+                .build();
+    }
+
+    @PostMapping("/tournaments/{id}/bracket-confirm")
+    public ApiResponse<Void> confirmBracket(@PathVariable UUID id) {
+        bracketService.confirm(id);
+        return ApiResponse.<Void>builder()
+                .message("Bracket confirmed and rounds/races created")
+                .build();
+    }
+
+    @PutMapping("/tournaments/{id}/bracket-recalculate")
+    public ApiResponse<Void> recalculateBracket(
+            @PathVariable UUID id,
+            @RequestParam int actualEntries) {
+        bracketService.recalculate(id, actualEntries);
+        return ApiResponse.<Void>builder()
+                .message("Bracket recalculated with " + actualEntries + " entries")
                 .build();
     }
 

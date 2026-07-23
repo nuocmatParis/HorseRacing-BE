@@ -13,11 +13,13 @@ import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.TournamentMapper;
 import com.swp391.horseracing.policy.TournamentTimelinePolicy;
+import com.swp391.horseracing.repository.PhaseTimingConfigRepository;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
+import com.swp391.horseracing.repository.TournamentPhaseConfigRepository;
 import com.swp391.horseracing.repository.TournamentRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.repository.HorseTournamentRegistrationRepository;
@@ -41,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -62,6 +65,8 @@ public class TournamentServiceImpl implements TournamentService {
     BusinessNotificationEventService notificationEventService;
     RaceService raceService;
     CloudinaryService cloudinaryService;
+    PhaseTimingConfigRepository phaseTimingConfigRepository;
+    TournamentPhaseConfigRepository tournamentPhaseConfigRepository;
 
     @Override
     @Transactional
@@ -85,7 +90,6 @@ public class TournamentServiceImpl implements TournamentService {
                 request.getInspectionOpenMinutesBefore(),
                 request.getInspectionCloseMinutesBefore(),
                 request.getPredictionCloseMinutesBefore(),
-                request.getMaxRacesPerDay(),
                 request.getMinRaceIntervalMinutes(),
                 request.getStartEarlyToleranceMinutes(),
                 request.getStartLateToleranceMinutes(),
@@ -109,6 +113,7 @@ public class TournamentServiceImpl implements TournamentService {
                 request.getJockeyMatchingDeadlineAt(),
                 request.getSchedulingDeadlineAt()
         );
+        Map<String, Integer> phaseConfigs = resolvePhaseConfigs(request.getPhaseConfigs(), maxEntries);
         validateTournamentTimeline(
                 request.getStartDate(),
                 request.getRegistrationOpenAt(),
@@ -116,7 +121,7 @@ public class TournamentServiceImpl implements TournamentService {
                 request.getReviewDeadlineAt(),
                 request.getJockeyMatchingDeadlineAt(),
                 request.getSchedulingDeadlineAt(),
-                maxEntries,
+                phaseConfigs,
                 true
         );
 
@@ -136,13 +141,16 @@ public class TournamentServiceImpl implements TournamentService {
         tournament.setPhase(TournamentPhase.DRAFT);
         tournament.setMaxApprovedEntries(maxEntries);
         tournament.setMaxApprovedHorses(maxEntries);
-        tournament.setMaxApprovedJockeys(999999);
+        tournament.setMaxApprovedJockeys(maxEntries);
         tournament.setCreatedBy(currentUser);
         tournament.setCreatedAt(LocalDateTime.now());
         tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
-                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime()));
+                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime(),
+                phaseConfigs.get("PRE_RACE_BUFFER")));
 
-        return toResponse(tournamentRepository.save(tournament));
+        Tournament saved = tournamentRepository.save(tournament);
+        savePhaseConfigs(saved.getTournamentId(), phaseConfigs);
+        return toResponse(saved);
     }
 
     @Override
@@ -185,7 +193,6 @@ public class TournamentServiceImpl implements TournamentService {
         Integer insOpen = request.getInspectionOpenMinutesBefore() != null ? request.getInspectionOpenMinutesBefore() : tournament.getInspectionOpenMinutesBefore();
         Integer insClose = request.getInspectionCloseMinutesBefore() != null ? request.getInspectionCloseMinutesBefore() : tournament.getInspectionCloseMinutesBefore();
         Integer predClose = request.getPredictionCloseMinutesBefore() != null ? request.getPredictionCloseMinutesBefore() : tournament.getPredictionCloseMinutesBefore();
-        Integer maxRaces = request.getMaxRacesPerDay() != null ? request.getMaxRacesPerDay() : tournament.getMaxRacesPerDay();
         Integer minInterval = request.getMinRaceIntervalMinutes() != null ? request.getMinRaceIntervalMinutes() : tournament.getMinRaceIntervalMinutes();
         Integer startEarly = request.getStartEarlyToleranceMinutes() != null ? request.getStartEarlyToleranceMinutes() : tournament.getStartEarlyToleranceMinutes();
         Integer startLate = request.getStartLateToleranceMinutes() != null ? request.getStartLateToleranceMinutes() : tournament.getStartLateToleranceMinutes();
@@ -198,7 +205,7 @@ public class TournamentServiceImpl implements TournamentService {
         LocalTime breakStart = request.getBreakStartTime() != null ? request.getBreakStartTime() : (applyBreak ? tournament.getBreakStartTime() : null);
         LocalTime breakEnd = request.getBreakEndTime() != null ? request.getBreakEndTime() : (applyBreak ? tournament.getBreakEndTime() : null);
 
-        validateSchedulingAndTimeline(insOpen, insClose, predClose, maxRaces, minInterval, startEarly, startLate, operational, openHours, dayStart, dayEnd, applyBreak, breakStart, breakEnd);
+        validateSchedulingAndTimeline(insOpen, insClose, predClose, minInterval, startEarly, startLate, operational, openHours, dayStart, dayEnd, applyBreak, breakStart, breakEnd);
 
         LocalDateTime regOpen = request.getRegistrationOpenAt() != null
                 ? request.getRegistrationOpenAt() : tournament.getRegistrationOpenAt();
@@ -238,6 +245,7 @@ public class TournamentServiceImpl implements TournamentService {
 
         Integer effectiveMaxEntries = request.getMaxApprovedEntries() != null
                 ? request.getMaxApprovedEntries() : tournament.getMaxApprovedEntries();
+        Map<String, Integer> phaseConfigs = resolvePhaseConfigs(request.getPhaseConfigs(), effectiveMaxEntries);
         validateTournamentTimeline(
                 tournament.getStartDate(),
                 regOpen,
@@ -245,13 +253,14 @@ public class TournamentServiceImpl implements TournamentService {
                 reviewAt,
                 matchAt,
                 schedAt,
-                effectiveMaxEntries,
+                phaseConfigs,
                 false
         );
         tournamentMapper.updateTournament(request, tournament);
         tournament.setMaxApprovedHorses(tournament.getMaxApprovedEntries());
         tournament.setCompetitionStartAt(TournamentTimelinePolicy.competitionStartAt(
-                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime()));
+                tournament.getSchedulingDeadlineAt(), tournament.getRaceDayStartTime(),
+                phaseConfigs.get("PRE_RACE_BUFFER")));
 
         if (!tournament.isHandicapEnabled()) {
             tournament.setTopWeightLbs(0);
@@ -259,7 +268,11 @@ public class TournamentServiceImpl implements TournamentService {
             tournament.setEquipmentWeightKg(0.0);
         }
 
-        return toResponse(tournamentRepository.save(tournament));
+        Tournament saved = tournamentRepository.save(tournament);
+        if (request.getPhaseConfigs() != null) {
+            savePhaseConfigs(saved.getTournamentId(), phaseConfigs);
+        }
+        return toResponse(saved);
     }
 
     @Override
@@ -515,7 +528,7 @@ public class TournamentServiceImpl implements TournamentService {
                                             LocalDateTime reviewDeadlineAt,
                                             LocalDateTime jockeyMatchingDeadlineAt,
                                             LocalDateTime schedulingDeadlineAt,
-                                            int maxApprovedEntries,
+                                            Map<String, Integer> phaseDays,
                                             boolean validateOpenTimeAgainstNow) {
         if (registrationOpenAt.toLocalDate().isBefore(startDate)) {
             throw new AppException(ErrorCode.REGISTRATION_OPEN_TIME_IN_PAST);
@@ -528,21 +541,22 @@ public class TournamentServiceImpl implements TournamentService {
         }
         if (registrationCloseAt.isBefore(
                 TournamentTimelinePolicy.minimumRegistrationCloseAt(
-                        registrationOpenAt, maxApprovedEntries))) {
+                        registrationOpenAt, phaseDays.get("REGISTRATION")))) {
             throw new AppException(ErrorCode.REGISTRATION_PERIOD_TOO_SHORT);
         }
         if (reviewDeadlineAt.isBefore(
-                TournamentTimelinePolicy.minimumReviewDeadlineAt(registrationCloseAt))) {
+                TournamentTimelinePolicy.minimumReviewDeadlineAt(
+                        registrationCloseAt, phaseDays.get("REVIEW")))) {
             throw new AppException(ErrorCode.REVIEW_PERIOD_TOO_SHORT);
         }
         if (jockeyMatchingDeadlineAt.isBefore(
                 TournamentTimelinePolicy.minimumJockeyMatchingDeadlineAt(
-                        reviewDeadlineAt, maxApprovedEntries))) {
+                        reviewDeadlineAt, phaseDays.get("JOCKEY_MATCHING")))) {
             throw new AppException(ErrorCode.JOCKEY_MATCHING_PERIOD_TOO_SHORT);
         }
         if (schedulingDeadlineAt.isBefore(
                 TournamentTimelinePolicy.minimumSchedulingDeadlineAt(
-                        jockeyMatchingDeadlineAt))) {
+                        jockeyMatchingDeadlineAt, phaseDays.get("SCHEDULING")))) {
             throw new AppException(ErrorCode.SCHEDULING_PERIOD_TOO_SHORT);
         }
     }
@@ -550,6 +564,16 @@ public class TournamentServiceImpl implements TournamentService {
     private TournamentResponse toResponse(Tournament tournament) {
         TournamentResponse response = tournamentMapper.toTournamentResponse(tournament);
         response.setOverdue(calculateOverdue(tournament));
+        Map<String, Integer> configs = tournamentPhaseConfigRepository
+                .findByTournamentTournamentId(tournament.getTournamentId())
+                .stream()
+                .collect(Collectors.toMap(
+                        TournamentPhaseConfig::getPhaseName,
+                        TournamentPhaseConfig::getDurationDays
+                ));
+        if (!configs.isEmpty()) {
+            response.setPhaseConfigs(configs);
+        }
         return response;
     }
 
@@ -625,35 +649,51 @@ public class TournamentServiceImpl implements TournamentService {
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         return toResponse(tournament);
     }
+    private static final int DEFAULT_INSPECTION_OPEN_MINUTES = 60;
+    private static final int DEFAULT_INSPECTION_CLOSE_MINUTES = 5;
+    private static final int DEFAULT_PREDICTION_CLOSE_MINUTES = 5;
+    private static final int DEFAULT_MIN_INTERVAL_MINUTES = 30;
+    private static final int DEFAULT_START_EARLY_TOLERANCE = 0;
+    private static final int DEFAULT_START_LATE_TOLERANCE = 30;
+    private static final int DEFAULT_OPERATIONAL_MINUTES = 5;
+    private static final int DEFAULT_OPEN_HOURS = 24;
+    private static final LocalTime DEFAULT_DAY_START = LocalTime.of(8, 0);
+    private static final LocalTime DEFAULT_DAY_END = LocalTime.of(18, 0);
+
+    private static final int MIN_INTERVAL_MIN = 1;
+    private static final int MAX_INTERVAL_MIN = 30;
+    private static final int MIN_INSPECTION_OPEN = 30;
+    private static final int MAX_INSPECTION_OPEN = 90;
+
     private void validateSchedulingAndTimeline(
             Integer insOpen, Integer insClose, Integer predClose,
-            Integer maxRaces, Integer minInterval, Integer startEarly, Integer startLate,
+            Integer minInterval, Integer startEarly, Integer startLate,
             Integer operational, Integer openHours,
             LocalTime dayStart, LocalTime dayEnd,
             Boolean applyBreak, LocalTime breakStart, LocalTime breakEnd) {
 
-        int io = insOpen != null ? insOpen : 60;
-        int ic = insClose != null ? insClose : 5;
-        int pc = predClose != null ? predClose : 5;
+        int io = insOpen != null ? insOpen : DEFAULT_INSPECTION_OPEN_MINUTES;
+        int ic = insClose != null ? insClose : DEFAULT_INSPECTION_CLOSE_MINUTES;
+        int pc = predClose != null ? predClose : DEFAULT_PREDICTION_CLOSE_MINUTES;
 
         if (!(io > ic && ic >= pc && pc >= 0)) {
             throw new AppException(ErrorCode.INVALID_INSPECTION_TIMELINE);
         }
 
-        int mr = maxRaces != null ? maxRaces : 9;
-        int mi = minInterval != null ? minInterval : 30;
-        int se = startEarly != null ? startEarly : 0;
-        int sl = startLate != null ? startLate : 30;
-        int op = operational != null ? operational : 5;
-        int oh = openHours != null ? openHours : 24;
+        int mi = minInterval != null ? minInterval : DEFAULT_MIN_INTERVAL_MINUTES;
+        int se = startEarly != null ? startEarly : DEFAULT_START_EARLY_TOLERANCE;
+        int sl = startLate != null ? startLate : DEFAULT_START_LATE_TOLERANCE;
+        int op = operational != null ? operational : DEFAULT_OPERATIONAL_MINUTES;
+        int oh = openHours != null ? openHours : DEFAULT_OPEN_HOURS;
 
-        if (mr < 1 || mr > 9 || mi < 1 || mi > 30 || se < 0 || sl < 0 || op < 1 || oh < 1
-                || io < 30 || io > 90 || ic < 1) {
+        if (mi < MIN_INTERVAL_MIN || mi > MAX_INTERVAL_MIN
+                || se < 0 || sl < 0 || op < 1 || oh < 1
+                || io < MIN_INSPECTION_OPEN || io > MAX_INSPECTION_OPEN || ic < 1) {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
         }
 
-        LocalTime ds = dayStart != null ? dayStart : LocalTime.of(8, 0);
-        LocalTime de = dayEnd != null ? dayEnd : LocalTime.of(18, 0);
+        LocalTime ds = dayStart != null ? dayStart : DEFAULT_DAY_START;
+        LocalTime de = dayEnd != null ? dayEnd : DEFAULT_DAY_END;
 
         if (!ds.isBefore(de)) {
             throw new AppException(ErrorCode.INVALID_SCHEDULING_CONFIG);
@@ -675,7 +715,7 @@ public class TournamentServiceImpl implements TournamentService {
     }
 
     private void validateMaxApprovedEntries(Integer maxEntries) {
-        if (maxEntries == null || maxEntries < 8) {
+        if (maxEntries == null || maxEntries < 1) {
             throw new AppException(ErrorCode.INVALID_REQUEST);
         }
     }
@@ -692,5 +732,46 @@ public class TournamentServiceImpl implements TournamentService {
         } catch (IOException e) {
             throw new AppException(ErrorCode.FILE_UPLOAD_FAILED);
         }
+    }
+
+    private Map<String, Integer> resolvePhaseConfigs(Map<String, Integer> requestConfigs,
+                                                       int maxApprovedEntries) {
+        if (requestConfigs != null && !requestConfigs.isEmpty()) {
+            return requestConfigs;
+        }
+        return getDefaultPhaseConfigs(maxApprovedEntries);
+    }
+
+    public Map<String, Integer> getDefaultPhaseConfigs(int maxApprovedEntries) {
+        Map<String, Integer> configs = new HashMap<>();
+        configs.put("REGISTRATION", phaseTimingConfigRepository
+                .findByPhaseNameAndCapacity("REGISTRATION", maxApprovedEntries)
+                .map(PhaseTimingConfig::getDurationDays).orElse(0));
+        configs.put("REVIEW", phaseTimingConfigRepository
+                .findByPhaseNameAndCapacity("REVIEW", maxApprovedEntries)
+                .map(PhaseTimingConfig::getDurationDays).orElse(0));
+        configs.put("JOCKEY_MATCHING", phaseTimingConfigRepository
+                .findByPhaseNameAndCapacity("JOCKEY_MATCHING", maxApprovedEntries)
+                .map(PhaseTimingConfig::getDurationDays).orElse(0));
+        configs.put("SCHEDULING", phaseTimingConfigRepository
+                .findByPhaseNameAndCapacity("SCHEDULING", maxApprovedEntries)
+                .map(PhaseTimingConfig::getDurationDays).orElse(0));
+        configs.put("PRE_RACE_BUFFER", phaseTimingConfigRepository
+                .findByPhaseNameAndCapacity("PRE_RACE_BUFFER", maxApprovedEntries)
+                .map(PhaseTimingConfig::getDurationDays).orElse(0));
+        return configs;
+    }
+
+    private void savePhaseConfigs(UUID tournamentId, Map<String, Integer> configs) {
+        tournamentPhaseConfigRepository.deleteByTournamentTournamentId(tournamentId);
+        Tournament tournamentRef = tournamentRepository.getReferenceById(tournamentId);
+        List<TournamentPhaseConfig> entities = configs.entrySet().stream()
+                .map(entry -> TournamentPhaseConfig.builder()
+                        .tournament(tournamentRef)
+                        .phaseName(entry.getKey())
+                        .durationDays(entry.getValue())
+                        .build())
+                .collect(Collectors.toList());
+        tournamentPhaseConfigRepository.saveAll(entities);
     }
 }

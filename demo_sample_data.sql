@@ -322,7 +322,7 @@ BEGIN
           status, phase, created_at, published_at,
          registration_open_at, registration_close_at, review_deadline_at,
          jockey_matching_deadline_at, scheduling_deadline_at,
-         competition_start_at, current_round_name, min_round_gap_days,
+          competition_start_at, current_round_name,
          race_class, distance, top_weight_lbs, min_weight_lbs,
          equipment_weight_kg, handicap_enabled,
          max_approved_horses, max_approved_jockeys, max_approved_entries,
@@ -349,7 +349,7 @@ BEGIN
          DATE_SUB(NOW(), INTERVAL 20 DAY),
          DATE_SUB(NOW(), INTERVAL 16 DAY),
          DATE_SUB(NOW(), INTERVAL 2 DAY),
-         p_current_round, 7, 'CLASS_4', 'MILE_1600M',
+          p_current_round, 'CLASS_4', 'MILE_1600M',
          0, 0, 0.0, 0,
          p_max_approved_entries, 999999, p_max_approved_entries,
          p_round_count, p_race_count, 'LOCKED', 1, @admin_user_id);
