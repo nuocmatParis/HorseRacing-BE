@@ -30,4 +30,7 @@ public class CreateRaceResultRequest {
 
     @NotNull(message = "Result status is required")
     RaceResultStatus status;
+
+    @NotNull(message = "Horse rating change is required")
+    Integer ratingChange;
 }

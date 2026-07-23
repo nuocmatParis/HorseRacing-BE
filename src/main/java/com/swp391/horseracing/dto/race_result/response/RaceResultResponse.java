@@ -33,6 +33,8 @@ public class RaceResultResponse {
     boolean isPrizePaid;
     LocalDateTime prizePaidAt;
     RaceResultStatus status;
+    Integer ratingChange;
+    String ratingAdjustmentReason;
     UUID recordedById;
     LocalDateTime recordedAt;
     LocalDateTime updatedAt;

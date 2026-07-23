@@ -16,5 +16,5 @@ public class RaceRatingPreviewResponse {
     private UUID raceId;
     private String reportStatus;
     private int policyVersion;
-    private List<HorseRatingCalculation> changes;
+    private List<HorseRatingPreviewItem> changes;
 }

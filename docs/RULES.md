@@ -959,6 +959,26 @@ Race Final:
 - Chỉ payout official rank 1, 2 và 3.
 - Payout phải idempotent và không được thực hiện hai lần.
 
+### 19.10. Horse Rating do trọng tài nhập
+
+- Hệ thống không tự tính điểm Rating từ đối thủ, khoảng cách về đích hoặc số ngựa trong Race.
+- Race Referee phải nhập `ratingChange` cho từng RaceResult trước khi gửi Race Report.
+- Head Referee được điều chỉnh điểm khi report ở trạng thái `SUBMITTED_TO_HEAD`.
+- Nếu Head Referee đổi điểm, bắt buộc nhập `ratingAdjustmentReason`.
+- Sau khi Head Referee ký, Rating bị khóa; Admin chỉ xem và publish.
+- Chỉ khi Admin publish report, hệ thống mới cộng điểm đã ký vào `Horse.currentRating` và tạo lịch sử.
+- Việc áp dụng phải idempotent, không được cộng hai lần cho cùng RaceResult.
+
+| Kết quả | Khoảng Rating cho phép |
+|---|---:|
+| Hạng 1 | +6 đến +12 |
+| Hạng 2 | +2 đến +5 |
+| Hạng 3 | +1 đến +4 |
+| Hạng 4–5 | 0 đến +2 |
+| Hạng 6 trở xuống | -8 đến 0 |
+| DID_NOT_FINISH | -8 đến 0 |
+| DISQUALIFIED | -8 đến 0 |
+
 ---
 
 ## 20. Rule chưa chốt

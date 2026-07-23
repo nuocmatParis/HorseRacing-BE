@@ -22,12 +22,10 @@ public class HorseRatingHistoryResponse {
     private UUID roundId;
     private Integer finishPosition;
     private int oldRating;
-    private int baseChange;
-    private int opponentStrengthBonus;
-    private int finishPerformanceBonus;
-    private int fieldSizeBonus;
-    private int underperformancePenalty;
+    private int minimumAllowedChange;
+    private int maximumAllowedChange;
     private int finalChange;
+    private String adjustmentReason;
     private int newRating;
     private RaceClass oldRaceClass;
     private RaceClass newRaceClass;

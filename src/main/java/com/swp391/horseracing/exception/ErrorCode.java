@@ -523,11 +523,13 @@ public enum ErrorCode {
 
     // HORSE RATING
     RACE_ENTRY_DID_NOT_START(1815, HttpStatus.BAD_REQUEST, "Race result cannot be created for an entry that did not start"),
-    HORSE_RATING_CHANGED_RETRY_REQUIRED(1814, HttpStatus.BAD_REQUEST, "Horse rating has changed since the calculation was made, please try again"),
+    HORSE_RATING_CHANGE_REQUIRED(1814, HttpStatus.BAD_REQUEST, "Horse rating change is required for every race result"),
     HORSE_RATING_ALREADY_APPLIED(1816, HttpStatus.CONFLICT, "Horse rating has already been applied for this race result"),
     RACE_REPORT_NOT_PUBLISHED(1817, HttpStatus.BAD_REQUEST, "Race report is not published yet"),
     PREDICTION_RESULT_NOT_AVAILABLE(1818, HttpStatus.CONFLICT, "Prediction result is not available yet"),
+    HORSE_RATING_CHANGE_OUT_OF_RANGE(1819, HttpStatus.BAD_REQUEST, "Horse rating change is outside the allowed range for this result"),
     RACE_HAS_NOT_FINISHED(1820, HttpStatus.BAD_REQUEST, "Race has not finished yet"),
+    HORSE_RATING_ADJUSTMENT_REASON_REQUIRED(1821, HttpStatus.BAD_REQUEST, "A reason is required when the Head Referee changes horse rating"),
 
     // NOTIFICATION
     NOTIFICATION_NOT_FOUND(1901, HttpStatus.NOT_FOUND, "Notification not found"),

@@ -551,7 +551,7 @@ Các bảng dưới đây liệt kê theo route thực tế. URL đều tính t�
 
 | Method | Endpoint | Quyền | Chức năng |
 |---|---|---|---|
-| GET | `/api/admin/races/{raceId}/rating-preview` | Admin | Xem trước thay đổi rating trước khi publish report. |
+| GET | `/api/admin/races/{raceId}/rating-preview` | Admin | Xem điểm rating thủ công đã được Head Referee ký trước khi publish report. |
 | GET | `/api/admin/races/{raceId}/rating-changes` | Admin | Xem thay đổi rating đã áp dụng. |
 | GET | `/api/horses/{horseId}/rating-history` | Owner/Admin | Lịch sử rating của một ngựa. |
 | GET | `/api/admin/rounds/{roundId}/rating-summary` | Admin | Tổng hợp rating theo Round. |
@@ -1083,10 +1083,13 @@ Public:  SUB  /topic/races/{raceId}/live
 
 ```text
 Referee: POST /api/referee/races/{raceId}/results
+Referee: PUT  /api/referee/races/{raceId}/results
 Owner/Jockey: POST /api/appeals
 Referee: POST /api/referee/appeals/{appealId}/review
 Referee: PUT  /api/referee/races/{raceId}/report
 Referee: POST /api/referee/races/{raceId}/report/submit
+Head:    GET  /api/head-referee/races/{raceId}/results
+Head:    PUT  /api/head-referee/races/{raceId}/results
 Head:    POST /api/head-referee/races/{raceId}/report/sign
 Admin:   GET  /api/admin/races/{raceId}/rating-preview
 Admin:   POST /api/admin/races/{raceId}/report/publish
@@ -1113,6 +1116,7 @@ Sau publish, kiểm tra:
 | `V6__normalize_bracket_defaults.sql` | Chuẩn hóa default bracket/capacity cũ. |
 | `V7__add_tournament_distance_and_enum_conversions.sql` | Distance Tournament và chuyển enum. |
 | `V8__add_tournament_competition_start.sql` | `competition_start_at`. |
+| `V16__replace_automatic_horse_rating_with_referee_rating.sql` | Bỏ thành phần tự tính; lưu điểm Rating do trọng tài nhập và lý do Head Referee điều chỉnh. |
 | `V9__add_transaction_performer_audit.sql` | Audit user thực hiện transaction. |
 | `V10__increase_payment_purpose_length.sql` | Mở rộng payment purpose. |
 | `V11__create_spectator_horse_follows.sql` | Follow horse của Spectator. |

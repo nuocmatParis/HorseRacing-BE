@@ -43,6 +43,7 @@ class RaceResultFinishWorkflowTest {
     @Mock RaceRefereeRepository raceRefereeRepository;
     @Mock RaceResultMapper raceResultMapper;
     @Mock UserCurrentService userCurrentService;
+    @Mock HorseRatingService horseRatingService;
     @InjectMocks RaceResultServiceImpl service;
 
     @Test

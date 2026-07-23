@@ -262,17 +262,24 @@ ON DUPLICATE KEY UPDATE status = 'FINISHED', lane_number = VALUES(lane_number);
 INSERT INTO race_results
     (result_id, race_id, entry_id, finish_time, finish_position,
      prize_money, owner_prize_amount, jockey_prize_amount, prize_status,
-     is_prize_paid, prize_paid_at, status, recorded_by, recorded_at, updated_at)
+     is_prize_paid, prize_paid_at, status, rating_change,
+     recorded_by, recorded_at, updated_at)
 SELECT
     CONCAT('cb000000-0000-0000-0000-', LPAD(n, 12, '0')),
     IF(n <= 16, @race_a, @race_b),
     CONCAT('ab000000-0000-0000-0000-', LPAD(n, 12, '0')),
     92 + IF(n <= 16, n, n - 16) / 10,
     IF(n <= 16, n, n - 16), 0, 0, 0, 'NotEligible', 0, NULL,
-    'FINISHED', @admin_user, IF(n <= 16, @race_a_end, @race_b_end),
+    'FINISHED',
+    CASE IF(n <= 16, n, n - 16)
+        WHEN 1 THEN 6 WHEN 2 THEN 2 WHEN 3 THEN 1 ELSE 0 END,
+    @admin_user, IF(n <= 16, @race_a_end, @race_b_end),
     IF(n <= 16, @race_a_end, @race_b_end)
 FROM demo_numbers_32
-ON DUPLICATE KEY UPDATE finish_position = VALUES(finish_position), status = 'FINISHED';
+ON DUPLICATE KEY UPDATE
+    finish_position = VALUES(finish_position),
+    status = 'FINISHED',
+    rating_change = VALUES(rating_change);
 
 INSERT INTO race_reports
     (report_id, race_id, referee_id, summary, appeal_note, status,

@@ -327,6 +327,8 @@ public class RaceReportServiceImpl implements RaceReportService {
                         throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
                     }
                 }
+                horseRatingService.validateRatingChange(
+                        resultStatus, result.getRank(), result.getRatingChange());
             } else {
                 RaceResult result = resultMap.get(entry.getEntryId());
                 if (result != null) {
@@ -389,8 +391,8 @@ public class RaceReportServiceImpl implements RaceReportService {
         // 1. Chấm điểm prediction cho spectator (với mọi race)
         scoringService.scoreRace(raceId);
 
-        // 2. Cập nhật Horse Rating (với mọi race)
-        horseRatingService.calculateAndApplyForPublish(raceId);
+        // 2. Áp dụng điểm Rating thủ công đã được Head Referee xác nhận.
+        horseRatingService.applyManualRatingsForPublish(raceId);
 
         // 3. Chia tiền thưởng (nếu là final round)
         payoutPrizeIfFinal(race);
