@@ -26,4 +26,8 @@ public class UpdateRaceResultRequest {
     Integer rank;
 
     RaceResultStatus status;
+
+    Integer ratingChange;
+
+    String ratingAdjustmentReason;
 }

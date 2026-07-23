@@ -10,6 +10,7 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.RaceResultMapper;
 import com.swp391.horseracing.repository.*;
 import com.swp391.horseracing.service.RaceResultService;
+import com.swp391.horseracing.service.HorseRatingService;
 import com.swp391.horseracing.service.UserCurrentService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +34,12 @@ public class RaceResultServiceImpl implements RaceResultService {
     RaceRefereeRepository raceRefereeRepository;
     RaceResultMapper raceResultMapper;
     UserCurrentService userCurrentService;
+    HorseRatingService horseRatingService;
 
     @Override
     @Transactional
     public List<RaceResultResponse> createResults(UUID raceId, List<CreateRaceResultRequest> requests) {
-        Race race = raceRepository.findById(raceId)
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Race race = requireRace(raceId);
 
         if (!isResultEditableRaceStatus(race.getStatus())) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
@@ -71,8 +72,11 @@ public class RaceResultServiceImpl implements RaceResultService {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
             }
 
-            RaceEntry entry = raceEntryRepository.findById(req.getEntryId())
-                    .orElseThrow(() -> new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND));
+            Optional<RaceEntry> entryOptional = raceEntryRepository.findById(req.getEntryId());
+            if (entryOptional.isEmpty()) {
+                throw new AppException(ErrorCode.RACE_ENTRY_NOT_FOUND);
+            }
+            RaceEntry entry = entryOptional.get();
 
             if (!entry.getRace().getRaceId().equals(raceId)) {
                 throw new AppException(ErrorCode.INVALID_REQUEST);
@@ -117,6 +121,8 @@ public class RaceResultServiceImpl implements RaceResultService {
                 rank = null;
                 entry.setStatus(RaceEntryStatus.DISQUALIFIED);
             }
+
+            horseRatingService.validateRatingChange(status, rank, req.getRatingChange());
             
             raceEntryRepository.save(entry);
 
@@ -126,23 +132,21 @@ public class RaceResultServiceImpl implements RaceResultService {
                     .finishTime(finishTime)
                     .rank(rank)
                     .status(status)
+                    .ratingChange(req.getRatingChange())
+                    .ratingAdjustmentReason(null)
                     .recordedBy(referee.getUser())
                     .build();
 
             results.add(result);
         }
 
-        return raceResultRepository.saveAll(results)
-                .stream()
-                .map(raceResultMapper::toRaceResultResponse)
-                .toList();
+        return mapResults(raceResultRepository.saveAll(results));
     }
 
     @Override
     @Transactional
     public List<RaceResultResponse> updateResults(UUID raceId, List<UpdateRaceResultRequest> requests) {
-        Race race = raceRepository.findById(raceId)
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Race race = requireRace(raceId);
 
         if (!isResultEditableRaceStatus(race.getStatus())) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
@@ -159,82 +163,8 @@ public class RaceResultServiceImpl implements RaceResultService {
             }
         }
 
-        Referee referee = validateAndGetReferee(raceId);
-
-        List<RaceResult> existingResults = raceResultRepository.findByRace_RaceId(raceId);
-
-        if (existingResults.size() != requests.size()) {
-            throw new AppException(ErrorCode.INVALID_REQUEST);
-        }
-
-        Map<UUID, RaceResult> resultByEntryId = new HashMap<>();
-        for (RaceResult r : existingResults) {
-            resultByEntryId.put(r.getEntry().getEntryId(), r);
-        }
-
-        Set<Integer> ranks = new HashSet<>();
-        for (UpdateRaceResultRequest req : requests) {
-            RaceResultStatus status = req.getStatus() != null ? req.getStatus() : resultByEntryId.get(req.getEntryId()).getStatus();
-            Integer rank = req.getRank() != null ? req.getRank() : resultByEntryId.get(req.getEntryId()).getRank();
-            
-            if (status == RaceResultStatus.FINISHED) {
-                if (rank != null) {
-                    if (rank < 1) {
-                        throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
-                    }
-                    if (!ranks.add(rank)) {
-                        throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
-                    }
-                }
-            }
-        }
-
-        for (UpdateRaceResultRequest req : requests) {
-            RaceResult result = resultByEntryId.get(req.getEntryId());
-            if (result == null) {
-                throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
-            }
-
-            RaceResultStatus status = req.getStatus() != null ? req.getStatus() : result.getStatus();
-            Float finishTime = req.getFinishTime() != null ? req.getFinishTime() : result.getFinishTime();
-            Integer rank = req.getRank() != null ? req.getRank() : result.getRank();
-
-            RaceEntry entry = result.getEntry();
-
-            if (!isActualStarter(entry)) {
-                throw new AppException(ErrorCode.RACE_ENTRY_DID_NOT_START);
-            }
-
-            if (status == RaceResultStatus.FINISHED) {
-                if (finishTime == null || rank == null) {
-                    throw new AppException(ErrorCode.INVALID_REQUEST);
-                }
-                if (finishTime < 0) {
-                    throw new AppException(ErrorCode.FINISH_TIME_MUST_BE_POSITIVE);
-                }
-                result.setStatus(status);
-                result.setFinishTime(finishTime);
-                result.setRank(rank);
-                entry.setStatus(RaceEntryStatus.FINISHED);
-            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
-                result.setStatus(status);
-                result.setFinishTime(null);
-                result.setRank(null);
-                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
-            } else if (status == RaceResultStatus.DISQUALIFIED) {
-                result.setStatus(status);
-                result.setFinishTime(null);
-                result.setRank(null);
-                entry.setStatus(RaceEntryStatus.DISQUALIFIED);
-            }
-            
-            raceEntryRepository.save(entry);
-        }
-
-        return raceResultRepository.saveAll(existingResults)
-                .stream()
-                .map(raceResultMapper::toRaceResultResponse)
-                .toList();
+        validateAndGetReferee(raceId);
+        return applyResultUpdates(race, requests, false);
     }
 
     @Override
@@ -242,18 +172,20 @@ public class RaceResultServiceImpl implements RaceResultService {
         if (!raceRepository.existsById(raceId)) {
             throw new AppException(ErrorCode.RACE_NOT_FOUND);
         }
-        return raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId)
-                .stream()
-                .map(raceResultMapper::toRaceResultResponse)
-                .toList();
+        return mapResults(raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId));
     }
 
     @Override
     @Transactional
     public List<RaceResultResponse> finishRaceWithRandomResults(UUID raceId) {
-        Race race = raceRepository.findForUpdateByRaceId(raceId)
-                .or(() -> raceRepository.findById(raceId))
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Optional<Race> raceOptional = raceRepository.findForUpdateByRaceId(raceId);
+        if (raceOptional.isEmpty()) {
+            raceOptional = raceRepository.findById(raceId);
+        }
+        if (raceOptional.isEmpty()) {
+            throw new AppException(ErrorCode.RACE_NOT_FOUND);
+        }
+        Race race = raceOptional.get();
 
         if (race.getStatus() != RoundStatus.ONGOING) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
@@ -361,22 +293,158 @@ public class RaceResultServiceImpl implements RaceResultService {
 
     @Override
     public List<RaceResultResponse> getRefereeResultsByRaceId(UUID raceId) {
-        Race race = raceRepository.findById(raceId)
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Race race = requireRace(raceId);
 
         Referee referee = validateAndGetReferee(raceId);
 
-        return raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId)
-                .stream()
-                .map(raceResultMapper::toRaceResultResponse)
-                .toList();
+        return mapResults(raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId));
+    }
+
+    @Override
+    public List<RaceResultResponse> getHeadRefereeResultsByRaceId(UUID raceId) {
+        Race race = requireRace(raceId);
+        validateAndGetHeadReferee(race);
+        return mapResults(raceResultRepository.findByRace_RaceIdOrderByRankAsc(raceId));
+    }
+
+    @Override
+    @Transactional
+    public List<RaceResultResponse> updateHeadRefereeResults(
+            UUID raceId, List<UpdateRaceResultRequest> requests) {
+        Race race = requireRace(raceId);
+        validateAndGetHeadReferee(race);
+        Optional<RaceReport> reportOptional = raceReportRepository.findForUpdateByRace_RaceId(raceId);
+        if (reportOptional.isEmpty()) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_FOUND);
+        }
+        RaceReport report = reportOptional.get();
+        if (report.getStatus() != ReportStatus.SUBMITTED_TO_HEAD) {
+            throw new AppException(ErrorCode.RACE_REPORT_NOT_SUBMITTED);
+        }
+        return applyResultUpdates(race, requests, true);
+    }
+
+    private List<RaceResultResponse> applyResultUpdates(
+            Race race, List<UpdateRaceResultRequest> requests, boolean updatedByHeadReferee) {
+        if (requests == null || requests.isEmpty()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        List<RaceResult> existingResults = raceResultRepository.findForUpdateByRace_RaceId(race.getRaceId());
+        if (existingResults.size() != requests.size()) {
+            throw new AppException(ErrorCode.INVALID_REQUEST);
+        }
+
+        Map<UUID, RaceResult> resultsByEntryId = new HashMap<>();
+        for (RaceResult result : existingResults) {
+            resultsByEntryId.put(result.getEntry().getEntryId(), result);
+        }
+
+        Set<Integer> ranks = new HashSet<>();
+        for (UpdateRaceResultRequest request : requests) {
+            RaceResult existing = resultsByEntryId.get(request.getEntryId());
+            if (existing == null) {
+                throw new AppException(ErrorCode.RACE_RESULT_NOT_FOUND);
+            }
+            RaceResultStatus status = request.getStatus() == null
+                    ? existing.getStatus() : request.getStatus();
+            Integer rank = request.getRank() == null ? existing.getRank() : request.getRank();
+            Float finishTime = request.getFinishTime() == null
+                    ? existing.getFinishTime() : request.getFinishTime();
+            if (status == RaceResultStatus.FINISHED) {
+                if (rank == null || finishTime == null) {
+                    throw new AppException(ErrorCode.INVALID_REQUEST);
+                }
+                if (rank < 1) {
+                    throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
+                }
+                if (finishTime < 0) {
+                    throw new AppException(ErrorCode.FINISH_TIME_MUST_BE_POSITIVE);
+                }
+                if (!ranks.add(rank)) {
+                    throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
+                }
+            }
+        }
+
+        for (UpdateRaceResultRequest request : requests) {
+            RaceResult result = resultsByEntryId.get(request.getEntryId());
+            RaceResultStatus status = request.getStatus() == null
+                    ? result.getStatus() : request.getStatus();
+            Float finishTime = request.getFinishTime() == null
+                    ? result.getFinishTime() : request.getFinishTime();
+            Integer rank = request.getRank() == null ? result.getRank() : request.getRank();
+            Integer ratingChange = request.getRatingChange() == null
+                    ? result.getRatingChange() : request.getRatingChange();
+
+            RaceEntry entry = result.getEntry();
+            if (!isActualStarter(entry)) {
+                throw new AppException(ErrorCode.RACE_ENTRY_DID_NOT_START);
+            }
+
+            if (status == RaceResultStatus.FINISHED) {
+                result.setFinishTime(finishTime);
+                result.setRank(rank);
+                entry.setStatus(RaceEntryStatus.FINISHED);
+            } else if (status == RaceResultStatus.DID_NOT_FINISH) {
+                result.setFinishTime(null);
+                result.setRank(null);
+                rank = null;
+                entry.setStatus(RaceEntryStatus.DID_NOT_FINISH);
+            } else if (status == RaceResultStatus.DISQUALIFIED) {
+                result.setFinishTime(null);
+                result.setRank(null);
+                rank = null;
+                entry.setStatus(RaceEntryStatus.DISQUALIFIED);
+            } else {
+                throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);
+            }
+
+            horseRatingService.validateRatingChange(status, rank, ratingChange);
+            if (updatedByHeadReferee && !Objects.equals(result.getRatingChange(), ratingChange)) {
+                String reason = request.getRatingAdjustmentReason();
+                if (reason == null || reason.isBlank()) {
+                    throw new AppException(ErrorCode.HORSE_RATING_ADJUSTMENT_REASON_REQUIRED);
+                }
+                result.setRatingAdjustmentReason(reason.trim());
+            } else if (!updatedByHeadReferee) {
+                result.setRatingAdjustmentReason(null);
+            }
+
+            result.setStatus(status);
+            result.setRatingChange(ratingChange);
+            raceEntryRepository.save(entry);
+        }
+
+        return mapResults(raceResultRepository.saveAll(existingResults));
+    }
+
+    private List<RaceResultResponse> mapResults(List<RaceResult> results) {
+        List<RaceResultResponse> responses = new ArrayList<>();
+        for (RaceResult result : results) {
+            responses.add(raceResultMapper.toRaceResultResponse(result));
+        }
+        return responses;
+    }
+
+    private Referee validateAndGetHeadReferee(Race race) {
+        User currentUser = userCurrentService.getCurrentUser();
+        Referee referee = requireReferee(currentUser.getUserId());
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
+        }
+        Round round = race.getRound();
+        if (round == null || round.getHeadReferee() == null
+                || !round.getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        return referee;
     }
 
     private Referee validateAndGetReferee(UUID raceId) {
         User currentUser = userCurrentService.getCurrentUser();
 
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        Referee referee = requireReferee(currentUser.getUserId());
 
         if (referee.getStatus() == RefereeStatus.SUSPENDED) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
@@ -401,6 +469,22 @@ public class RaceResultServiceImpl implements RaceResultService {
 
     private float roundToHundredth(double value) {
         return (float) (Math.round(value * 100d) / 100d);
+    }
+
+    private Race requireRace(UUID raceId) {
+        Optional<Race> race = raceRepository.findById(raceId);
+        if (race.isEmpty()) {
+            throw new AppException(ErrorCode.RACE_NOT_FOUND);
+        }
+        return race.get();
+    }
+
+    private Referee requireReferee(UUID userId) {
+        Optional<Referee> referee = refereeRepository.findByUser_UserId(userId);
+        if (referee.isEmpty()) {
+            throw new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND);
+        }
+        return referee.get();
     }
 
     private record GeneratedTiming(RaceEntry entry, double finishTime) {

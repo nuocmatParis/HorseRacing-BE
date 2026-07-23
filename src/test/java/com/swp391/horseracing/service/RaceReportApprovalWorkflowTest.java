@@ -169,7 +169,7 @@ class RaceReportApprovalWorkflowTest {
         service.publishReport(fixture.race.getRaceId());
 
         verify(scoringService, times(1)).scoreRace(fixture.race.getRaceId());
-        verify(horseRatingService, times(1)).calculateAndApplyForPublish(fixture.race.getRaceId());
+        verify(horseRatingService, times(1)).applyManualRatingsForPublish(fixture.race.getRaceId());
         assertEquals(ReportStatus.PUBLISHED, fixture.report.getStatus());
     }
 
@@ -228,6 +228,7 @@ class RaceReportApprovalWorkflowTest {
         result.setStatus(RaceResultStatus.FINISHED);
         result.setRank(1);
         result.setFinishTime(60F);
+        result.setRatingChange(6);
         RaceReport report = new RaceReport();
         report.setRace(race);
         report.setReferee(referee);

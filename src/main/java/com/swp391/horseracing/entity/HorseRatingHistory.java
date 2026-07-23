@@ -44,23 +44,11 @@ public class HorseRatingHistory {
     @Column(name = "old_rating", nullable = false)
     int oldRating;
 
-    @Column(name = "base_change", nullable = false)
-    int baseChange;
-
-    @Column(name = "opponent_strength_bonus", nullable = false)
-    int opponentStrengthBonus;
-
-    @Column(name = "finish_performance_bonus", nullable = false)
-    int finishPerformanceBonus;
-
-    @Column(name = "field_size_bonus", nullable = false)
-    int fieldSizeBonus;
-
-    @Column(name = "underperformance_penalty", nullable = false)
-    int underperformancePenalty;
-
     @Column(name = "final_change", nullable = false)
     int finalChange;
+
+    @Column(name = "adjustment_reason", columnDefinition = "TEXT")
+    String adjustmentReason;
 
     @Column(name = "new_rating", nullable = false)
     int newRating;

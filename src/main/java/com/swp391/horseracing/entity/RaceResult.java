@@ -71,6 +71,12 @@ public class RaceResult {
     @Column(name = "status", nullable = false, length = 20)
     RaceResultStatus status = RaceResultStatus.FINISHED;
 
+    @Column(name = "rating_change")
+    Integer ratingChange;
+
+    @Column(name = "rating_adjustment_reason", columnDefinition = "TEXT")
+    String ratingAdjustmentReason;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "recorded_by", nullable = false)
     User recordedBy;

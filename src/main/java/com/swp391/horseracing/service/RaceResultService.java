@@ -17,4 +17,8 @@ public interface RaceResultService {
     List<RaceResultResponse> getResultsByRaceId(UUID raceId);
 
     List<RaceResultResponse> getRefereeResultsByRaceId(UUID raceId);
+
+    List<RaceResultResponse> getHeadRefereeResultsByRaceId(UUID raceId);
+
+    List<RaceResultResponse> updateHeadRefereeResults(UUID raceId, List<UpdateRaceResultRequest> requests);
 }

@@ -891,11 +891,13 @@ BEGIN
         INSERT INTO race_results
             (result_id, race_id, entry_id, finish_time, finish_position,
              prize_money, owner_prize_amount, jockey_prize_amount,
-             prize_status, is_prize_paid, prize_paid_at, status,
+             prize_status, is_prize_paid, prize_paid_at, status, rating_change,
              recorded_by, recorded_at, updated_at)
         VALUES
             (UUID(), p_race_id, v_entry_id, 95.0 + v_lane * 0.8, v_lane,
              0.00, 0.00, 0.00, 'NotEligible', 0, NULL, 'FINISHED',
+             CASE WHEN v_lane = 1 THEN 6 WHEN v_lane = 2 THEN 2
+                  WHEN v_lane = 3 THEN 1 ELSE 0 END,
              v_recorded_by_user, v_race_finished, v_race_finished);
     END LOOP;
     CLOSE entry_cursor;

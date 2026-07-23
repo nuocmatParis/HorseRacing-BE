@@ -56,4 +56,22 @@ public class RaceResultController {
                 .result(raceResultService.getRefereeResultsByRaceId(raceId))
                 .build();
     }
+
+    @GetMapping("/api/head-referee/races/{raceId}/results")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<List<RaceResultResponse>> getHeadRefereeResults(@PathVariable UUID raceId) {
+        return ApiResponse.<List<RaceResultResponse>>builder()
+                .result(raceResultService.getHeadRefereeResultsByRaceId(raceId))
+                .build();
+    }
+
+    @PutMapping("/api/head-referee/races/{raceId}/results")
+    @PreAuthorize("hasRole('REFEREE')")
+    public ApiResponse<List<RaceResultResponse>> updateHeadRefereeResults(
+            @PathVariable UUID raceId,
+            @RequestBody @Valid List<UpdateRaceResultRequest> requests) {
+        return ApiResponse.<List<RaceResultResponse>>builder()
+                .result(raceResultService.updateHeadRefereeResults(raceId, requests))
+                .build();
+    }
 }
