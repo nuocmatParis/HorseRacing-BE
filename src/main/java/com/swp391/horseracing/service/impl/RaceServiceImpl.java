@@ -362,6 +362,12 @@ public class RaceServiceImpl implements RaceService {
 
         LocalDateTime now = LocalDateTime.now();
         Tournament tournament = race.getRound().getTournament();
+        if (race.getStartTime() == null) {
+            throw new AppException(ErrorCode.RACE_SCHEDULE_INCOMPLETE);
+        }
+        if (now.isBefore(race.getStartTime())) {
+            throw new AppException(ErrorCode.RACE_START_TOO_EARLY);
+        }
         LocalDateTime latestStart = race.getStartTime().plusMinutes(tournament.getStartLateToleranceMinutes());
 
         if (now.isAfter(latestStart)) {
@@ -452,6 +458,9 @@ public class RaceServiceImpl implements RaceService {
         if (latestStart == null) {
             raceBlockingReasons.add("Cuộc đua chưa có thời gian bắt đầu hợp lệ.");
         } else {
+            if (now.isBefore(race.getStartTime())) {
+                raceBlockingReasons.add("Chưa đến thời gian bắt đầu cuộc đua.");
+            }
             if (now.isAfter(latestStart)) {
                 raceBlockingReasons.add("Đã quá khung giờ được phép bắt đầu cuộc đua.");
             }
@@ -745,17 +754,38 @@ public class RaceServiceImpl implements RaceService {
 
         List<RaceEntry> entries = raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(raceId);
         for (RaceEntry entry : entries) {
-            horseInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId())
-                    .ifPresent(ins -> horseInspectionRepository.delete(ins));
-            jockeyInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId())
-                    .ifPresent(ins -> jockeyInspectionRepository.delete(ins));
-            entry.setStatus(RaceEntryStatus.CONFIRMED);
+            boolean inspectionScratch = isInspectionScratch(entry);
+            Optional<HorseInspection> horseInspection =
+                    horseInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId());
+            if (horseInspection.isPresent()) {
+                horseInspectionRepository.delete(horseInspection.get());
+            }
+            Optional<JockeyInspection> jockeyInspection =
+                    jockeyInspectionRepository.findByRaceEntry_EntryId(entry.getEntryId());
+            if (jockeyInspection.isPresent()) {
+                jockeyInspectionRepository.delete(jockeyInspection.get());
+            }
+            if (inspectionScratch) {
+                entry.setStatus(RaceEntryStatus.CONFIRMED);
+                entry.setScratchedReason(null);
+            }
             raceEntryRepository.save(entry);
         }
 
         Race savedRace = raceRepository.save(race);
         notificationEventService.raceRescheduled(savedRace, oldStartTime, request.getReason());
         return raceMapper.toRaceResponse(savedRace);
+    }
+
+    private boolean isInspectionScratch(RaceEntry entry) {
+        if (entry.getStatus() != RaceEntryStatus.SCRATCHED || entry.getScratchedReason() == null) {
+            return false;
+        }
+        String reason = entry.getScratchedReason();
+        return reason.startsWith("Failed horse inspection.")
+                || reason.startsWith("Failed jockey inspection.")
+                || reason.equals("Missing or failed horse inspection at deadline")
+                || reason.equals("Missing or failed jockey inspection at deadline");
     }
 
     @Override

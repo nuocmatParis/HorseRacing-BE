@@ -250,13 +250,9 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         boolean passed;
         try {
             passed = switch (condition) {
-                case AGE -> {
-                    int age = java.time.Period.between(jockey.getUser().getDob(), java.time.LocalDate.now()).getYears();
-                    yield compareInt(age, operator, Integer.parseInt(value));
-                }
                 case WEIGHT -> compareFloat(jockey.getWeight(), operator, Float.parseFloat(value));
                 case EXPERIENCE_YEARS -> compareInt(jockey.getExperienceYears(), operator, Integer.parseInt(value));
-                case JOCKEY_TIER -> compareJockeyTier(jockey.getJockeyTier(), operator, value);
+                case AGE, JOCKEY_TIER -> true;
                 default -> true;
             };
         } catch (IllegalArgumentException e) {
@@ -268,24 +264,6 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
         }
     }
 
-    private boolean compareJockeyTier(JockeyTier actual, EligibilityOperator operator, String expectedValue) {
-        try {
-            JockeyTier expected = JockeyTier.valueOf(expectedValue.toUpperCase());
-            int actualOrdinal = actual.ordinal();
-            int expectedOrdinal = expected.ordinal();
-            return switch (operator) {
-                case EQUAL -> actualOrdinal == expectedOrdinal;
-                case NOT_EQUAL -> actualOrdinal != expectedOrdinal;
-                case GREATER_THAN -> actualOrdinal > expectedOrdinal;
-                case GREATER_THAN_OR_EQUAL -> actualOrdinal >= expectedOrdinal;
-                case LESS_THAN -> actualOrdinal < expectedOrdinal;
-                case LESS_THAN_OR_EQUAL -> actualOrdinal <= expectedOrdinal;
-            };
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
     private void validateHorseEligibility(Horse horse, Tournament tournament) {
         if (horse.getHealthStatus() != HealthStatus.HEALTHY) {
             throw new AppException(ErrorCode.HORSE_HEALTH_NOT_VALID);
@@ -293,10 +271,6 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         int age = horse.getAge();
         if (age < tournament.getMinHorseAge() || age > tournament.getMaxHorseAge()) {
-            throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
-        }
-
-        if (tournament.getAllowedBreed() != horse.getBreed()) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
         }
 
@@ -325,7 +299,7 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
                 case AGE -> compareInt(horse.getAge(), operator, Integer.parseInt(value));
                 case WEIGHT -> compareFloat(horse.getWeight(), operator, Float.parseFloat(value));
                 case WIN_RATE -> compareDouble(horse.getWinRate(), operator, Double.parseDouble(value));
-                case BREED -> compareBreed(horse.getBreed(), operator, value);
+                case BREED -> true;
                 default -> true;
             };
         } catch (IllegalArgumentException e) {
@@ -334,19 +308,6 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
         if (!passed) {
             throw new AppException(ErrorCode.HORSE_NOT_ELIGIBLE);
-        }
-    }
-
-    private boolean compareBreed(HorseBreed actual, EligibilityOperator operator, String expectedValue) {
-        try {
-            HorseBreed expected = HorseBreed.valueOf(expectedValue.toUpperCase());
-            return switch (operator) {
-                case EQUAL -> actual == expected;
-                case NOT_EQUAL -> actual != expected;
-                default -> false;
-            };
-        } catch (IllegalArgumentException e) {
-            return false;
         }
     }
 

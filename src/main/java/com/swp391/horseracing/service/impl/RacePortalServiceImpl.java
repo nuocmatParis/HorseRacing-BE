@@ -419,7 +419,6 @@ public class RacePortalServiceImpl implements RacePortalService {
             }
         }
         return TournamentInspectionConditionsResponse.builder()
-                .allowedBreed(tournament.getAllowedBreed())
                 .minHorseAge(tournament.getMinHorseAge())
                 .maxHorseAge(tournament.getMaxHorseAge())
                 .raceClass(tournament.getRaceClass())

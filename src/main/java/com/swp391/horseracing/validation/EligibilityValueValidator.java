@@ -4,8 +4,6 @@ import com.swp391.horseracing.dto.tournament.request.CreateEligibilityRequest;
 import com.swp391.horseracing.dto.tournament.request.UpdateEligibilityRequest;
 import com.swp391.horseracing.enums.EligibilityCondition;
 import com.swp391.horseracing.enums.EligibilityTargetType;
-import com.swp391.horseracing.enums.HorseBreed;
-import com.swp391.horseracing.enums.JockeyTier;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
@@ -38,9 +36,13 @@ public class EligibilityValueValidator implements ConstraintValidator<ValidEligi
             case AGE, EXPERIENCE_YEARS -> validatePositiveInt(conditionValue, context);
             case WEIGHT -> validateWeight(targetType, conditionValue, context);
             case WIN_RATE -> validateWinRate(conditionValue, context);
-            case BREED -> validateBreed(conditionValue, context);
-            case JOCKEY_TIER -> validateJockeyTier(conditionValue, context);
+            case BREED, JOCKEY_TIER -> unsupportedCondition(context);
         };
+    }
+
+    private boolean unsupportedCondition(ConstraintValidatorContext context) {
+        buildMessage(context, "This eligibility condition is no longer supported");
+        return false;
     }
 
     private boolean validatePositiveInt(String value, ConstraintValidatorContext context) {
@@ -92,26 +94,6 @@ public class EligibilityValueValidator implements ConstraintValidator<ValidEligi
             return true;
         } catch (NumberFormatException e) {
             buildMessage(context, "Win rate must be a valid number");
-            return false;
-        }
-    }
-
-    private boolean validateBreed(String value, ConstraintValidatorContext context) {
-        try {
-            HorseBreed.valueOf(value.toUpperCase());
-            return true;
-        } catch (IllegalArgumentException e) {
-            buildMessage(context, "Invalid horse breed: " + value);
-            return false;
-        }
-    }
-
-    private boolean validateJockeyTier(String value, ConstraintValidatorContext context) {
-        try {
-            JockeyTier.valueOf(value.toUpperCase());
-            return true;
-        } catch (IllegalArgumentException e) {
-            buildMessage(context, "Invalid jockey tier: " + value);
             return false;
         }
     }

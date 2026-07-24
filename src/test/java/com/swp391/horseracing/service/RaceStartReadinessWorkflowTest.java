@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,10 +61,11 @@ class RaceStartReadinessWorkflowTest {
         when(userRepository.findByUsername("referee")).thenReturn(Optional.of(fixture.user));
         when(refereeRepository.findByUser_UserId(fixture.user.getUserId()))
                 .thenReturn(Optional.of(fixture.referee));
-        when(raceRepository.findById(fixture.race.getRaceId())).thenReturn(Optional.of(fixture.race));
+        lenient().when(raceRepository.findById(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.race));
         when(raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
                 fixture.race.getRaceId(), fixture.referee.getRefereeId())).thenReturn(true);
-        when(raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(fixture.race.getRaceId()))
+        lenient().when(raceEntryRepository.findByRace_RaceIdOrderByLaneNumberAsc(fixture.race.getRaceId()))
                 .thenReturn(List.of(fixture.entry));
     }
 
@@ -88,6 +90,8 @@ class RaceStartReadinessWorkflowTest {
     @Test
     void backendStillBlocksStartWhenFrontendReadinessIsBypassed() {
         fixture.race.setInspectionFinalizedAt(LocalDateTime.now());
+        when(raceRepository.findForUpdateByRaceId(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.race));
         when(horseInspectionRepository.findByRaceEntry_EntryId(fixture.entry.getEntryId()))
                 .thenReturn(Optional.empty());
 
@@ -95,6 +99,19 @@ class RaceStartReadinessWorkflowTest {
                 () -> service.startRace(fixture.race.getRaceId()));
 
         assertEquals(ErrorCode.ENTRY_MISSING_HORSE_INSPECTION, exception.getErrorCode());
+    }
+
+    @Test
+    void backendBlocksStartBeforeScheduledTime() {
+        fixture.race.setStartTime(LocalDateTime.now().plusHours(1));
+        fixture.race.setInspectionFinalizedAt(LocalDateTime.now());
+        when(raceRepository.findForUpdateByRaceId(fixture.race.getRaceId()))
+                .thenReturn(Optional.of(fixture.race));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.startRace(fixture.race.getRaceId()));
+
+        assertEquals(ErrorCode.RACE_START_TOO_EARLY, exception.getErrorCode());
     }
 
     @Test
@@ -209,7 +226,7 @@ class RaceStartReadinessWorkflowTest {
         race.setRaceId(UUID.randomUUID());
         race.setRound(round);
         race.setStatus(RoundStatus.SCHEDULED);
-        race.setStartTime(LocalDateTime.now());
+        race.setStartTime(LocalDateTime.now().minusMinutes(1));
         Horse horse = new Horse();
         horse.setName("Sấm Sét");
         Jockey jockey = new Jockey();

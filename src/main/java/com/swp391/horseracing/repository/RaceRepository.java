@@ -194,7 +194,7 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
                     SELECT rr.raceRefereeId FROM RaceReferee rr
                     WHERE rr.race = r AND rr.referee.refereeId = :refereeId
                 ))
-              AND ((r.status = com.swp391.horseracing.enums.RoundStatus.SCHEDULED AND r.startTime >= :now)
+              AND ((r.status = com.swp391.horseracing.enums.RoundStatus.SCHEDULED AND r.endTime >= :now)
                 OR r.status = com.swp391.horseracing.enums.RoundStatus.ONGOING
                 OR r.status = com.swp391.horseracing.enums.RoundStatus.FINISHED
                 OR (r.status = com.swp391.horseracing.enums.RoundStatus.CANCELLED AND r.startTime >= :now))

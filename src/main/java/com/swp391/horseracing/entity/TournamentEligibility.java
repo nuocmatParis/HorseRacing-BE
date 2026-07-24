@@ -36,7 +36,7 @@ public class TournamentEligibility {
     EligibilityCondition conditionName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "condition_operator", nullable = false, length = 10)
+    @Column(name = "condition_operator", nullable = false, length = 30)
     EligibilityOperator conditionOperator;
 
     @Column(name = "condition_value", nullable = false, length = 100)

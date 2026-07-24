@@ -55,6 +55,7 @@ public class OwnerController {
     }
 
     @PostMapping("/profile")
+    @PreAuthorize("hasRole('HORSE_OWNER')")
     public ApiResponse<OwnerResponse> createMyProfile(@RequestBody @Valid OwnerCreationRequest request){
         return ApiResponse.<OwnerResponse>builder()
                 .result(ownerService.createMyProfile(request))

@@ -7,6 +7,7 @@ import com.swp391.horseracing.dto.horseowner.request.OwnerUpdateRequest;
 import com.swp391.horseracing.dto.horseowner.response.OwnerResponse;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.User;
+import com.swp391.horseracing.enums.RoleName;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.OwnerMapper;
@@ -40,6 +41,9 @@ public class OwnerServiceImpl implements OwnerService {
     @Transactional
     public OwnerResponse createMyProfile(OwnerCreationRequest request){
         User user = getCurrentUser();
+        if (user.getRole() == null || user.getRole().getRoleName() != RoleName.HORSE_OWNER) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
         if (ownerRepository.existsByUser_UserId(user.getUserId())){
             throw new AppException(ErrorCode.DUPLICATE_RESOURCE);
         }

@@ -7,8 +7,6 @@ import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.TournamentEligibility;
 import com.swp391.horseracing.enums.EligibilityCondition;
 import com.swp391.horseracing.enums.EligibilityTargetType;
-import com.swp391.horseracing.enums.HorseBreed;
-import com.swp391.horseracing.enums.JockeyTier;
 import com.swp391.horseracing.enums.TournamentStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -24,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -45,11 +42,12 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
-        if (tournamentEligibilityRepository.existsByTournament_TournamentIdAndConditionName(
-                tournamentId, request.getConditionName())) {
+        if (tournamentEligibilityRepository.existsByTournament_TournamentIdAndTargetTypeAndConditionName(
+                tournamentId, request.getTargetType(), request.getConditionName())) {
             throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
         }
 
+        validateSupportedCondition(request.getTargetType(), request.getConditionName());
         validateConditionValue(request.getConditionName(), request.getTargetType(), request.getConditionValue());
 
         TournamentEligibility eligibility = tournamentEligibilityMapper.toEligibility(request);
@@ -69,19 +67,21 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
-        if (request.getConditionName() != null && !request.getConditionName().equals(eligibility.getConditionName())
-                && tournamentEligibilityRepository.existsByTournament_TournamentIdAndConditionName(
-                        tournament.getTournamentId(), request.getConditionName())) {
+        EligibilityCondition updatedCondition = request.getConditionName() != null
+                ? request.getConditionName() : eligibility.getConditionName();
+        EligibilityTargetType updatedTarget = request.getTargetType() != null
+                ? request.getTargetType() : eligibility.getTargetType();
+        if (tournamentEligibilityRepository
+                .existsByTournament_TournamentIdAndTargetTypeAndConditionNameAndEligibilityIdNot(
+                        tournament.getTournamentId(), updatedTarget,
+                        updatedCondition, eligibility.getEligibilityId())) {
             throw new AppException(ErrorCode.ELIGIBILITY_CONDITION_EXISTS);
         }
 
-        if (request.getConditionValue() != null) {
-            EligibilityCondition condition = request.getConditionName() != null
-                    ? request.getConditionName() : eligibility.getConditionName();
-            EligibilityTargetType target = request.getTargetType() != null
-                    ? request.getTargetType() : eligibility.getTargetType();
-            validateConditionValue(condition, target, request.getConditionValue());
-        }
+        validateSupportedCondition(updatedTarget, updatedCondition);
+        String updatedValue = request.getConditionValue() != null
+                ? request.getConditionValue() : eligibility.getConditionValue();
+        validateConditionValue(updatedCondition, updatedTarget, updatedValue);
 
         tournamentEligibilityMapper.updateEligibility(request, eligibility);
         return tournamentEligibilityMapper.toEligibilityResponse(tournamentEligibilityRepository.save(eligibility));
@@ -104,8 +104,36 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
     public List<TournamentEligibilityResponse> getByTournament(UUID tournamentId){
         tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
-        return tournamentEligibilityRepository.findByTournament_TournamentId(tournamentId)
-                .stream().map(tournamentEligibilityMapper :: toEligibilityResponse).collect(Collectors.toList());
+        List<TournamentEligibility> rules =
+                tournamentEligibilityRepository.findByTournament_TournamentId(tournamentId);
+        List<TournamentEligibilityResponse> responses = new java.util.ArrayList<>();
+        for (TournamentEligibility rule : rules) {
+            if (isSupportedCondition(rule.getTargetType(), rule.getConditionName())) {
+                responses.add(tournamentEligibilityMapper.toEligibilityResponse(rule));
+            }
+        }
+        return responses;
+    }
+
+    private void validateSupportedCondition(
+            EligibilityTargetType targetType, EligibilityCondition conditionName) {
+        if (!isSupportedCondition(targetType, conditionName)) {
+            throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
+        }
+    }
+
+    private boolean isSupportedCondition(
+            EligibilityTargetType targetType, EligibilityCondition conditionName) {
+        if (targetType == EligibilityTargetType.HORSE) {
+            return conditionName == EligibilityCondition.AGE
+                    || conditionName == EligibilityCondition.WEIGHT
+                    || conditionName == EligibilityCondition.WIN_RATE;
+        }
+        if (targetType == EligibilityTargetType.JOCKEY) {
+            return conditionName == EligibilityCondition.WEIGHT
+                    || conditionName == EligibilityCondition.EXPERIENCE_YEARS;
+        }
+        return false;
     }
 
     private void validateConditionValue(EligibilityCondition conditionName, EligibilityTargetType targetType, String conditionValue) {
@@ -129,8 +157,7 @@ public class TournamentEligibilityServiceImpl implements TournamentEligibilitySe
                     double v = Double.parseDouble(conditionValue);
                     if (v < 0 || v > 100) throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
                 }
-                case BREED -> HorseBreed.valueOf(conditionValue.toUpperCase());
-                case JOCKEY_TIER -> JockeyTier.valueOf(conditionValue.toUpperCase());
+                case BREED, JOCKEY_TIER -> throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);
             }
         } catch (IllegalArgumentException e) {
             throw new AppException(ErrorCode.ELIGIBILITY_INVALID_VALUE);

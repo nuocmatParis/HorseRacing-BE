@@ -4,6 +4,9 @@ import com.swp391.horseracing.dto.appeal_evidence.request.AddAppealEvidenceReque
 import com.swp391.horseracing.dto.appeal_evidence.response.AppealEvidenceResponse;
 import com.swp391.horseracing.entity.Appeal;
 import com.swp391.horseracing.entity.AppealEvidence;
+import com.swp391.horseracing.entity.Race;
+import com.swp391.horseracing.entity.Referee;
+import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AppealEvidenceType;
 import com.swp391.horseracing.enums.AppealStatus;
@@ -12,6 +15,8 @@ import com.swp391.horseracing.exception.ErrorCode;
 import com.swp391.horseracing.mapper.AppealEvidenceMapper;
 import com.swp391.horseracing.repository.AppealEvidenceRepository;
 import com.swp391.horseracing.repository.AppealRepository;
+import com.swp391.horseracing.repository.RaceRefereeRepository;
+import com.swp391.horseracing.repository.RefereeRepository;
 import com.swp391.horseracing.service.AppealEvidenceService;
 import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.UserCurrentService;
@@ -39,6 +44,8 @@ public class AppealEvidenceServiceImpl implements AppealEvidenceService {
     AppealEvidenceMapper appealEvidenceMapper;
     UserCurrentService userCurrentService;
     CloudinaryService cloudinaryService;
+    RefereeRepository refereeRepository;
+    RaceRefereeRepository raceRefereeRepository;
 
     @NonFinal
     @Value("${appeal.evidence.max-file-size-bytes:52428800}")
@@ -57,15 +64,36 @@ public class AppealEvidenceServiceImpl implements AppealEvidenceService {
     @Override
     @Transactional(readOnly = true)
     public List<AppealEvidenceResponse> getEvidencesByAppealId(UUID appealId) {
-        if (!appealRepository.existsById(appealId)) {
-            throw new AppException(ErrorCode.APPEAL_NOT_FOUND);
-        }
+        Appeal appeal = appealRepository.findById(appealId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPEAL_NOT_FOUND));
+        validateCanReadEvidence(appeal);
         List<AppealEvidence> evidences = appealEvidenceRepository.findByAppeal_AppealId(appealId);
         List<AppealEvidenceResponse> responses = new ArrayList<>();
         for (AppealEvidence evidence : evidences) {
             responses.add(appealEvidenceMapper.toAppealEvidenceResponse(evidence));
         }
         return responses;
+    }
+
+    private void validateCanReadEvidence(Appeal appeal) {
+        User currentUser = userCurrentService.getCurrentUser();
+        if (appeal.getSubmittedBy() != null
+                && appeal.getSubmittedBy().getUserId().equals(currentUser.getUserId())) {
+            return;
+        }
+
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.ACCESS_DENIED));
+        Race race = appeal.getEntry().getRace();
+        boolean directRaceReferee = raceRefereeRepository
+                .existsByRace_RaceIdAndReferee_RefereeId(race.getRaceId(), referee.getRefereeId());
+        Round round = race.getRound();
+        boolean headReferee = round != null
+                && round.getHeadReferee() != null
+                && round.getHeadReferee().getRefereeId().equals(referee.getRefereeId());
+        if (!directRaceReferee && !headReferee) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
     }
 
     @Override

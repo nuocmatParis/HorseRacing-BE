@@ -14,6 +14,7 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 public interface TournamentEligibilityMapper {
 
     @Mapping(target = "tournamentId", source = "tournament.tournamentId")
+    @Mapping(target = "unit", source = "conditionName.unit")
     TournamentEligibilityResponse toEligibilityResponse(TournamentEligibility eligibility);
 
     @Mapping(target = "eligibilityId", ignore = true)
