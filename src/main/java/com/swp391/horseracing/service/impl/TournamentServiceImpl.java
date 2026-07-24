@@ -548,22 +548,22 @@ public class TournamentServiceImpl implements TournamentService {
         }
         if (registrationCloseAt.isBefore(
                 TournamentTimelinePolicy.minimumRegistrationCloseAt(
-                        registrationOpenAt, phaseDays.get("REGISTRATION")))) {
+                        registrationOpenAt, phaseDays.getOrDefault("REGISTRATION", 0)))) {
             throw new AppException(ErrorCode.REGISTRATION_PERIOD_TOO_SHORT);
         }
         if (reviewDeadlineAt.isBefore(
                 TournamentTimelinePolicy.minimumReviewDeadlineAt(
-                        registrationCloseAt, phaseDays.get("REVIEW")))) {
+                        registrationCloseAt, phaseDays.getOrDefault("REVIEW", 0)))) {
             throw new AppException(ErrorCode.REVIEW_PERIOD_TOO_SHORT);
         }
         if (jockeyMatchingDeadlineAt.isBefore(
                 TournamentTimelinePolicy.minimumJockeyMatchingDeadlineAt(
-                        reviewDeadlineAt, phaseDays.get("JOCKEY_MATCHING")))) {
+                        reviewDeadlineAt, phaseDays.getOrDefault("JOCKEY_MATCHING", 0)))) {
             throw new AppException(ErrorCode.JOCKEY_MATCHING_PERIOD_TOO_SHORT);
         }
         if (schedulingDeadlineAt.isBefore(
                 TournamentTimelinePolicy.minimumSchedulingDeadlineAt(
-                        jockeyMatchingDeadlineAt, phaseDays.get("SCHEDULING")))) {
+                        jockeyMatchingDeadlineAt, phaseDays.getOrDefault("SCHEDULING", 0)))) {
             throw new AppException(ErrorCode.SCHEDULING_PERIOD_TOO_SHORT);
         }
     }
@@ -918,10 +918,15 @@ public class TournamentServiceImpl implements TournamentService {
 
     private Map<String, Integer> resolvePhaseConfigs(Map<String, Integer> requestConfigs,
                                                        int maxApprovedEntries) {
+        Map<String, Integer> defaults = getDefaultPhaseConfigs(maxApprovedEntries);
         if (requestConfigs != null && !requestConfigs.isEmpty()) {
-            return requestConfigs;
+            for (Map.Entry<String, Integer> entry : requestConfigs.entrySet()) {
+                if (entry.getValue() != null) {
+                    defaults.put(entry.getKey(), entry.getValue());
+                }
+            }
         }
-        return getDefaultPhaseConfigs(maxApprovedEntries);
+        return defaults;
     }
 
     public Map<String, Integer> getDefaultPhaseConfigs(int maxApprovedEntries) {
