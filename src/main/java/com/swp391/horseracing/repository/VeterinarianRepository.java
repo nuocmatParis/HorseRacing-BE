@@ -21,6 +21,8 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
 
     boolean existsByUser_UserId(UUID userId);
 
+    List<Veterinarian> findByStatus(VetStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT v
@@ -37,4 +39,13 @@ public interface VeterinarianRepository extends JpaRepository<Veterinarian, UUID
             ORDER BY COUNT(a) ASC, v.yearsOfService DESC
             """)
     List<Veterinarian> findBestAvailable(@Param("status") VetStatus status, Pageable pageable);
+
+    @Query("""
+            SELECT v.vetId FROM Veterinarian v
+            LEFT JOIN RaceInspectionAssignment a ON a.veterinarian = v
+            WHERE v.status = :status
+            GROUP BY v.vetId, v.yearsOfService
+            ORDER BY COUNT(a) ASC, v.yearsOfService DESC, v.vetId ASC
+            """)
+    List<UUID> findBestAvailableIds(@Param("status") VetStatus status, Pageable pageable);
 }

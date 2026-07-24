@@ -47,7 +47,7 @@ public class ViolationServiceImpl implements ViolationService {
             throw new AppException(ErrorCode.RACE_VIOLATION_REPORTING_CLOSED);
         }
 
-        // Validate violation type based on current race status
+
         validateViolationType(raceStatus, request.getType());
 
         User currentUser = userCurrentService.getCurrentUser();
@@ -58,8 +58,7 @@ public class ViolationServiceImpl implements ViolationService {
             throw new AppException(ErrorCode.REFEREE_NOT_AVAILABLE);
         }
 
-        // The Race Referee records on-track violations. The Round Head Referee
-        // remains an independent reviewer for appeals and the submitted report.
+
         if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
                 race.getRaceId(), referee.getRefereeId())) {
             throw new AppException(ErrorCode.REFEREE_NOT_ASSIGNED_TO_RACE);
@@ -108,18 +107,13 @@ public class ViolationServiceImpl implements ViolationService {
             throw new AppException(ErrorCode.INVALID_VIOLATION_TYPE_FOR_RACE_STATUS);
         }
         if (raceStatus == RoundStatus.SCHEDULED) {
-            // Before race starts, only FALSE_START, EQUIPMENT, DOPING, OTHER are allowed
             if (type != ViolationType.FALSE_START && type != ViolationType.EQUIPMENT 
                     && type != ViolationType.DOPING && type != ViolationType.OTHER) {
                 throw new AppException(ErrorCode.INVALID_VIOLATION_TYPE_FOR_RACE_STATUS);
             }
         }
-        if (raceStatus == RoundStatus.FINISHED
-                || raceStatus == RoundStatus.COMPLETED
-                || raceStatus == RoundStatus.CANCELLED) {
-            // Violations must be recorded before the referee closes the race.
+        if (raceStatus == RoundStatus.FINISHED || raceStatus == RoundStatus.COMPLETED || raceStatus == RoundStatus.CANCELLED) {
             throw new AppException(ErrorCode.RACE_VIOLATION_REPORTING_CLOSED);
         }
-        // RoundStatus.ONGOING allows all violation types.
     }
 }

@@ -60,12 +60,6 @@ import com.swp391.horseracing.entity.Tournament;
 @RequiredArgsConstructor
 public class RaceServiceImpl implements RaceService {
 
-    /**
-     * Round.minEntries remains the scheduling/publishing requirement. Once a race
-     * has been published, failed inspections may reduce the field. A final race
-     * needs at least two starters; an earlier round must still have enough
-     * starters to produce its configured qualifiers (Top 4 in the current plan).
-     */
     private static final int MIN_COMPETITIVE_STARTERS = 2;
 
     RaceRepository raceRepository;
@@ -360,11 +354,8 @@ public class RaceServiceImpl implements RaceService {
     @Override
     @Transactional
     public RaceResponse startRace(UUID raceId) {
-        Race race = raceRepository.findForUpdateByRaceId(raceId)
-                // Compatibility fallback for repository stubs and non-locking adapters;
-                // production JPA resolves the pessimistic query first.
-                .or(() -> raceRepository.findById(raceId))
-                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+        Race race = raceRepository.findForUpdateByRaceId(raceId).
+                orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
 
         User currentUser = getCurrentUser();
         validateRefereeCanOperateRace(race, currentUser);
@@ -385,7 +376,6 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.RACE_START_WINDOW_EXPIRED);
         }
 
-        // Lazy finalize entries if not yet finalized
         if (race.getInspectionFinalizedAt() == null) {
             finalizeRaceEntries(raceId);
         }

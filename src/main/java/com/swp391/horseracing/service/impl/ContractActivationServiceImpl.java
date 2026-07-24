@@ -61,12 +61,17 @@ public class ContractActivationServiceImpl implements ContractActivationService 
         Invoice hiringInvoice = getPaidInvoice(contractId, InvoiceType.JOCKEY_HIRING_FEE);
         getPaidInvoice(contractId, InvoiceType.CONTRACT_CREATION_FEE);
 
+        // Kiểm tra xem số tiền đang được tạm khóa trong ví Escrow của
+        // hợp đồng này có khớp với số tiền thuê Jockey ban đầu
         validateEscrowState(contract);
+        // Kiểm tra lịch sử giao dịch xem hợp đồng này đã
+        // từng có giao dịch chuyển tiền cọc chưa
         validateNoAdvanceTransactions(contractId);
 
         Wallet systemEscrowWallet = walletRepository.findForUpdateByOwnerTypeAndWalletPurpose(
                         WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_ESCROW)
                 .orElseThrow(() -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
+
         Wallet jockeyWallet = walletRepository.findForUpdateByUser_UserIdAndWalletPurpose(
                         contract.getJockey().getUser().getUserId(), WalletPurpose.USER_MAIN)
                 .orElseThrow(() -> new AppException(ErrorCode.WALLET_NOT_FOUND));
@@ -76,16 +81,18 @@ public class ContractActivationServiceImpl implements ContractActivationService 
             throw new AppException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
+        // Chuyển tiền cọc
         releaseAdvance(contract, hiringInvoice, systemEscrowWallet, jockeyWallet, advanceAmount);
 
         LocalDateTime now = LocalDateTime.now();
         contract.setStatus(ContractStatus.APPROVED);
         contract.setPaymentStatus(ContractPaymentStatus.PAID);
         contract.setAdvancePaidAmount(advanceAmount);
-        contract.setEscrowAmount(contract.getHireFee().subtract(advanceAmount));
+        contract.setEscrowAmount(contract.getHireFee().subtract(advanceAmount)); // Số tiền còn giữ hộ
         contract.setEscrowStatus(EscrowStatus.PARTIALLY_RELEASED);
         contract.setAdvancePayoutStatus(AdvancePayoutStatus.PAID);
         contract.setAdvancePayoutAt(now);
+
         contract.setSubmittedAt(null);
         contract.setReviewedBy(null);
         contract.setReviewedAt(null);
@@ -123,6 +130,7 @@ public class ContractActivationServiceImpl implements ContractActivationService 
         }
     }
 
+    // Tính tiền cọc
     private BigDecimal calculateAdvanceAmount(JockeyHorseContract contract) {
         BigDecimal percent = BigDecimal.valueOf(contract.getAdvancePercent());
         return contract.getHireFee()
@@ -130,15 +138,18 @@ public class ContractActivationServiceImpl implements ContractActivationService 
                 .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
+    // Chuyển tiền cọc
     private void releaseAdvance(JockeyHorseContract contract, Invoice hiringInvoice,
                                 Wallet systemEscrowWallet, Wallet jockeyWallet, BigDecimal amount) {
         BigDecimal systemBalanceBefore = systemEscrowWallet.getBalance();
         BigDecimal systemBalanceAfter = systemBalanceBefore.subtract(amount);
+
         BigDecimal jockeyBalanceBefore = jockeyWallet.getBalance();
         BigDecimal jockeyBalanceAfter = jockeyBalanceBefore.add(amount);
 
         systemEscrowWallet.setBalance(systemBalanceAfter);
         jockeyWallet.setBalance(jockeyBalanceAfter);
+
         walletRepository.save(systemEscrowWallet);
         walletRepository.save(jockeyWallet);
 

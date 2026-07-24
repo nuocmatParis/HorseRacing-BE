@@ -196,48 +196,41 @@ public class AppealServiceImpl implements AppealService {
     @Transactional(readOnly = true)
     public List<AppealResponse> getMyAppeals() {
         User currentUser = userCurrentService.getCurrentUser();
-        return appealRepository.findBySubmittedBy_UserId(currentUser.getUserId())
-                .stream()
-                .map(appealMapper::toAppealResponse)
-                .toList();
+        List<Appeal> appeals =
+                appealRepository.findBySubmittedBy_UserId(currentUser.getUserId());
+        return toResponses(appeals);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AppealResponse> getAllAppeals() {
-        return appealRepository.findAll()
-                .stream()
-                .map(appealMapper::toAppealResponse)
-                .toList();
+        Referee referee = getCurrentActiveReferee();
+        List<Appeal> appeals =
+                appealRepository.findAccessibleByRefereeId(referee.getRefereeId());
+        return toResponses(appeals);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AppealResponse getAppealDetail(UUID appealId) {
-        return appealMapper.toAppealResponse(
-                appealRepository.findById(appealId)
-                        .orElseThrow(() -> new AppException(ErrorCode.APPEAL_NOT_FOUND)));
+        Referee referee = getCurrentActiveReferee();
+        Appeal appeal = appealRepository.findById(appealId)
+                .orElseThrow(() -> new AppException(ErrorCode.APPEAL_NOT_FOUND));
+        validateRefereeCanReadAppeal(referee, appeal);
+        return appealMapper.toAppealResponse(appeal);
     }
 
     @Override
     @Transactional
     public AppealResponse review(UUID appealId, ReviewAppealRequest request) {
-        User currentUser = userCurrentService.getCurrentUser();
-
-        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
-                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
-
-        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
-            throw new AppException(ErrorCode.ACCESS_DENIED);
-        }
-
-        Appeal appeal = appealRepository.findById(appealId)
+        Referee referee = getCurrentActiveReferee();
+        Appeal appeal = appealRepository.findForUpdateByAppealId(appealId)
                 .orElseThrow(() -> new AppException(ErrorCode.APPEAL_NOT_FOUND));
 
         RaceEntry entry = appeal.getEntry();
         Race race = entry.getRace();
-        Round round = race.getRound();
-        if (round.getHeadReferee() == null || !round.getHeadReferee().getRefereeId().equals(referee.getRefereeId())) {
+        if (!raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), referee.getRefereeId())) {
             throw new AppException(ErrorCode.ACCESS_DENIED);
         }
 
@@ -257,5 +250,37 @@ public class AppealServiceImpl implements AppealService {
         Appeal savedAppeal = appealRepository.save(appeal);
         notificationEventService.appealReviewed(savedAppeal);
         return appealMapper.toAppealResponse(savedAppeal);
+    }
+
+    private Referee getCurrentActiveReferee() {
+        User currentUser = userCurrentService.getCurrentUser();
+        Referee referee = refereeRepository.findByUser_UserId(currentUser.getUserId())
+                .orElseThrow(() -> new AppException(ErrorCode.REFEREE_PROFILE_NOT_FOUND));
+        if (referee.getStatus() == RefereeStatus.SUSPENDED) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+        return referee;
+    }
+
+    private void validateRefereeCanReadAppeal(Referee referee, Appeal appeal) {
+        Race race = appeal.getEntry().getRace();
+        boolean directRaceReferee =
+                raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                        race.getRaceId(), referee.getRefereeId());
+        Round round = race.getRound();
+        boolean headReferee = round != null
+                && round.getHeadReferee() != null
+                && round.getHeadReferee().getRefereeId().equals(referee.getRefereeId());
+        if (!directRaceReferee && !headReferee) {
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+        }
+    }
+
+    private List<AppealResponse> toResponses(List<Appeal> appeals) {
+        List<AppealResponse> responses = new java.util.ArrayList<>();
+        for (Appeal appeal : appeals) {
+            responses.add(appealMapper.toAppealResponse(appeal));
+        }
+        return responses;
     }
 }

@@ -23,6 +23,7 @@ public interface RaceRepository extends JpaRepository<Race, UUID> {
     java.util.Optional<Race> findForUpdateByRaceId(@Param("raceId") UUID raceId);
 
     List<Race> findByRound_RoundId(UUID roundId);
+    long countByRound_RoundId(UUID roundId);
     List<Race> findByRound_RoundIdOrderBySequenceOrderAsc(UUID roundId);
     List<Race> findByRound_RoundIdOrderByStartTimeDesc(UUID roundId);
     boolean existsByRound_RoundIdAndName(UUID roundId, String name);

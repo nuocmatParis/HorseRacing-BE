@@ -156,9 +156,16 @@ class RaceReportApprovalWorkflowTest {
                 .thenReturn(new ArrayList<>());
         when(raceResultRepository.findForUpdateByRace_RaceId(fixture.race.getRaceId()))
                 .thenReturn(new ArrayList<>());
+        JockeyHorseContract finalPayoutContract = fixture.entry.getContract();
+        finalPayoutContract.setContractId(UUID.randomUUID());
+        finalPayoutContract.setStatus(ContractStatus.APPROVED);
+        finalPayoutContract.setEscrowStatus(EscrowStatus.PARTIALLY_RELEASED);
+        finalPayoutContract.setFinalPayoutStatus(FinalPayoutStatus.NOT_RELEASED);
         when(jockeyHorseContractRepository.findByTournament_TournamentIdAndStatusAndEscrowStatus(
                 fixture.tournament.getTournamentId(), ContractStatus.APPROVED, EscrowStatus.PARTIALLY_RELEASED))
-                .thenReturn(new ArrayList<>());
+                .thenReturn(List.of(finalPayoutContract));
+        when(jockeyHorseContractRepository.findForUpdateByContractId(
+                finalPayoutContract.getContractId())).thenReturn(Optional.of(finalPayoutContract));
         when(roundRepository.findForUpdateByRoundId(fixture.round.getRoundId()))
                 .thenReturn(Optional.of(fixture.round));
         when(raceRepository.findByRound_RoundIdOrderBySequenceOrderAsc(fixture.round.getRoundId()))
@@ -170,6 +177,8 @@ class RaceReportApprovalWorkflowTest {
 
         verify(scoringService, times(1)).scoreRace(fixture.race.getRaceId());
         verify(horseRatingService, times(1)).applyManualRatingsForPublish(fixture.race.getRaceId());
+        verify(contractService, times(1)).releaseFinalPayoutAfterFinalRacePublished(
+                finalPayoutContract.getContractId(), fixture.race.getRaceId());
         assertEquals(ReportStatus.PUBLISHED, fixture.report.getStatus());
     }
 

@@ -1,9 +1,11 @@
 package com.swp391.horseracing.controller;
 
 import com.swp391.horseracing.dto.common.ApiResponse;
+import com.swp391.horseracing.dto.contract.request.ContractCancelRequest;
 import com.swp391.horseracing.dto.contract.request.ContractRejectRequest;
 import com.swp391.horseracing.dto.contract.response.ContractResponse;
 import com.swp391.horseracing.service.ContractService;
+import jakarta.validation.Valid;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -51,9 +53,18 @@ public class JockeyContractController {
     }
 
     @PostMapping("/{id}/reject")
-    public ApiResponse<ContractResponse> rejectContract(@PathVariable UUID id, @RequestBody ContractRejectRequest request){
+    public ApiResponse<ContractResponse> rejectContract(@PathVariable UUID id,
+                                                         @Valid @RequestBody ContractRejectRequest request){
         return ApiResponse.<ContractResponse>builder()
                 .result(contractService.rejectContractByJockey(id, request.getReason()))
+                .build();
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ApiResponse<ContractResponse> cancelContract(@PathVariable UUID id,
+                                                         @Valid @RequestBody ContractCancelRequest request) {
+        return ApiResponse.<ContractResponse>builder()
+                .result(contractService.cancelByJockey(id, request.getReason()))
                 .build();
     }
 
