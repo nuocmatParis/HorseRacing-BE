@@ -76,7 +76,7 @@ public class TournamentServiceImpl implements TournamentService {
     @Transactional
     public TournamentResponse createTournament(CreateTournamentRequest request) {
         LocalDate today = LocalDate.now();
-        if (!today.equals(request.getStartDate())) {
+        if (request.getStartDate().isBefore(today)) {
             throw new AppException(ErrorCode.TOURNAMENT_START_DATE_MUST_BE_TODAY);
         }
         if (request.getEndDate().isBefore(request.getStartDate())) {
