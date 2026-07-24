@@ -59,7 +59,6 @@ public class CreateTournamentRequest {
     @Positive(message = "Total prize pool must be positive")
     BigDecimal totalPrizePool;
 
-    @NotNull(message = "Allowed breed is required")
     HorseBreed allowedBreed;
 
     @NotNull(message = "Race class is required")

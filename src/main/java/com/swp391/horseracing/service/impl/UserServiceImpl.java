@@ -6,6 +6,7 @@ import com.swp391.horseracing.dto.user.request.UserCreationRequest;
 import com.swp391.horseracing.dto.user.response.UserResponse;
 import com.swp391.horseracing.entity.EmailVerification;
 import com.swp391.horseracing.entity.Role;
+import com.swp391.horseracing.entity.Spectator;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AccountStatus;
 import com.swp391.horseracing.enums.RoleName;
@@ -15,6 +16,7 @@ import com.swp391.horseracing.mapper.EmailVerificationMapper;
 import com.swp391.horseracing.mapper.UserMapper;
 import com.swp391.horseracing.repository.EmailVerificationRepository;
 import com.swp391.horseracing.repository.RoleRepository;
+import com.swp391.horseracing.repository.SpectatorRepository;
 import com.swp391.horseracing.repository.UserRepository;
 import com.swp391.horseracing.service.CloudinaryService;
 import com.swp391.horseracing.service.EmailService;
@@ -50,6 +52,7 @@ public class UserServiceImpl implements UserService {
     EmailVerificationRepository emailVerificationRepository;
     EmailVerificationMapper emailVerificationMapper;
     CloudinaryService cloudinaryService;
+    SpectatorRepository spectatorRepository;
 
     static Set<RoleName> SELF_REGISTER_ALLOWED_ROLES = Set.of(
             RoleName.SPECTATOR,
@@ -119,6 +122,13 @@ public class UserServiceImpl implements UserService {
 
         if (roleName == RoleName.HORSE_OWNER || roleName == RoleName.JOCKEY) {
             walletService.createUserWallet(savedUser);
+        }
+        if (roleName == RoleName.SPECTATOR) {
+            Spectator spectator = Spectator.builder()
+                    .user(savedUser)
+                    .totalPoints(0)
+                    .build();
+            spectatorRepository.save(spectator);
         }
 
         emailVerificationRepository.delete(emailVerification);

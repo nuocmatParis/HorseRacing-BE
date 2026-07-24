@@ -20,6 +20,7 @@ public class TournamentEligibilityResponse {
     EligibilityCondition conditionName;
     EligibilityOperator conditionOperator;
     String conditionValue;
+    String unit;
     Boolean isActive;
     UUID tournamentId;
 }

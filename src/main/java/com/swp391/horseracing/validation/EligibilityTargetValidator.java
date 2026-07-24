@@ -14,15 +14,12 @@ public class EligibilityTargetValidator implements ConstraintValidator<ValidElig
     private static final Set<EligibilityCondition> HORSE_CONDITIONS = Set.of(
             EligibilityCondition.AGE,
             EligibilityCondition.WEIGHT,
-            EligibilityCondition.BREED,
             EligibilityCondition.WIN_RATE
     );
 
     private static final Set<EligibilityCondition> JOCKEY_CONDITIONS = Set.of(
-            EligibilityCondition.AGE,
             EligibilityCondition.WEIGHT,
-            EligibilityCondition.EXPERIENCE_YEARS,
-            EligibilityCondition.JOCKEY_TIER
+            EligibilityCondition.EXPERIENCE_YEARS
     );
 
     @Override

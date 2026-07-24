@@ -8,6 +8,7 @@ import com.swp391.horseracing.dto.tournament.response.TournamentRatingConfigResp
 import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.entity.*;
 import com.swp391.horseracing.enums.TournamentPhase;
+import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RegistrationStatus;
 import com.swp391.horseracing.enums.InvoiceStatus;
 import com.swp391.horseracing.enums.TournamentStatus;
@@ -128,6 +129,11 @@ public class TournamentServiceImpl implements TournamentService {
         User currentUser = getCurrentUser();
 
         Tournament tournament = tournamentMapper.toTournament(request);
+        // Legacy database compatibility only. Breed is no longer a tournament
+        // participation condition and is not used when validating registration.
+        if (tournament.getAllowedBreed() == null) {
+            tournament.setAllowedBreed(HorseBreed.THOROUGHBRED);
+        }
         applyInitialRatingConfig(tournament, request.getRatingConfig());
         
         if (!tournament.isHandicapEnabled()) {

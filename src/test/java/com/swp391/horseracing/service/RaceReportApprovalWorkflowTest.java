@@ -180,6 +180,9 @@ class RaceReportApprovalWorkflowTest {
         verify(contractService, times(1)).releaseFinalPayoutAfterFinalRacePublished(
                 finalPayoutContract.getContractId(), fixture.race.getRaceId());
         assertEquals(ReportStatus.PUBLISHED, fixture.report.getStatus());
+        assertEquals(RoundStatus.COMPLETED, fixture.round.getStatus());
+        assertEquals(TournamentPhase.RESULT_PENDING, fixture.tournament.getPhase());
+        assertEquals(TournamentStatus.ONGOING, fixture.tournament.getStatus());
     }
 
     private void mockCurrentReferee(Fixture fixture) {

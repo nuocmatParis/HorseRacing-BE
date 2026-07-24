@@ -745,6 +745,11 @@ public class RaceReportServiceImpl implements RaceReportService {
 
         lockedRound.setStatus(RoundStatus.COMPLETED);
         roundRepository.save(lockedRound);
+
+        Tournament tournament = lockedRound.getTournament();
+        tournament.setPhase(TournamentPhase.RESULT_PENDING);
+        tournament.setStatus(TournamentStatus.ONGOING);
+        tournamentRepository.save(tournament);
     }
 
     private RaceEntry buildAdvancedEntry(Race race, JockeyHorseContract contract,
