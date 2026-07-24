@@ -484,7 +484,8 @@ Các bảng dưới đây liệt kê theo route thực tế. URL đều tính t�
 | GET | `/api/admin/jockey-registrations` | Admin | Danh sách đăng ký Jockey; hiện Jockey được approve trực tiếp. |
 | GET | `/api/admin/contracts` | Admin | Lấy contract theo `status`, `page`, `size`. |
 | GET | `/api/admin/contracts/approved/tournaments/{tournamentId}` | Admin | Contract `APPROVED` của Tournament; query `page`, `size`. |
-| POST | `/api/admin/contracts/{id}/release-final-payout` | Admin | Giải phóng phần hiring fee còn giữ trong escrow khi đủ điều kiện. |
+Phần 70% hiring fee còn lại không có API Admin release thủ công. Hệ thống tự động
+giải ngân đúng một lần khi Admin publish report của Final Race duy nhất.
 
 ### 10.3. AdminController — entry, lane và nhân sự
 
@@ -495,8 +496,8 @@ Các bảng dưới đây liệt kê theo route thực tế. URL đều tính t�
 | GET | `/api/admin/referees` | Admin | Danh sách Referee, query tùy chọn `status`. |
 | POST | `/api/admin/races/{raceId}/referees` | Admin | Phân Referee vào Race. |
 | DELETE | `/api/admin/races/{raceId}/referees/{refereeId}` | Admin | Gỡ Referee khỏi Race. |
-| POST | `/api/admin/races/{raceId}/inspection-staff/assign` | Admin | Gán cụ thể Vet và Medical Staff. |
-| POST | `/api/admin/races/{raceId}/inspection-staff/auto-assign` | Admin | Tự chọn staff đang khả dụng và không trùng lịch. |
+| POST | `/api/admin/races/{raceId}/inspection-staff/assign` | Admin | Gán cụ thể Vet và Medical Staff khi Race còn cho phép phân công và chưa có phiếu khám. |
+| POST | `/api/admin/races/{raceId}/inspection-staff/auto-assign` | Admin | Khóa và tự chọn staff đang khả dụng; chống hai Race nhận cùng staff khi gọi đồng thời. |
 | POST | `/api/admin/races/{raceId}/publish-schedule` | Admin | Publish lịch riêng một Race sau khi validate entry/lane/staff. |
 
 ### 10.4. AdminController — cancel và postpone
@@ -638,6 +639,7 @@ Các endpoint profile/directory cần JWT nhưng controller chưa khóa role c�
 | GET | `/api/jockey/contracts/invitations` | Jockey | Các lời mời `PENDING_JOCKEY`. |
 | POST | `/api/jockey/contracts/{id}/accept` | Jockey | Chấp nhận lời mời, tạo bước invoice/hiring payment tiếp theo. |
 | POST | `/api/jockey/contracts/{id}/reject` | Jockey | Từ chối lời mời; body `ContractRejectRequest`. |
+| POST | `/api/jockey/contracts/{id}/cancel` | Jockey | Hủy contract `ACCEPTED` khi Owner chưa thanh toán hiring invoice; body `ContractCancelRequest`. |
 
 ### 14.4. Lịch và kết quả của Jockey
 
@@ -892,9 +894,9 @@ Body tạo prediction mẫu:
 | PUT | `/api/appeals/{appealId}` | Owner/Jockey | Sửa appeal khi còn pending và thuộc user. |
 | DELETE | `/api/appeals/{appealId}` | Owner/Jockey | Hủy appeal. |
 | GET | `/api/appeals/my` | Owner/Jockey | Appeal của user hiện tại. |
-| GET | `/api/referee/appeals` | Referee | Danh sách appeal thuộc phạm vi Referee xử lý. |
-| GET | `/api/referee/appeals/{appealId}` | Referee | Chi tiết appeal và evidence. |
-| POST | `/api/referee/appeals/{appealId}/review` | Referee | Nhận xử lý/chấp nhận/từ chối theo `ReviewAppealRequest`. |
+| GET | `/api/referee/appeals` | Referee | Chỉ trả appeal của Race được phân công trực tiếp hoặc Round mà Referee làm Head Referee. |
+| GET | `/api/referee/appeals/{appealId}` | Referee | Chi tiết appeal nếu Referee thuộc đúng Race/Round. |
+| POST | `/api/referee/appeals/{appealId}/review` | Race Referee | Race Referee trực tiếp chấp nhận/từ chối theo `ReviewAppealRequest`; Head Referee chỉ xem để duyệt report. |
 
 ### 20.3. AppealEvidenceController
 
