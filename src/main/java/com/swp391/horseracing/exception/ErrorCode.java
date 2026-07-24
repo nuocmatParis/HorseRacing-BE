@@ -554,7 +554,7 @@ public enum ErrorCode {
     PRIZE_PAYOUT_ONLY_ALLOWED_FOR_FINAL(2115, HttpStatus.BAD_REQUEST, "Prize payout is only allowed for the final round"),
     PRIZE_PAYOUT_ALREADY_COMPLETED(2116, HttpStatus.CONFLICT, "Prize payout has already been completed for this tournament"),
     RACE_SCHEDULE_INCOMPLETE(2120, HttpStatus.BAD_REQUEST, "All races in the active round must have a valid schedule before publication"),
-    TOURNAMENT_START_DATE_MUST_BE_TODAY(2121, HttpStatus.BAD_REQUEST, "Tournament start date must be the creation date"),
+    TOURNAMENT_START_DATE_MUST_BE_TODAY(2121, HttpStatus.BAD_REQUEST, "Tournament start date cannot be in the past"),
     REGISTRATION_OPEN_TIME_IN_PAST(2122, HttpStatus.BAD_REQUEST, "Registration open time cannot be in the past"),
     REGISTRATION_PERIOD_TOO_SHORT(2123, HttpStatus.BAD_REQUEST, "Registration period is shorter than the minimum required for the selected capacity"),
     REVIEW_PERIOD_TOO_SHORT(2124, HttpStatus.BAD_REQUEST, "Registration review period must be at least 4 calendar days"),
