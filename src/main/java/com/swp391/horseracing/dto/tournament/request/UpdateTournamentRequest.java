@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.tournament.request;
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.RaceDistance;
+import com.swp391.horseracing.enums.TrackCondition;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
@@ -51,6 +52,8 @@ public class UpdateTournamentRequest {
 
     RaceDistance distance;
 
+    TrackCondition trackCondition;
+
     @Size(max = 50, message = "Weight class must not exceed 50 characters")
     String weightClass;
 
@@ -91,9 +94,6 @@ public class UpdateTournamentRequest {
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore;
 
-    @Min(value = 1, message = "Prediction card open hours must be at least 1")
-    Integer predictionCardOpenHoursBeforeFirstRace;
-
     @Min(value = 0, message = "Inspection open minutes must be at least 0")
     Integer inspectionOpenMinutesBefore;
 
@@ -104,9 +104,6 @@ public class UpdateTournamentRequest {
     @Max(value = 30, message = "Min race interval minutes must be at most 30")
     Integer minRaceIntervalMinutes;
 
-    @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
-    Integer startEarlyToleranceMinutes;
-
     @Min(value = 0, message = "Start late tolerance minutes must be at least 0")
     Integer startLateToleranceMinutes;
 
@@ -116,12 +113,6 @@ public class UpdateTournamentRequest {
     LocalTime raceDayStartTime;
 
     LocalTime raceDayEndTime;
-
-    Boolean applyBreakTime;
-
-    LocalTime breakStartTime;
-
-    LocalTime breakEndTime;
 
     LocalDateTime registrationOpenAt;
 
@@ -139,6 +130,10 @@ public class UpdateTournamentRequest {
     @Min(value = 1, message = "Qualifiers per race must be at least 1")
     @Max(value = 16, message = "Qualifiers per race must be at most 16")
     Integer qualifiersPerRace;
+
+    @Min(value = 1, message = "Max entries per race must be at least 1")
+    @Max(value = 16, message = "Max entries per race must be at most 16")
+    Integer maxEntriesPerRace;
 
     Map<String, Integer> phaseConfigs;
 }

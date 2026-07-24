@@ -124,12 +124,15 @@ public class RaceServiceImpl implements RaceService {
         User currentUser = getCurrentUser();
 
         Race race = raceMapper.toRace(request);
+        if (race.getTrackCondition() == null || race.getTrackCondition().isBlank()) {
+            race.setTrackCondition(tournament.getTrackCondition() != null ? tournament.getTrackCondition().name() : "TURF");
+        }
         race.setStatus(RoundStatus.SCHEDULING);
         race.setEndTime(endTime);
         race.setRound(round);
         race.setCreatedBy(currentUser);
 
-        race.setPredictionOpenAt(request.getStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
+        race.setPredictionOpenAt(request.getStartTime().minusMinutes(tournament.getPredictionOpenMinutesBefore()));
         race.setPredictionCloseAt(request.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
         Race savedRace = raceRepository.save(race);
@@ -198,7 +201,7 @@ public class RaceServiceImpl implements RaceService {
             reorderRaces(round.getRoundId(), race.getRaceId(), newSequence);
         }
 
-        race.setPredictionOpenAt(race.getStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
+        race.setPredictionOpenAt(race.getStartTime().minusMinutes(tournament.getPredictionOpenMinutesBefore()));
         race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
         Race saved = raceRepository.save(race);
@@ -266,14 +269,7 @@ public class RaceServiceImpl implements RaceService {
         race.setSchedulePublishedAt(LocalDateTime.now());
 
         Tournament tournament = race.getRound().getTournament();
-        List<Race> tournamentRaces = raceRepository.findByRound_Tournament_TournamentId(tournament.getTournamentId());
-        LocalDateTime firstRaceStartTime = tournamentRaces.stream()
-                .map(Race::getStartTime)
-                .min(LocalDateTime::compareTo)
-                .orElse(race.getStartTime());
-
-        LocalDateTime commonPredictionOpenAt = firstRaceStartTime.minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace());
-        race.setPredictionOpenAt(commonPredictionOpenAt);
+        race.setPredictionOpenAt(race.getStartTime().minusMinutes(tournament.getPredictionOpenMinutesBefore()));
         race.setPredictionCloseAt(race.getStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 
         Race savedRace = raceRepository.save(race);
@@ -366,12 +362,8 @@ public class RaceServiceImpl implements RaceService {
 
         LocalDateTime now = LocalDateTime.now();
         Tournament tournament = race.getRound().getTournament();
-        LocalDateTime earliestStart = race.getStartTime().minusMinutes(tournament.getStartEarlyToleranceMinutes());
         LocalDateTime latestStart = race.getStartTime().plusMinutes(tournament.getStartLateToleranceMinutes());
 
-        if (now.isBefore(earliestStart)) {
-            throw new AppException(ErrorCode.RACE_START_TOO_EARLY);
-        }
         if (now.isAfter(latestStart)) {
             throw new AppException(ErrorCode.RACE_START_WINDOW_EXPIRED);
         }
@@ -450,8 +442,6 @@ public class RaceServiceImpl implements RaceService {
 
         LocalDateTime now = LocalDateTime.now();
         Tournament tournament = race.getRound().getTournament();
-        LocalDateTime earliestStart = race.getStartTime() == null ? null
-                : race.getStartTime().minusMinutes(tournament.getStartEarlyToleranceMinutes());
         LocalDateTime latestStart = race.getStartTime() == null ? null
                 : race.getStartTime().plusMinutes(tournament.getStartLateToleranceMinutes());
 
@@ -459,12 +449,9 @@ public class RaceServiceImpl implements RaceService {
         if (race.getStatus() != RoundStatus.SCHEDULED) {
             raceBlockingReasons.add("Cuộc đua không ở trạng thái đã lên lịch.");
         }
-        if (earliestStart == null || latestStart == null) {
+        if (latestStart == null) {
             raceBlockingReasons.add("Cuộc đua chưa có thời gian bắt đầu hợp lệ.");
         } else {
-            if (now.isBefore(earliestStart)) {
-                raceBlockingReasons.add("Chưa đến khung giờ được phép bắt đầu cuộc đua.");
-            }
             if (now.isAfter(latestStart)) {
                 raceBlockingReasons.add("Đã quá khung giờ được phép bắt đầu cuộc đua.");
             }
@@ -545,7 +532,7 @@ public class RaceServiceImpl implements RaceService {
                 .canStart(raceBlockingReasons.isEmpty())
                 .inspectionFinalizedAt(race.getInspectionFinalizedAt())
                 .startWindow(RaceStartWindowResponse.builder()
-                        .earliestStart(earliestStart)
+                        .earliestStart(race.getStartTime())
                         .latestStart(latestStart)
                         .serverNow(now)
                         .build())
@@ -627,19 +614,7 @@ public class RaceServiceImpl implements RaceService {
             throw new AppException(ErrorCode.RACE_OUTSIDE_OPERATING_HOURS);
         }
         
-        // 3. Break Time
-        if (Boolean.TRUE.equals(tournament.getApplyBreakTime())) {
-            LocalTime breakStart = tournament.getBreakStartTime();
-            LocalTime breakEnd = tournament.getBreakEndTime();
-            if (breakStart != null && breakEnd != null) {
-                if (!(endLocalTime.isBefore(breakStart) || endLocalTime.equals(breakStart) 
-                        || startLocalTime.isAfter(breakEnd) || startLocalTime.equals(breakEnd))) {
-                    throw new AppException(ErrorCode.RACE_OVERLAPS_BREAK);
-                }
-            }
-        }
-        
-        // 4. Overlap & Minimum Interval
+        // 3. Overlap & Minimum Interval
         List<Race> tournamentRaces = raceRepository.findByRound_Tournament_TournamentId(tournament.getTournamentId());
         long minInterval = tournament.getMinRaceIntervalMinutes();
         
@@ -761,7 +736,7 @@ public class RaceServiceImpl implements RaceService {
         // Recalculate prediction open / close
         LocalDateTime now = LocalDateTime.now();
         if (race.getPredictionOpenAt() == null || race.getPredictionOpenAt().isAfter(now)) {
-            race.setPredictionOpenAt(request.getNewStartTime().minusHours(tournament.getPredictionCardOpenHoursBeforeFirstRace()));
+            race.setPredictionOpenAt(request.getNewStartTime().minusMinutes(tournament.getPredictionOpenMinutesBefore()));
         }
         race.setPredictionCloseAt(request.getNewStartTime().minusMinutes(tournament.getPredictionCloseMinutesBefore()));
 

@@ -58,13 +58,8 @@ public class BracketServiceImpl implements BracketService {
         BracketStructure bracket = BracketCalculator.calculate(
                 actualEntries, maxEntriesPerRace, qualifiersPerRace);
 
-        int preRaceBufferDays = phaseTimingConfigRepository
-                .findByPhaseNameAndCapacity("PRE_RACE_BUFFER", actualEntries)
-                .map(PhaseTimingConfig::getDurationDays)
-                .orElse(0);
-
         List<RoundPlan> scheduledRounds = RaceScheduleCalculator.scheduleRounds(
-                bracket.getRounds(), tournament, preRaceBufferDays);
+                bracket.getRounds(), tournament);
 
         bracket.setRounds(scheduledRounds);
 
@@ -99,13 +94,8 @@ public class BracketServiceImpl implements BracketService {
         BracketStructure bracket = BracketCalculator.calculate(
                 actualEntries, maxEntriesPerRace, qualifiersPerRace);
 
-        int preRaceBufferDays = phaseTimingConfigRepository
-                .findByPhaseNameAndCapacity("PRE_RACE_BUFFER", actualEntries)
-                .map(PhaseTimingConfig::getDurationDays)
-                .orElse(0);
-
         List<RoundPlan> scheduledRounds = RaceScheduleCalculator.scheduleRounds(
-                bracket.getRounds(), tournament, preRaceBufferDays);
+                bracket.getRounds(), tournament);
 
         deleteExistingRounds(tournamentId);
         User currentUser = getCurrentUser();
@@ -126,7 +116,7 @@ public class BracketServiceImpl implements BracketService {
                             + " - " + roundPlan.getRaceCount() + " race")
                     .maxRaces(roundPlan.getRaceCount())
                     .maxEntries(maxEntriesPerRace)
-                    .minEntries(tournament.getMinEntriesPerRace())
+                    .minEntries(Math.max(2, roundPlan.getQualifiersPerRace()))
                     .qualifiersPerRace(roundPlan.getQualifiersPerRace())
                     .status(RoundStatus.SCHEDULING)
                     .transitionStatus(RoundTransitionStatus.NOT_READY)
@@ -143,7 +133,7 @@ public class BracketServiceImpl implements BracketService {
                         .name(roundPlan.getRoundName() + " - Race " + seq)
                         .startTime(racePlan.getStartTime())
                         .endTime(racePlan.getEndTime())
-                        .trackCondition("Tốt")
+                        .trackCondition(tournament.getTrackCondition() != null ? tournament.getTrackCondition().name() : "TURF")
                         .distance(tournament.getDistance())
                         .sequenceOrder(seq)
                         .status(RoundStatus.SCHEDULING)

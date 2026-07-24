@@ -107,7 +107,7 @@ public class RoundServiceImpl implements RoundService {
             round.setMaxEntries(tournament.getMaxEntriesPerRace());
         }
         if (round.getMinEntries() == 0) {
-            round.setMinEntries(tournament.getMinEntriesPerRace());
+            round.setMinEntries(Math.max(2, round.getQualifiersPerRace() > 0 ? round.getQualifiersPerRace() : 2));
         }
         if (round.getMinEntries() > round.getMaxEntries()) {
             throw new AppException(ErrorCode.INVALID_REQUEST);

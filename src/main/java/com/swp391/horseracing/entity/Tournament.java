@@ -3,6 +3,7 @@ package com.swp391.horseracing.entity;
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.RaceDistance;
+import com.swp391.horseracing.enums.TrackCondition;
 import com.swp391.horseracing.enums.TournamentPhase;
 import com.swp391.horseracing.enums.TournamentStatus;
 import jakarta.persistence.*;
@@ -155,10 +156,6 @@ public class Tournament {
     int predictionCloseMinutesBefore = 5;
 
     @Builder.Default
-    @Column(name = "prediction_card_open_hours_before_first_race", nullable = false)
-    int predictionCardOpenHoursBeforeFirstRace = 24;
-
-    @Builder.Default
     @Column(name = "inspection_open_minutes_before", nullable = false)
     int inspectionOpenMinutesBefore = 60;
 
@@ -169,10 +166,6 @@ public class Tournament {
     @Builder.Default
     @Column(name = "min_race_interval_minutes", nullable = false)
     int minRaceIntervalMinutes = 30;
-
-    @Builder.Default
-    @Column(name = "start_early_tolerance_minutes", nullable = false)
-    int startEarlyToleranceMinutes = 0;
 
     @Builder.Default
     @Column(name = "start_late_tolerance_minutes", nullable = false)
@@ -189,16 +182,6 @@ public class Tournament {
     @Builder.Default
     @Column(name = "race_day_end_time", nullable = false)
     LocalTime raceDayEndTime = LocalTime.of(18, 0);
-
-    @Builder.Default
-    @Column(name = "apply_break_time", nullable = false)
-    Boolean applyBreakTime = false;
-
-    @Column(name = "break_start_time")
-    LocalTime breakStartTime;
-
-    @Column(name = "break_end_time")
-    LocalTime breakEndTime;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -245,6 +228,11 @@ public class Tournament {
     RaceDistance distance;
 
     @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "track_condition", length = 50)
+    TrackCondition trackCondition = TrackCondition.TURF;
+
+    @Builder.Default
     @Column(name = "top_weight_lbs")
     int topWeightLbs = 135;
 
@@ -276,10 +264,6 @@ public class Tournament {
     @Builder.Default
     @Column(name = "max_entries_per_race", nullable = false)
     int maxEntriesPerRace = 16;
-
-    @Builder.Default
-    @Column(name = "min_entries_per_race", nullable = false)
-    int minEntriesPerRace = 8;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
