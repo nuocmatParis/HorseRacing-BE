@@ -9,10 +9,12 @@ import com.swp391.horseracing.dto.tournament.response.TournamentResponse;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.HorseTournamentRegistration;
 import com.swp391.horseracing.entity.Invoice;
+import com.swp391.horseracing.entity.Jockey;
 import com.swp391.horseracing.entity.JockeyHorseContract;
 import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.RaceEntry;
+import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.Tournament;
 import com.swp391.horseracing.entity.TournamentEligibility;
 import com.swp391.horseracing.entity.User;
@@ -43,6 +45,7 @@ import com.swp391.horseracing.repository.JockeyTournamentRegistrationRepository;
 import com.swp391.horseracing.repository.PrizeStructureRepository;
 import com.swp391.horseracing.repository.RaceEntryRepository;
 import com.swp391.horseracing.repository.RaceRefereeRepository;
+import com.swp391.horseracing.repository.RaceReportRepository;
 import com.swp391.horseracing.repository.RaceRepository;
 import com.swp391.horseracing.repository.RoundRepository;
 import com.swp391.horseracing.repository.TournamentEligibilityRepository;
@@ -109,6 +112,7 @@ class AdditionalApiBusinessLogicTest {
     @Mock TournamentEligibilityRepository eligibilityRepository;
     @Mock RoundRepository roundRepository;
     @Mock RaceRepository raceRepository;
+    @Mock RaceReportRepository raceReportRepository;
     @Mock RaceRefereeRepository raceRefereeRepository;
     @Mock RaceService raceService;
     @Mock PhaseTimingConfigRepository phaseTimingConfigRepository;
@@ -172,6 +176,138 @@ class AdditionalApiBusinessLogicTest {
         assertEquals(ContractPaymentStatus.PARTIALLY_REFUNDED, contract.getPaymentStatus());
         assertEquals(BigDecimal.ZERO, contract.getEscrowAmount());
         assertEquals(FinalPayoutStatus.CANCELLED, contract.getFinalPayoutStatus());
+    }
+
+    @Test
+    void jockeyCannotRejectContractAfterAcceptingIt() {
+        UUID contractId = UUID.randomUUID();
+        UUID jockeyUserId = UUID.randomUUID();
+        User jockeyUser = User.builder().userId(jockeyUserId).build();
+        Jockey jockey = Jockey.builder().user(jockeyUser).build();
+        JockeyHorseContract contract = JockeyHorseContract.builder()
+                .contractId(contractId)
+                .jockey(jockey)
+                .status(ContractStatus.ACCEPTED)
+                .build();
+
+        when(userCurrentService.getCurrentUser()).thenReturn(jockeyUser);
+        when(contractRepository.findForUpdateByContractId(contractId))
+                .thenReturn(Optional.of(contract));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> contractService.rejectContractByJockey(contractId, "Changed my mind"));
+
+        assertEquals(ErrorCode.INVALID_CONTRACT_STATUS, exception.getErrorCode());
+        assertEquals(ContractStatus.ACCEPTED, contract.getStatus());
+        verify(contractRepository, never()).save(contract);
+    }
+
+    @Test
+    void finalPayoutIsBlockedBeforeFinalRaceReportIsPublished() {
+        UUID contractId = UUID.randomUUID();
+        UUID raceId = UUID.randomUUID();
+        Tournament tournament = Tournament.builder().tournamentId(UUID.randomUUID()).build();
+        Round finalRound = Round.builder()
+                .roundId(UUID.randomUUID())
+                .tournament(tournament)
+                .isFinal(true)
+                .status(RoundStatus.FINISHED)
+                .build();
+        Race finalRace = Race.builder()
+                .raceId(raceId)
+                .round(finalRound)
+                .status(RoundStatus.FINISHED)
+                .build();
+        JockeyHorseContract contract = JockeyHorseContract.builder()
+                .contractId(contractId)
+                .tournament(tournament)
+                .status(ContractStatus.APPROVED)
+                .escrowStatus(EscrowStatus.PARTIALLY_RELEASED)
+                .finalPayoutStatus(FinalPayoutStatus.NOT_RELEASED)
+                .build();
+
+        when(contractRepository.findForUpdateByContractId(contractId))
+                .thenReturn(Optional.of(contract));
+        when(raceRepository.findById(raceId)).thenReturn(Optional.of(finalRace));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> contractService.releaseFinalPayoutAfterFinalRacePublished(
+                        contractId, raceId));
+
+        assertEquals(ErrorCode.FINAL_PAYOUT_NOT_AVAILABLE, exception.getErrorCode());
+        verify(walletRepository, never()).save(any());
+        verify(walletTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void jockeyCanCancelAcceptedContractBeforeOwnerPays() {
+        UUID contractId = UUID.randomUUID();
+        UUID invoiceId = UUID.randomUUID();
+        UUID jockeyUserId = UUID.randomUUID();
+        User jockeyUser = User.builder().userId(jockeyUserId).build();
+        Jockey jockey = Jockey.builder().user(jockeyUser).build();
+        Invoice invoice = Invoice.builder()
+                .invoiceId(invoiceId)
+                .status(InvoiceStatus.UNPAID)
+                .invoiceType(InvoiceType.JOCKEY_HIRING_FEE)
+                .build();
+        JockeyHorseContract contract = JockeyHorseContract.builder()
+                .contractId(contractId)
+                .jockey(jockey)
+                .status(ContractStatus.ACCEPTED)
+                .paymentStatus(ContractPaymentStatus.UNPAID)
+                .escrowStatus(EscrowStatus.NOT_HELD)
+                .advancePayoutStatus(AdvancePayoutStatus.NOT_PAID)
+                .finalPayoutStatus(FinalPayoutStatus.NOT_RELEASED)
+                .build();
+
+        when(userCurrentService.getCurrentUser()).thenReturn(jockeyUser);
+        when(invoiceRepository.findForUpdateByContractIdAndInvoiceType(
+                contractId, InvoiceType.JOCKEY_HIRING_FEE)).thenReturn(Optional.of(invoice));
+        when(contractRepository.findForUpdateByContractId(contractId))
+                .thenReturn(Optional.of(contract));
+        when(contractRepository.save(contract)).thenReturn(contract);
+        when(contractMapper.toContractResponse(contract)).thenReturn(new ContractResponse());
+
+        contractService.cancelByJockey(contractId, "Cannot participate");
+
+        verify(invoiceService).cancelInvoice(invoiceId);
+        assertEquals(ContractStatus.CANCELLED, contract.getStatus());
+        assertEquals(AdvancePayoutStatus.CANCELLED, contract.getAdvancePayoutStatus());
+        assertEquals(FinalPayoutStatus.CANCELLED, contract.getFinalPayoutStatus());
+    }
+
+    @Test
+    void jockeyCannotCancelContractAfterOwnerPays() {
+        UUID contractId = UUID.randomUUID();
+        UUID jockeyUserId = UUID.randomUUID();
+        User jockeyUser = User.builder().userId(jockeyUserId).build();
+        Jockey jockey = Jockey.builder().user(jockeyUser).build();
+        Invoice paidInvoice = Invoice.builder()
+                .invoiceId(UUID.randomUUID())
+                .status(InvoiceStatus.PAID)
+                .invoiceType(InvoiceType.JOCKEY_HIRING_FEE)
+                .build();
+        JockeyHorseContract contract = JockeyHorseContract.builder()
+                .contractId(contractId)
+                .jockey(jockey)
+                .status(ContractStatus.HIRING_PAID)
+                .paymentStatus(ContractPaymentStatus.PAID)
+                .escrowStatus(EscrowStatus.HELD)
+                .build();
+
+        when(userCurrentService.getCurrentUser()).thenReturn(jockeyUser);
+        when(invoiceRepository.findForUpdateByContractIdAndInvoiceType(
+                contractId, InvoiceType.JOCKEY_HIRING_FEE)).thenReturn(Optional.of(paidInvoice));
+        when(contractRepository.findForUpdateByContractId(contractId))
+                .thenReturn(Optional.of(contract));
+
+        AppException exception = assertThrows(AppException.class,
+                () -> contractService.cancelByJockey(contractId, "Too late"));
+
+        assertEquals(ErrorCode.CONTRACT_CANCELLATION_NOT_ALLOWED, exception.getErrorCode());
+        assertEquals(ContractStatus.HIRING_PAID, contract.getStatus());
+        verify(invoiceService, never()).cancelInvoice(paidInvoice.getInvoiceId());
     }
 
     @Test

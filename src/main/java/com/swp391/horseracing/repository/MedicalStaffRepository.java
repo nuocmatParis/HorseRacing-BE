@@ -37,4 +37,13 @@ public interface MedicalStaffRepository extends JpaRepository<MedicalStaff, UUID
             ORDER BY COUNT(a) ASC, m.yearsOfService DESC
             """)
     List<MedicalStaff> findBestAvailable(@Param("status") MedicalStaffStatus status, Pageable pageable);
+
+    @Query("""
+            SELECT m.medStaffId FROM MedicalStaff m
+            LEFT JOIN RaceInspectionAssignment a ON a.medicalStaff = m
+            WHERE m.status = :status
+            GROUP BY m.medStaffId, m.yearsOfService
+            ORDER BY COUNT(a) ASC, m.yearsOfService DESC, m.medStaffId ASC
+            """)
+    List<UUID> findBestAvailableIds(@Param("status") MedicalStaffStatus status, Pageable pageable);
 }

@@ -66,6 +66,7 @@ public class HorseRatingServiceImpl implements HorseRatingService {
             throw new AppException(ErrorCode.HORSE_RATING_CHANGE_REQUIRED);
         }
 
+        //  Lấy ra khung điểm cho phép
         RatingRange allowedRange = determineAllowedRange(race, status, rank);
         if (ratingChange < allowedRange.minimum || ratingChange > allowedRange.maximum) {
             throw new AppException(ErrorCode.HORSE_RATING_CHANGE_OUT_OF_RANGE);
@@ -325,13 +326,10 @@ public class HorseRatingServiceImpl implements HorseRatingService {
                 .build();
     }
 
-    private RatingRange determineAllowedRange(
-            Race race, RaceResultStatus status, Integer rank) {
+    private RatingRange determineAllowedRange(Race race, RaceResultStatus status, Integer rank) {
         Tournament tournament = requireRatingTournament(race);
         if (status == RaceResultStatus.DISQUALIFIED) {
-            return new RatingRange(
-                    tournament.getRatingDisqualifiedMin(),
-                    tournament.getRatingDisqualifiedMax());
+            return new RatingRange(tournament.getRatingDisqualifiedMin(), tournament.getRatingDisqualifiedMax());
         }
         if (status != RaceResultStatus.FINISHED || rank == null || rank < 1) {
             throw new AppException(ErrorCode.INVALID_RACE_RESULT_STATUS);

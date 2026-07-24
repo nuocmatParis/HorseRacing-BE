@@ -385,6 +385,7 @@ public enum ErrorCode {
 
     CONTRACT_CANCELLATION_NOT_ALLOWED(1610, HttpStatus.CONFLICT, "Contract cannot be cancelled in its current state"),
     CONTRACT_HAS_ACTIVE_RACE(1611, HttpStatus.CONFLICT, "Contract is attached to a race that can no longer be changed"),
+    FINAL_PAYOUT_NOT_AVAILABLE(1612, HttpStatus.CONFLICT, "Final payout is only available after the final race report is published"),
 
     //Inspection
     MEDICAL_STAFF_NOT_FOUND(1701, HttpStatus.NOT_FOUND, "Medical staff not found"),
@@ -434,6 +435,7 @@ public enum ErrorCode {
     HORSE_INSPECTION_FINDINGS_REQUIRE_FAILURE(1723, HttpStatus.BAD_REQUEST, "Horse inspection must fail when doping is detected or actual breed does not match"),
 
     JOCKEY_INSPECTION_FINDINGS_REQUIRE_FAILURE(1724, HttpStatus.BAD_REQUEST, "Jockey inspection must fail when doping is detected"),
+    INSPECTION_STAFF_ASSIGNMENT_NOT_ALLOWED(1725, HttpStatus.CONFLICT, "Inspection staff can no longer be assigned or replaced for this race"),
 
     // RACE RESULT
     RACE_RESULT_NOT_FOUND(2601, HttpStatus.NOT_FOUND, "Race result not found"),
@@ -496,6 +498,8 @@ public enum ErrorCode {
     RACE_START_WINDOW_EXPIRED(1811, HttpStatus.BAD_REQUEST, "Race start window has expired (startLateToleranceMinutes elapsed)"),
     APPEAL_SUBMISSION_CLOSED(1812, HttpStatus.BAD_REQUEST, "Appeal submission is closed for this race"),
     INVALID_FINAL_ROUND_CONFIGURATION(1813, HttpStatus.BAD_REQUEST, "Final round must have exactly one race"),
+    JOCKEY_INSPECTION_FAILED(1814, HttpStatus.BAD_REQUEST, "Jockey has failed inspection, horse inspection cannot be performed"),
+    HORSE_INSPECTION_FAILED(1815, HttpStatus.BAD_REQUEST, "Horse has failed inspection, jockey inspection cannot be performed"),
 
     // PREDICTION
     PREDICTION_NOT_FOUND(1660, HttpStatus.NOT_FOUND, "Prediction not found"),

@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdminContractEndpointTest {
     @Test
-    void adminContractApiIsReadOnlyExceptForFinalPayout() {
+    void adminContractApiDoesNotExposeManualContractMutation() {
         Set<String> getPaths = new HashSet<>();
         Set<String> postPaths = new HashSet<>();
 
@@ -37,6 +37,6 @@ class AdminContractEndpointTest {
         assertFalse(getPaths.contains("/contracts/pending"));
         assertFalse(postPaths.contains("/contracts/{id}/approve"));
         assertFalse(postPaths.contains("/contracts/{id}/reject"));
-        assertTrue(postPaths.contains("/contracts/{id}/release-final-payout"));
+        assertFalse(postPaths.contains("/contracts/{id}/release-final-payout"));
     }
 }

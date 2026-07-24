@@ -43,6 +43,8 @@ public class ContractServiceImpl implements ContractService {
     WalletTransactionRepository walletTransactionRepository;
     TournamentRepository tournamentRepository;
     RaceEntryRepository raceEntryRepository;
+    RaceRepository raceRepository;
+    RaceReportRepository raceReportRepository;
     BusinessNotificationEventService notificationEventService;
 
     @Override
@@ -156,6 +158,7 @@ public class ContractServiceImpl implements ContractService {
         return contractMapper.toContractResponse(savedContract);
     }
 
+    // Hủy các contract còn lại
     private void cancelOtherInvite(JockeyHorseContract contract){
         List<JockeyHorseContract> sameHorseContracts = contractRepository.findByHorseTournamentRegistration_HorseRegistrationIdAndStatus(
                 contract.getHorseTournamentRegistration().getHorseRegistrationId(), ContractStatus.PENDING_JOCKEY);
@@ -197,6 +200,9 @@ public class ContractServiceImpl implements ContractService {
         if(!contract.getJockey().getUser().getUserId().equals(currentUser.getUserId()))
             throw new AppException(ErrorCode.UNAUTHENTICATED);
 
+        if (contract.getStatus() != ContractStatus.PENDING_JOCKEY)
+            throw new AppException(ErrorCode.INVALID_CONTRACT_STATUS);
+
         contract.setStatus(ContractStatus.REJECTED);
         contract.setRespondedAt(LocalDateTime.now());
 
@@ -204,6 +210,42 @@ public class ContractServiceImpl implements ContractService {
 
         JockeyHorseContract savedContract = contractRepository.save(contract);
         notificationEventService.contractRejected(savedContract, reason);
+        return contractMapper.toContractResponse(savedContract);
+    }
+
+    @Override
+    @Transactional
+    public ContractResponse cancelByJockey(UUID contractId, String reason) {
+        User currentUser = userCurrentService.getCurrentUser();
+
+        Invoice hiringInvoice = invoiceRepository.findForUpdateByContractIdAndInvoiceType(
+                        contractId, InvoiceType.JOCKEY_HIRING_FEE)
+                .orElseThrow(() -> new AppException(ErrorCode.INVOICE_NOT_FOUND));
+
+        JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId)
+                .orElseThrow(() -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        if (!contract.getJockey().getUser().getUserId().equals(currentUser.getUserId()))
+            throw new AppException(ErrorCode.ACCESS_DENIED);
+
+        if (contract.getStatus() != ContractStatus.ACCEPTED
+                || contract.getPaymentStatus() != ContractPaymentStatus.UNPAID
+                || contract.getEscrowStatus() != EscrowStatus.NOT_HELD
+                || hiringInvoice.getStatus() != InvoiceStatus.UNPAID) {
+            throw new AppException(ErrorCode.CONTRACT_CANCELLATION_NOT_ALLOWED);
+        }
+
+        invoiceService.cancelInvoice(hiringInvoice.getInvoiceId());
+
+        LocalDateTime now = LocalDateTime.now();
+        contract.setStatus(ContractStatus.CANCELLED);
+        contract.setCancelledAt(now);
+        contract.setCancelReason(reason.trim());
+        contract.setAdvancePayoutStatus(AdvancePayoutStatus.CANCELLED);
+        contract.setFinalPayoutStatus(FinalPayoutStatus.CANCELLED);
+
+        JockeyHorseContract savedContract = contractRepository.save(contract);
+        notificationEventService.contractCancelled(savedContract, reason.trim());
         return contractMapper.toContractResponse(savedContract);
     }
 
@@ -339,11 +381,11 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     @Transactional
-    public ContractResponse releaseFinalPayout(UUID contractId) {
-        User admin = userCurrentService.getCurrentUser();
-
+    public ContractResponse releaseFinalPayoutAfterFinalRacePublished(UUID contractId, UUID finalRaceId) {
         JockeyHorseContract contract = contractRepository.findForUpdateByContractId(contractId).orElseThrow(()
                 -> new AppException(ErrorCode.CONTRACT_NOT_FOUND));
+
+        validateFinalRacePublished(contract, finalRaceId);
 
         if (contract.getStatus() != ContractStatus.APPROVED)
             throw new AppException(ErrorCode.CONTRACT_NOT_APPROVED);
@@ -368,6 +410,30 @@ public class ContractServiceImpl implements ContractService {
         JockeyHorseContract savedContract = contractRepository.save(contract);
         notificationEventService.jockeyPayoutReleased(savedContract);
         return contractMapper.toContractResponse(savedContract);
+    }
+
+    private void validateFinalRacePublished(JockeyHorseContract contract, UUID finalRaceId) {
+        Race finalRace = raceRepository.findById(finalRaceId)
+                .orElseThrow(() -> new AppException(ErrorCode.RACE_NOT_FOUND));
+
+        if (finalRace.getRound() == null
+                || !finalRace.getRound().isFinal()
+                || finalRace.getStatus() != RoundStatus.COMPLETED
+                || finalRace.getRound().getStatus() != RoundStatus.COMPLETED
+                || !finalRace.getRound().getTournament().getTournamentId()
+                .equals(contract.getTournament().getTournamentId())) {
+            throw new AppException(ErrorCode.FINAL_PAYOUT_NOT_AVAILABLE);
+        }
+
+        if (raceRepository.countByRound_RoundId(finalRace.getRound().getRoundId()) != 1) {
+            throw new AppException(ErrorCode.INVALID_FINAL_ROUND_CONFIGURATION);
+        }
+
+        RaceReport finalReport = raceReportRepository.findByRace_RaceId(finalRaceId)
+                .orElseThrow(() -> new AppException(ErrorCode.FINAL_PAYOUT_NOT_AVAILABLE));
+        if (finalReport.getStatus() != ReportStatus.PUBLISHED) {
+            throw new AppException(ErrorCode.FINAL_PAYOUT_NOT_AVAILABLE);
+        }
     }
 
     @Override

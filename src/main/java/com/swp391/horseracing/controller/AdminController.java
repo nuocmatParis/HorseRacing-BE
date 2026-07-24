@@ -308,13 +308,6 @@ public class AdminController {
                 .build();
     }
 
-    @PostMapping("/contracts/{id}/release-final-payout")
-    public ApiResponse<ContractResponse> releaseFinalPayout(@PathVariable UUID id){
-        return ApiResponse.<ContractResponse>builder()
-                .result(contractService.releaseFinalPayout(id))
-                .build();
-    }
-
     @PostMapping("/races/{raceId}/inspection-staff/assign")
     public ApiResponse<InspectionStaffAssignmentResponse> assign(@PathVariable UUID raceId,
                                                                  @Valid @RequestBody AssignInspectionStaffRequest request){

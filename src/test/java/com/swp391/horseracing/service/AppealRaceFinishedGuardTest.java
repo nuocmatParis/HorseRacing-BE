@@ -1,12 +1,19 @@
 package com.swp391.horseracing.service;
 
 import com.swp391.horseracing.dto.appeal.request.CreateAppealRequest;
+import com.swp391.horseracing.dto.appeal.request.ReviewAppealRequest;
+import com.swp391.horseracing.dto.appeal.response.AppealResponse;
+import com.swp391.horseracing.entity.Appeal;
 import com.swp391.horseracing.entity.HorseOwner;
 import com.swp391.horseracing.entity.JockeyHorseContract;
 import com.swp391.horseracing.entity.Race;
 import com.swp391.horseracing.entity.RaceEntry;
+import com.swp391.horseracing.entity.Referee;
+import com.swp391.horseracing.entity.Round;
 import com.swp391.horseracing.entity.User;
 import com.swp391.horseracing.enums.AccountStatus;
+import com.swp391.horseracing.enums.AppealStatus;
+import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.enums.RoundStatus;
 import com.swp391.horseracing.exception.AppException;
 import com.swp391.horseracing.exception.ErrorCode;
@@ -34,6 +41,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AppealRaceFinishedGuardTest {
@@ -78,5 +86,73 @@ class AppealRaceFinishedGuardTest {
         AppException exception = assertThrows(AppException.class, () -> service.create(request));
 
         assertEquals(ErrorCode.RACE_HAS_NOT_FINISHED, exception.getErrorCode());
+    }
+
+    @Test
+    void unrelatedRefereeCannotReadAppealDetail() {
+        UUID userId = UUID.randomUUID();
+        UUID refereeId = UUID.randomUUID();
+        UUID appealId = UUID.randomUUID();
+        User user = User.builder().userId(userId).build();
+        Referee referee = Referee.builder()
+                .refereeId(refereeId)
+                .user(user)
+                .status(RefereeStatus.AVAILABLE)
+                .build();
+        Round round = Round.builder().roundId(UUID.randomUUID()).build();
+        Race race = Race.builder().raceId(UUID.randomUUID()).round(round).build();
+        RaceEntry entry = RaceEntry.builder().entryId(UUID.randomUUID()).race(race).build();
+        Appeal appeal = Appeal.builder().appealId(appealId).entry(entry).build();
+
+        when(userCurrentService.getCurrentUser()).thenReturn(user);
+        when(refereeRepository.findByUser_UserId(userId)).thenReturn(Optional.of(referee));
+        when(appealRepository.findById(appealId)).thenReturn(Optional.of(appeal));
+        when(raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), refereeId)).thenReturn(false);
+
+        AppException exception = assertThrows(AppException.class,
+                () -> service.getAppealDetail(appealId));
+
+        assertEquals(ErrorCode.ACCESS_DENIED, exception.getErrorCode());
+    }
+
+    @Test
+    void directRaceRefereeCanReviewAppeal() {
+        UUID userId = UUID.randomUUID();
+        UUID refereeId = UUID.randomUUID();
+        UUID appealId = UUID.randomUUID();
+        User user = User.builder().userId(userId).build();
+        Referee referee = Referee.builder()
+                .refereeId(refereeId)
+                .user(user)
+                .status(RefereeStatus.AVAILABLE)
+                .build();
+        Race race = Race.builder().raceId(UUID.randomUUID()).build();
+        RaceEntry entry = RaceEntry.builder().entryId(UUID.randomUUID()).race(race).build();
+        Appeal appeal = Appeal.builder()
+                .appealId(appealId)
+                .entry(entry)
+                .status(AppealStatus.Pending)
+                .build();
+        ReviewAppealRequest request = ReviewAppealRequest.builder()
+                .status(AppealStatus.Accepted)
+                .resolution("Accepted after video review")
+                .build();
+        AppealResponse mappedResponse = new AppealResponse();
+
+        when(userCurrentService.getCurrentUser()).thenReturn(user);
+        when(refereeRepository.findByUser_UserId(userId)).thenReturn(Optional.of(referee));
+        when(appealRepository.findForUpdateByAppealId(appealId)).thenReturn(Optional.of(appeal));
+        when(raceRefereeRepository.existsByRace_RaceIdAndReferee_RefereeId(
+                race.getRaceId(), refereeId)).thenReturn(true);
+        when(appealRepository.save(appeal)).thenReturn(appeal);
+        when(appealMapper.toAppealResponse(appeal)).thenReturn(mappedResponse);
+
+        AppealResponse response = service.review(appealId, request);
+
+        assertEquals(mappedResponse, response);
+        assertEquals(AppealStatus.Accepted, appeal.getStatus());
+        assertEquals(referee, appeal.getReviewedBy());
+        verify(notificationEventService).appealReviewed(appeal);
     }
 }

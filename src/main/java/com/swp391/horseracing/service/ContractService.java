@@ -26,11 +26,13 @@ public interface ContractService {
 
     ContractResponse rejectContractByJockey(UUID contractId, String reason);
 
+    ContractResponse cancelByJockey(UUID contractId, String reason);
+
     PaymentResponse payHiringFee(UUID contractId);
 
     PaymentResponse payContractCreationFee(UUID contractId);
 
-    ContractResponse releaseFinalPayout(UUID contractId);
+    ContractResponse releaseFinalPayoutAfterFinalRacePublished(UUID contractId, UUID finalRaceId);
 
     PageResponse<ContractResponse> getContractsByStatus(ContractStatus status, int page, int size);
 

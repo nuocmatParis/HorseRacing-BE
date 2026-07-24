@@ -393,15 +393,17 @@ public class RaceReportServiceImpl implements RaceReportService {
         // 2. Áp dụng điểm Rating thủ công đã được Head Referee xác nhận.
         horseRatingService.applyManualRatingsForPublish(raceId);
 
+        // Chốt Final Round trước khi thực hiện các khoản chi cuối giải.
+        completeFinalRoundIfPossible(race.getRound());
+
         // 3. Chia tiền thưởng (nếu là final round)
         payoutPrizeIfFinal(race);
 
-        // 4. Giải ngân 70% hire fee cho toàn bộ Jockey (nếu là final round)
-        releaseJockeyFinalPayoutIfTournamentFinished(race);
+        // 4. Chỉ giải ngân 70% khi report của đúng Final Race đã được publish.
+        releaseJockeyFinalPayoutAfterFinalRacePublished(race);
 
         notificationEventService.resultPublished(race);
 
-        completeFinalRoundIfPossible(race.getRound());
         advanceRoundIfPossible(race.getRound());
 
         return raceReportMapper.toRaceReportResponse(report);
@@ -548,7 +550,7 @@ public class RaceReportServiceImpl implements RaceReportService {
         }
     }
 
-    private void releaseJockeyFinalPayoutIfTournamentFinished(Race race) {
+    private void releaseJockeyFinalPayoutAfterFinalRacePublished(Race race) {
         if (race.getRound() == null || !race.getRound().isFinal()) {
             return;
         }
@@ -567,7 +569,8 @@ public class RaceReportServiceImpl implements RaceReportService {
 
             // Kiểm tra bảo vệ chống giải ngân trùng lặp (finalPayoutStatus != RELEASED)
             if (contract.getFinalPayoutStatus() != FinalPayoutStatus.RELEASED && contract.getEscrowStatus() == EscrowStatus.PARTIALLY_RELEASED) {
-                contractService.releaseFinalPayout(contract.getContractId());
+                contractService.releaseFinalPayoutAfterFinalRacePublished(
+                        contract.getContractId(), race.getRaceId());
             }
         }
     }

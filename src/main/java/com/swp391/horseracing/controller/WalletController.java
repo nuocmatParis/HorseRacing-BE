@@ -27,12 +27,4 @@ public class WalletController {
                 .build();
     }
 
-    @PostMapping("/deposit")
-    @PreAuthorize("hasRole('HORSE_OWNER')")
-    public ApiResponse<DepositResponse> deposit(
-            @RequestBody @Valid DepositRequest request){
-        return ApiResponse.<DepositResponse>builder()
-                .result(walletService.deposit(request))
-                .build();
-    }
 }

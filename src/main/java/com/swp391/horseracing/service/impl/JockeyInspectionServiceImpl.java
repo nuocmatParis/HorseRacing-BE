@@ -69,6 +69,11 @@ public class JockeyInspectionServiceImpl implements JockeyInspectionService {
         }
 
         if (raceEntry.getStatus() != RaceEntryStatus.CONFIRMED) {
+            if (raceEntry.getStatus() == RaceEntryStatus.SCRATCHED
+                    && raceEntry.getScratchedReason() != null
+                    && raceEntry.getScratchedReason().contains("Failed horse inspection")) {
+                throw new AppException(ErrorCode.HORSE_INSPECTION_FAILED);
+            }
             throw new AppException(ErrorCode.RACE_ENTRY_NOT_ACTIVE);
         }
 
