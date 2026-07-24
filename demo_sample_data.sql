@@ -91,6 +91,9 @@ SET @owner2_id = '12111111-1111-1111-1111-111111111122';
 
 SET @full_tournament_id = '10000000-0000-0000-0000-000000000001';
 SET @bracket_tournament_id = '10000000-0000-0000-0000-000000000002';
+SET @draft_tournament_id = '10000000-0000-0000-0000-000000000004';
+SET @reg_tournament_id = '10000000-0000-0000-0000-000000000005';
+SET @matching_tournament_id = '10000000-0000-0000-0000-000000000006';
 
 SET @full_round_id = '20000000-0000-0000-0000-000000000001';
 SET @bracket_round1_id = '20000000-0000-0000-0000-000000000021';
@@ -372,6 +375,91 @@ CALL SeedTournament(
 
 DROP PROCEDURE SeedTournament;
 
+-- Insert DEMO 4 - Cấu hình DRAFT (Luồng 04)
+INSERT INTO tournaments
+    (tournament_id, name, description, start_date, end_date, finished_at,
+     location, registration_fee, system_contract_fee, total_prize_pool,
+     allowed_breed, min_horse_age, max_horse_age,
+     prediction_top1_correct_points, prediction_top3_exact_position_points,
+     prediction_top3_correct_horse_points, prediction_top3_perfect_bonus_points,
+     prediction_open_minutes_before, prediction_close_minutes_before,
+     prediction_card_open_hours_before_first_race,
+     inspection_open_minutes_before, inspection_close_minutes_before,
+     min_race_interval_minutes, start_early_tolerance_minutes, start_late_tolerance_minutes,
+     default_race_operational_minutes, race_day_start_time, race_day_end_time,
+     apply_break_time, break_start_time, break_end_time, status, phase,
+     created_at, published_at, registration_open_at, registration_close_at,
+     review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at,
+     competition_start_at, current_round_name, race_class, distance,
+     top_weight_lbs, min_weight_lbs, equipment_weight_kg, handicap_enabled,
+     max_approved_horses, max_approved_jockeys, max_approved_entries,
+     planned_round_count, planned_race_count, bracket_plan_status, bracket_plan_version, created_by)
+VALUES
+    (@draft_tournament_id, 'DEMO 4 - Cấu hình DRAFT', 'Giải đấu ở trạng thái DRAFT dành cho Admin cấu hình.',
+     DATE_ADD(CURDATE(), INTERVAL 14 DAY), DATE_ADD(CURDATE(), INTERVAL 30 DAY), NULL,
+     'HRTMS Demo Center', 500000.00, 100000.00, 20000000.00, 'THOROUGHBRED', 3, 8,
+     100, 30, 10, 50, 180, 5, 24, 185, 6, 35, 185, 0, 180, '00:00:00', '23:59:59',
+     0, NULL, NULL, 'DRAFT', 'DRAFT', NOW(), NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+     'Vòng 1', 'CLASS_4', 'MILE_1600M', 0, 0, 0.0, 0, 8, 999999, 8, 1, 1, 'NOT_PLANNED', 1, @admin_user_id);
+
+-- Insert DEMO 5 - Đang mở đăng ký (Luồng 02 & 03)
+INSERT INTO tournaments
+    (tournament_id, name, description, start_date, end_date, finished_at,
+     location, registration_fee, system_contract_fee, total_prize_pool,
+     allowed_breed, min_horse_age, max_horse_age,
+     prediction_top1_correct_points, prediction_top3_exact_position_points,
+     prediction_top3_correct_horse_points, prediction_top3_perfect_bonus_points,
+     prediction_open_minutes_before, prediction_close_minutes_before,
+     prediction_card_open_hours_before_first_race,
+     inspection_open_minutes_before, inspection_close_minutes_before,
+     min_race_interval_minutes, start_early_tolerance_minutes, start_late_tolerance_minutes,
+     default_race_operational_minutes, race_day_start_time, race_day_end_time,
+     apply_break_time, break_start_time, break_end_time, status, phase,
+     created_at, published_at, registration_open_at, registration_close_at,
+     review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at,
+     competition_start_at, current_round_name, race_class, distance,
+     top_weight_lbs, min_weight_lbs, equipment_weight_kg, handicap_enabled,
+     max_approved_horses, max_approved_jockeys, max_approved_entries,
+     planned_round_count, planned_race_count, bracket_plan_status, bracket_plan_version, created_by)
+VALUES
+    (@reg_tournament_id, 'DEMO 5 - Đang mở đăng ký', 'Giải đấu đang nhận đăng ký từ Chủ ngựa và Kỵ sĩ.',
+     DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), NULL,
+     'HRTMS Demo Center', 500000.00, 100000.00, 20000000.00, 'THOROUGHBRED', 3, 8,
+     100, 30, 10, 50, 180, 5, 24, 185, 6, 35, 185, 0, 180, '00:00:00', '23:59:59',
+     0, NULL, NULL, 'OPEN', 'REGISTRATION_OPEN', NOW(), NOW(),
+     DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 14 DAY),
+     DATE_ADD(NOW(), INTERVAL 15 DAY), DATE_ADD(NOW(), INTERVAL 20 DAY), DATE_ADD(NOW(), INTERVAL 22 DAY),
+     DATE_ADD(NOW(), INTERVAL 25 DAY), 'Vòng 1', 'CLASS_4', 'MILE_1600M', 0, 0, 0.0, 0, 8, 999999, 8, 1, 1, 'NOT_PLANNED', 1, @admin_user_id);
+
+-- Insert DEMO 6 - Đang ghép Kỵ sĩ (Luồng 05)
+INSERT INTO tournaments
+    (tournament_id, name, description, start_date, end_date, finished_at,
+     location, registration_fee, system_contract_fee, total_prize_pool,
+     allowed_breed, min_horse_age, max_horse_age,
+     prediction_top1_correct_points, prediction_top3_exact_position_points,
+     prediction_top3_correct_horse_points, prediction_top3_perfect_bonus_points,
+     prediction_open_minutes_before, prediction_close_minutes_before,
+     prediction_card_open_hours_before_first_race,
+     inspection_open_minutes_before, inspection_close_minutes_before,
+     min_race_interval_minutes, start_early_tolerance_minutes, start_late_tolerance_minutes,
+     default_race_operational_minutes, race_day_start_time, race_day_end_time,
+     apply_break_time, break_start_time, break_end_time, status, phase,
+     created_at, published_at, registration_open_at, registration_close_at,
+     review_deadline_at, jockey_matching_deadline_at, scheduling_deadline_at,
+     competition_start_at, current_round_name, race_class, distance,
+     top_weight_lbs, min_weight_lbs, equipment_weight_kg, handicap_enabled,
+     max_approved_horses, max_approved_jockeys, max_approved_entries,
+     planned_round_count, planned_race_count, bracket_plan_status, bracket_plan_version, created_by)
+VALUES
+    (@matching_tournament_id, 'DEMO 6 - Đang ghép Kỵ sĩ', 'Giải đấu ở giai đoạn Chủ ngựa ghép cặp hợp đồng với Kỵ sĩ.',
+     DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 15 DAY), NULL,
+     'HRTMS Demo Center', 500000.00, 100000.00, 20000000.00, 'THOROUGHBRED', 3, 8,
+     100, 30, 10, 50, 180, 5, 24, 185, 6, 35, 185, 0, 180, '00:00:00', '23:59:59',
+     0, NULL, NULL, 'OPEN', 'JOCKEY_MATCHING', NOW(), NOW(),
+     DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY),
+     DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 9 DAY),
+     DATE_ADD(NOW(), INTERVAL 10 DAY), 'Vòng 1', 'CLASS_4', 'MILE_1600M', 0, 0, 0.0, 0, 8, 999999, 8, 1, 1, 'NOT_PLANNED', 1, @admin_user_id);
+
 INSERT INTO prize_structures
     (prize_structure_id, `prize_rank`, percentage, fixed_amount,
      is_active, tournament_id)
@@ -509,6 +597,62 @@ CALL SeedApprovedCompetitors(
 );
 
 DROP PROCEDURE SeedApprovedCompetitors;
+
+-- Ngựa tự do chưa đăng ký cho owner1 (dành cho Luồng 02)
+INSERT INTO horses
+    (horse_id, name, breed, gender, age, weight, color, image_url,
+     health_status, current_rating, race_class, highest_rating,
+     rating_updated_at, total_races, total_wins, total_places,
+     win_rate, last_race_at, created_at, owner_id)
+VALUES
+    (UUID(), 'RegHorse01', 'THOROUGHBRED', 'MALE', 4, 440, 'Bay', NULL, 'HEALTHY', 48, 'CLASS_4', 50, NOW(), 2, 0, 1, 0.0, NULL, @account_created_at, @owner1_id),
+    (UUID(), 'RegHorse02', 'THOROUGHBRED', 'FEMALE', 5, 435, 'Chestnut', NULL, 'HEALTHY', 50, 'CLASS_4', 52, NOW(), 3, 1, 1, 0.33, NULL, @account_created_at, @owner1_id);
+
+-- 4 Ngựa & 4 Jockey đã duyệt đăng ký cho DEMO 6 (Luồng 05 - Contract Matching)
+DROP PROCEDURE IF EXISTS SeedMatchingCompetitors;
+DELIMITER $$
+CREATE PROCEDURE SeedMatchingCompetitors()
+BEGIN
+    DECLARE i INT DEFAULT 1;
+    DECLARE v_horse_id CHAR(36);
+    DECLARE v_jockey_id CHAR(36);
+    WHILE i <= 4 DO
+        SET v_horse_id = UUID();
+        SELECT j.jockey_id INTO v_jockey_id
+        FROM jockeys j
+        JOIN users u ON u.user_id = j.user_id
+        WHERE u.username = CONCAT('jockey', 8 + i);
+
+        INSERT INTO horses
+            (horse_id, name, breed, gender, age, weight, color, image_url,
+             health_status, current_rating, race_class, highest_rating,
+             rating_updated_at, total_races, total_wins, total_places,
+             win_rate, last_race_at, created_at, owner_id)
+        VALUES
+            (v_horse_id, CONCAT('MatchHorse0', i), 'THOROUGHBRED', 'MALE', 4, 445, 'Black', NULL, 'HEALTHY', 48, 'CLASS_4', 50, NOW(), 4, 1, 2, 0.25, NULL, @account_created_at, @owner1_id);
+
+        INSERT INTO horse_tournament_registrations
+            (horse_tournament_reg_id, tournament_id, horse_id, owner_id,
+             status, submitted_at, reviewed_by, reviewed_at,
+             rating_at_registration, race_class_at_registration, note)
+        VALUES
+            (UUID(), @matching_tournament_id, v_horse_id, @owner1_id,
+             'APPROVED', DATE_SUB(NOW(), INTERVAL 5 DAY), @admin_user_id,
+             DATE_SUB(NOW(), INTERVAL 2 DAY), 48, 'CLASS_4', 'Duyệt đăng ký ghép cặp');
+
+        INSERT INTO jockey_tournament_registrations
+            (jockey_tournament_reg_id, tournament_id, jockey_id, status,
+             submitted_at, reviewed_by, reviewed_at, hire_fee, note)
+        VALUES
+            (UUID(), @matching_tournament_id, v_jockey_id, 'APPROVED',
+             DATE_SUB(NOW(), INTERVAL 5 DAY), NULL, NULL, 2000000.00, 'Kỵ sĩ sẵn sàng ghép cặp');
+        SET i = i + 1;
+    END WHILE;
+END$$
+DELIMITER ;
+
+CALL SeedMatchingCompetitors();
+DROP PROCEDURE SeedMatchingCompetitors;
 
 -- --------------------------------------------------------------------------
 -- 5. ROUND, RACE, ENTRY VÀ PHÂN CÔNG NHÂN SỰ
@@ -1128,9 +1272,9 @@ BEGIN
     END IF;
 
     SELECT COUNT(*) INTO v_count FROM prize_structures;
-    IF v_count <> 6 THEN
+    IF v_count < 6 THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Seed invalid: hai Tournament phải có tổng 6 prize structure.';
+            SET MESSAGE_TEXT = 'Seed invalid: các Tournament phải có ít nhất 6 prize structure.';
     END IF;
 
     SELECT COUNT(*) INTO v_count

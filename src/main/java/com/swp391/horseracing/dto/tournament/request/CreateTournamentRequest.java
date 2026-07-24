@@ -3,6 +3,7 @@ package com.swp391.horseracing.dto.tournament.request;
 import com.swp391.horseracing.enums.HorseBreed;
 import com.swp391.horseracing.enums.RaceClass;
 import com.swp391.horseracing.enums.RaceDistance;
+import com.swp391.horseracing.enums.TrackCondition;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -67,6 +68,8 @@ public class CreateTournamentRequest {
     @NotNull(message = "Distance is required")
     RaceDistance distance;
 
+    TrackCondition trackCondition = TrackCondition.TURF;
+
     @NotNull(message = "Min horse age is required")
     @Min(value = 0, message = "Min horse age must be at least 0")
     Integer minHorseAge;
@@ -112,9 +115,6 @@ public class CreateTournamentRequest {
     @Min(value = 0, message = "Prediction close minutes must be at least 0")
     Integer predictionCloseMinutesBefore = 5;
 
-    @Min(value = 1, message = "Prediction card open hours must be at least 1")
-    Integer predictionCardOpenHoursBeforeFirstRace = 24;
-
     @Min(value = 30, message = "Inspection open minutes must be between 30 and 90")
     @Max(value = 90, message = "Inspection open minutes must be between 30 and 90")
     Integer inspectionOpenMinutesBefore = 60;
@@ -126,9 +126,6 @@ public class CreateTournamentRequest {
     @Max(value = 30, message = "Min race interval minutes must be at most 30")
     Integer minRaceIntervalMinutes = 30;
 
-    @Min(value = 0, message = "Start early tolerance minutes must be at least 0")
-    Integer startEarlyToleranceMinutes = 0;
-
     @Min(value = 30, message = "Start late tolerance minutes must be at least 0")
     Integer startLateToleranceMinutes = 30;
 
@@ -138,12 +135,6 @@ public class CreateTournamentRequest {
     LocalTime raceDayStartTime = LocalTime.of(8, 0);
 
     LocalTime raceDayEndTime = LocalTime.of(18, 0);
-
-    Boolean applyBreakTime = false;
-
-    LocalTime breakStartTime;
-
-    LocalTime breakEndTime;
 
     @NotNull(message = "Registration open time is required")
     LocalDateTime registrationOpenAt;
@@ -164,6 +155,10 @@ public class CreateTournamentRequest {
     @Min(value = 1, message = "Qualifiers per race must be at least 1")
     @Max(value = 16, message = "Qualifiers per race must be at most 16")
     Integer qualifiersPerRace = 4;
+
+    @Min(value = 1, message = "Max entries per race must be at least 1")
+    @Max(value = 16, message = "Max entries per race must be at most 16")
+    Integer maxEntriesPerRace = 16;
 
     Map<String, Integer> phaseConfigs;
 }

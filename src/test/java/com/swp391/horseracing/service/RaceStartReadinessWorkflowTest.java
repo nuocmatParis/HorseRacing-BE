@@ -200,7 +200,6 @@ class RaceStartReadinessWorkflowTest {
         referee.setRefereeId(UUID.randomUUID());
         referee.setUser(user);
         Tournament tournament = new Tournament();
-        tournament.setStartEarlyToleranceMinutes(30);
         tournament.setStartLateToleranceMinutes(30);
         Round round = new Round();
         round.setRoundId(UUID.randomUUID());

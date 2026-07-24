@@ -28,7 +28,7 @@ public class Race {
     @JdbcTypeCode(SqlTypes.CHAR)
     UUID raceId;
 
-    @Column(name = "name", nullable = false, length = 150, unique = true)
+    @Column(name = "name", nullable = false, length = 150)
     String name;
 
     @Column(name = "start_time")

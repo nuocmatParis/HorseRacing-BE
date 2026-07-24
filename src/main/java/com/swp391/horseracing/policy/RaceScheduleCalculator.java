@@ -16,8 +16,7 @@ public final class RaceScheduleCalculator {
     }
 
     public static List<RoundPlan> scheduleRounds(List<RoundPlan> roundPlans,
-                                                  Tournament tournament,
-                                                  int preRaceBufferDays) {
+                                                  Tournament tournament) {
         List<RoundPlan> result = new ArrayList<>();
         LocalDateTime currentStart = tournament.getCompetitionStartAt();
 
@@ -29,10 +28,7 @@ public final class RaceScheduleCalculator {
                     tournament.getRaceDayStartTime(),
                     tournament.getRaceDayEndTime(),
                     tournament.getMinRaceIntervalMinutes(),
-                    tournament.getDefaultRaceOperationalMinutes(),
-                    tournament.getApplyBreakTime(),
-                    tournament.getBreakStartTime(),
-                    tournament.getBreakEndTime()
+                    tournament.getDefaultRaceOperationalMinutes()
             );
 
             LocalDateTime roundEnd = races.isEmpty()
@@ -52,12 +48,17 @@ public final class RaceScheduleCalculator {
                     .build());
 
             if (i < roundPlans.size() - 1) {
-                currentStart = calculateNextRoundStart(
-                        roundEnd, preRaceBufferDays, tournament.getRaceDayStartTime());
+                currentStart = calculateNextRoundStart(roundEnd, tournament.getRaceDayStartTime());
             }
         }
 
         return result;
+    }
+
+    public static List<RoundPlan> scheduleRounds(List<RoundPlan> roundPlans,
+                                                  Tournament tournament,
+                                                  int preRaceBufferDays) {
+        return scheduleRounds(roundPlans, tournament);
     }
 
     static List<RacePlan> generateRaceSlots(int raceCount,
@@ -65,13 +66,9 @@ public final class RaceScheduleCalculator {
                                              LocalTime dayStartTime,
                                              LocalTime dayEndTime,
                                              int minIntervalMinutes,
-                                             int operationalMinutes,
-                                             boolean applyBreak,
-                                             LocalTime breakStart,
-                                             LocalTime breakEnd) {
+                                             int operationalMinutes) {
         List<RacePlan> races = new ArrayList<>();
         LocalDateTime cursor = startFrom;
-        int racesToday = 0;
         LocalDate currentDate = cursor.toLocalDate();
 
         for (int seq = 1; seq <= raceCount; seq++) {
@@ -79,14 +76,6 @@ public final class RaceScheduleCalculator {
 
             if (!cursor.toLocalDate().equals(currentDate)) {
                 currentDate = cursor.toLocalDate();
-                racesToday = 0;
-            }
-
-            if (applyBreak && breakStart != null && breakEnd != null) {
-                LocalTime cursorTime = cursor.toLocalTime();
-                if (!cursorTime.isBefore(breakStart) && cursorTime.isBefore(breakEnd)) {
-                    cursor = cursor.toLocalDate().atTime(breakEnd);
-                }
             }
 
             LocalDateTime endTime = cursor.plusMinutes(operationalMinutes);
@@ -94,7 +83,6 @@ public final class RaceScheduleCalculator {
             if (endTime.toLocalTime().isAfter(dayEndTime)) {
                 cursor = currentDate.plusDays(1).atTime(dayStartTime);
                 currentDate = cursor.toLocalDate();
-                racesToday = 0;
                 endTime = cursor.plusMinutes(operationalMinutes);
             }
 
@@ -106,7 +94,6 @@ public final class RaceScheduleCalculator {
                     .build());
 
             cursor = endTime.plusMinutes(minIntervalMinutes);
-            racesToday++;
         }
 
         return races;
@@ -126,13 +113,7 @@ public final class RaceScheduleCalculator {
     }
 
     static LocalDateTime calculateNextRoundStart(LocalDateTime lastRaceEndTime,
-                                                  int preRaceBufferDays,
                                                   LocalTime raceDayStartTime) {
-        if (preRaceBufferDays <= 0) {
-            return lastRaceEndTime;
-        }
-        return lastRaceEndTime.toLocalDate()
-                .plusDays(preRaceBufferDays)
-                .atTime(raceDayStartTime);
+        return lastRaceEndTime;
     }
 }

@@ -15,6 +15,9 @@ import com.swp391.horseracing.dto.registration.response.*;
 import com.swp391.horseracing.dto.tournament.request.*;
 import com.swp391.horseracing.dto.tournament.response.*;
 import com.swp391.horseracing.dto.bracket.BracketPreviewResponse;
+import com.swp391.horseracing.dto.phasetiming.request.PhaseTimingConfigBatchRequest;
+import com.swp391.horseracing.dto.phasetiming.request.PhaseTimingConfigRequest;
+import com.swp391.horseracing.dto.phasetiming.response.PhaseTimingConfigResponse;
 import com.swp391.horseracing.enums.RefereeStatus;
 import com.swp391.horseracing.enums.ContractStatus;
 import com.swp391.horseracing.service.*;
@@ -48,6 +51,7 @@ public class AdminController {
     RefereeService refereeService;
     RaceInspectionStaffService raceInspectionStaffService;
     BracketService bracketService;
+    PhaseTimingConfigService phaseTimingConfigService;
 
     @PostMapping("/tournaments")
     public ApiResponse<TournamentResponse> createTournament(@RequestBody @Valid CreateTournamentRequest request) {
@@ -381,4 +385,48 @@ public class AdminController {
                 .build();
     }
 
+    @GetMapping("/phase-timing-configs")
+    public ApiResponse<List<PhaseTimingConfigResponse>> getAllPhaseTimingConfigs() {
+        return ApiResponse.<List<PhaseTimingConfigResponse>>builder()
+                .result(phaseTimingConfigService.getAllConfigs())
+                .build();
+    }
+
+    @GetMapping("/phase-timing-configs/{id}")
+    public ApiResponse<PhaseTimingConfigResponse> getPhaseTimingConfigById(@PathVariable Long id) {
+        return ApiResponse.<PhaseTimingConfigResponse>builder()
+                .result(phaseTimingConfigService.getConfigById(id))
+                .build();
+    }
+
+    @PostMapping("/phase-timing-configs")
+    public ApiResponse<PhaseTimingConfigResponse> createPhaseTimingConfig(
+            @RequestBody @Valid PhaseTimingConfigRequest request) {
+        return ApiResponse.<PhaseTimingConfigResponse>builder()
+                .result(phaseTimingConfigService.createConfig(request))
+                .build();
+    }
+
+    @PutMapping("/phase-timing-configs/{id}")
+    public ApiResponse<PhaseTimingConfigResponse> updatePhaseTimingConfig(
+            @PathVariable Long id,
+            @RequestBody @Valid PhaseTimingConfigRequest request) {
+        return ApiResponse.<PhaseTimingConfigResponse>builder()
+                .result(phaseTimingConfigService.updateConfig(id, request))
+                .build();
+    }
+
+    @DeleteMapping("/phase-timing-configs/{id}")
+    public ApiResponse<Void> deletePhaseTimingConfig(@PathVariable Long id) {
+        phaseTimingConfigService.deleteConfig(id);
+        return ApiResponse.<Void>builder().build();
+    }
+
+    @PutMapping("/phase-timing-configs/batch")
+    public ApiResponse<List<PhaseTimingConfigResponse>> batchSavePhaseTimingConfigs(
+            @RequestBody @Valid PhaseTimingConfigBatchRequest batchRequest) {
+        return ApiResponse.<List<PhaseTimingConfigResponse>>builder()
+                .result(phaseTimingConfigService.batchSaveConfigs(batchRequest))
+                .build();
+    }
 }

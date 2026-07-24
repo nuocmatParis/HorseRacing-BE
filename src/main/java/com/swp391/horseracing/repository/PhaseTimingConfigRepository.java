@@ -14,4 +14,6 @@ public interface PhaseTimingConfigRepository extends JpaRepository<PhaseTimingCo
     java.util.Optional<PhaseTimingConfig> findByPhaseNameAndCapacity(
             @Param("phaseName") String phaseName,
             @Param("capacity") int capacity);
+
+    java.util.List<PhaseTimingConfig> findAllByOrderByPhaseNameAscMinCapacityAsc();
 }
