@@ -31,6 +31,13 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ContractServiceImpl implements ContractService {
 
+    private static final List<ContractStatus> RESERVED_CONTRACT_STATUSES = List.of(
+            ContractStatus.ACCEPTED,
+            ContractStatus.HIRING_PAID,
+            ContractStatus.PENDING_ADMIN_REVIEW,
+            ContractStatus.APPROVED
+    );
+
     JockeyHorseContractRepository contractRepository;
     HorseTournamentRegistrationRepository horseTournamentRegistrationRepository;
     JockeyTournamentRegistrationRepository jockeyTournamentRegistrationRepository;
@@ -53,11 +60,11 @@ public class ContractServiceImpl implements ContractService {
         HorseOwner currentOwner = userCurrentService.getCurrentOwner();
 
         HorseTournamentRegistration horseTournamentRegistration = horseTournamentRegistrationRepository
-                .findById(request.getTournamentRegistrationId()).orElseThrow(()
+                .findForUpdateById(request.getTournamentRegistrationId()).orElseThrow(()
                         -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
 
         JockeyTournamentRegistration jockeyTournamentRegistration = jockeyTournamentRegistrationRepository
-                .findById(request.getJockeyTournamentRegistrationId()).orElseThrow(()
+                .findForUpdateById(request.getJockeyTournamentRegistrationId()).orElseThrow(()
                         -> new AppException(ErrorCode.TOURNAMENT_REGISTRATION_NOT_FOUND));
 
         validateInvite(currentOwner, horseTournamentRegistration, jockeyTournamentRegistration, request);
@@ -141,6 +148,12 @@ public class ContractServiceImpl implements ContractService {
 
         if(jockeyTournamentRegistration.getStatus() != RegistrationStatus.APPROVED)
             throw new AppException(ErrorCode.INVALID_REGISTRATION_STATUS);
+
+        validateContractAvailability(
+                horseTournamentRegistration.getHorseRegistrationId(),
+                jockeyTournamentRegistration.getJockeyTournamentRegId(),
+                contract.getContractId()
+        );
 
         LocalDateTime now = LocalDateTime.now();
         contract.setStatus(ContractStatus.ACCEPTED);
@@ -307,6 +320,43 @@ public class ContractServiceImpl implements ContractService {
 
         if(contractExists)
             throw new AppException(ErrorCode.CONTRACT_ALREADY_EXISTS);
+
+        validateContractAvailability(
+                horseTournamentRegistration.getHorseRegistrationId(),
+                jockeyTournamentRegistration.getJockeyTournamentRegId(),
+                null
+        );
+    }
+
+    private void validateContractAvailability(UUID horseRegistrationId,
+                                              UUID jockeyRegistrationId,
+                                              UUID excludedContractId) {
+        boolean jockeyReserved;
+        boolean horseReserved;
+
+        if (excludedContractId == null) {
+            jockeyReserved = contractRepository
+                    .existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndStatusIn(
+                            jockeyRegistrationId, RESERVED_CONTRACT_STATUSES);
+            horseReserved = contractRepository
+                    .existsByHorseTournamentRegistration_HorseRegistrationIdAndStatusIn(
+                            horseRegistrationId, RESERVED_CONTRACT_STATUSES);
+        } else {
+            jockeyReserved = contractRepository
+                    .existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndContractIdNotAndStatusIn(
+                            jockeyRegistrationId, excludedContractId, RESERVED_CONTRACT_STATUSES);
+            horseReserved = contractRepository
+                    .existsByHorseTournamentRegistration_HorseRegistrationIdAndContractIdNotAndStatusIn(
+                            horseRegistrationId, excludedContractId, RESERVED_CONTRACT_STATUSES);
+        }
+
+        if (jockeyReserved) {
+            throw new AppException(ErrorCode.JOCKEY_ALREADY_CONTRACTED_IN_TOURNAMENT);
+        }
+
+        if (horseReserved) {
+            throw new AppException(ErrorCode.CONTRACT_ALREADY_EXISTS_FOR_HORSE);
+        }
     }
 
     private void validatePrizeShare(InviteRequest request){
