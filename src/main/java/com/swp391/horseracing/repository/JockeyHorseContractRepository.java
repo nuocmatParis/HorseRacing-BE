@@ -36,6 +36,28 @@ public interface JockeyHorseContractRepository extends JpaRepository<JockeyHorse
             Collection<ContractStatus> statuses
     );
 
+    boolean existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndStatusIn(
+            UUID jockeyTournamentRegId,
+            Collection<ContractStatus> statuses
+    );
+
+    boolean existsByHorseTournamentRegistration_HorseRegistrationIdAndStatusIn(
+            UUID horseTournamentRegId,
+            Collection<ContractStatus> statuses
+    );
+
+    boolean existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndContractIdNotAndStatusIn(
+            UUID jockeyTournamentRegId,
+            UUID excludedContractId,
+            Collection<ContractStatus> statuses
+    );
+
+    boolean existsByHorseTournamentRegistration_HorseRegistrationIdAndContractIdNotAndStatusIn(
+            UUID horseTournamentRegId,
+            UUID excludedContractId,
+            Collection<ContractStatus> statuses
+    );
+
     List<JockeyHorseContract> findByOwner_User_UserIdOrderByRequestedAtDesc(UUID userId);
 
     List<JockeyHorseContract> findByJockey_User_UserIdOrderByRequestedAtDesc(UUID userId);

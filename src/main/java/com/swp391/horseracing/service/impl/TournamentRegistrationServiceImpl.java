@@ -380,11 +380,27 @@ public class TournamentRegistrationServiceImpl implements TournamentRegistration
 
     @Override
     public List<JockeyTournamentRegistrationResponse> getApprovedJockeysByTournament(UUID tournamentId) {
-        return jockeyRegistrationRepository
-                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED)
-                .stream()
-                .map(jockeyRegistrationMapper::toJockeyTournamentRegistrationResponse)
-                .collect(Collectors.toList());
+        List<ContractStatus> reservedStatuses = Arrays.asList(
+                ContractStatus.ACCEPTED,
+                ContractStatus.HIRING_PAID,
+                ContractStatus.PENDING_ADMIN_REVIEW,
+                ContractStatus.APPROVED
+        );
+        List<JockeyTournamentRegistration> registrations = jockeyRegistrationRepository
+                .findByTournament_TournamentIdAndStatus(tournamentId, RegistrationStatus.APPROVED);
+        List<JockeyTournamentRegistrationResponse> availableJockeys = new java.util.ArrayList<>();
+
+        for (JockeyTournamentRegistration registration : registrations) {
+            boolean alreadyContracted = contractRepository
+                    .existsByJockeyTournamentRegistration_JockeyTournamentRegIdAndStatusIn(
+                            registration.getJockeyTournamentRegId(), reservedStatuses);
+            if (!alreadyContracted) {
+                availableJockeys.add(
+                        jockeyRegistrationMapper.toJockeyTournamentRegistrationResponse(registration));
+            }
+        }
+
+        return availableJockeys;
     }
 
     @Override

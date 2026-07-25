@@ -386,6 +386,8 @@ public enum ErrorCode {
     CONTRACT_CANCELLATION_NOT_ALLOWED(1610, HttpStatus.CONFLICT, "Contract cannot be cancelled in its current state"),
     CONTRACT_HAS_ACTIVE_RACE(1611, HttpStatus.CONFLICT, "Contract is attached to a race that can no longer be changed"),
     FINAL_PAYOUT_NOT_AVAILABLE(1612, HttpStatus.CONFLICT, "Final payout is only available after the final race report is published"),
+    JOCKEY_ALREADY_CONTRACTED_IN_TOURNAMENT(1613, HttpStatus.CONFLICT,
+            "Jockey already has an accepted or active contract in this tournament"),
 
     //Inspection
     MEDICAL_STAFF_NOT_FOUND(1701, HttpStatus.NOT_FOUND, "Medical staff not found"),
