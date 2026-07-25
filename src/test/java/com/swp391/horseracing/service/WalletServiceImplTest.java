@@ -44,13 +44,13 @@ class WalletServiceImplTest {
         Wallet escrow = systemWallet(WalletPurpose.SYSTEM_ESCROW);
         Wallet prize = systemWallet(WalletPurpose.SYSTEM_PRIZE_POOL);
 
-        when(walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+        when(walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
                 WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_REVENUE))
                 .thenReturn(Optional.of(revenue));
-        when(walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+        when(walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
                 WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_ESCROW))
                 .thenReturn(Optional.of(escrow));
-        when(walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+        when(walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
                 WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_PRIZE_POOL))
                 .thenReturn(Optional.empty());
         when(walletRepository.save(any(Wallet.class))).thenReturn(prize);
