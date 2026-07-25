@@ -81,7 +81,7 @@ public class VnpayPaymentServiceImpl implements VnpayPaymentService {
         validatePrizePoolRequest(request);
 
         User currentAdmin = userCurrentService.getCurrentUser();
-        Wallet prizePoolWallet = walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+        Wallet prizePoolWallet = walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
                         WalletOwnerType.SYSTEM,
                         WalletPurpose.SYSTEM_PRIZE_POOL)
                 .orElseGet(() -> walletRepository.save(Wallet.builder()

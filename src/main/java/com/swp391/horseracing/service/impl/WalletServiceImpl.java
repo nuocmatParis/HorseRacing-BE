@@ -71,7 +71,7 @@ public class WalletServiceImpl implements WalletService {
 
 
     private Wallet createSystemWalletIfNotExists(WalletPurpose walletPurpose) {
-        return walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM, walletPurpose)
+        return walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM, walletPurpose)
                 .orElseGet(() -> walletRepository.save(Wallet.builder()
                         .ownerType(WalletOwnerType.SYSTEM)
                         .walletPurpose(walletPurpose)

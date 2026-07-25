@@ -28,7 +28,7 @@ public class SystemWalletInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) {
         for (WalletPurpose purpose : REQUIRED_SYSTEM_WALLETS) {
-            walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM, purpose)
+            walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM, purpose)
                     .orElseGet(() -> walletRepository.save(Wallet.builder()
                             .ownerType(WalletOwnerType.SYSTEM)
                             .walletPurpose(purpose)

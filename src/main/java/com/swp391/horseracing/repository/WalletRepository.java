@@ -20,7 +20,7 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
 
     Optional<Wallet> findByUser_UserIdAndWalletPurpose(UUID userId, WalletPurpose walletPurpose);
 
-    Optional<Wallet> findByOwnerTypeAndUserIsNullAndWalletPurpose(
+    Optional<Wallet> findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
             WalletOwnerType walletOwnerType, WalletPurpose walletPurpose);
 
     boolean existsByOwnerTypeAndUserIsNullAndWalletPurpose(
@@ -48,4 +48,3 @@ public interface WalletRepository extends JpaRepository<Wallet, UUID> {
     Optional<Wallet> findSystemWalletForUpdate(@Param("ownerType") WalletOwnerType ownerType,
                                                @Param("walletPurpose") WalletPurpose walletPurpose);
 }
-

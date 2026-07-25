@@ -47,7 +47,7 @@ class VnpayPrizePoolTopUpTest {
         Wallet prizePool = prizePool("0");
 
         when(userCurrentService.getCurrentUser()).thenReturn(admin);
-        when(walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(
+        when(walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(
                 WalletOwnerType.SYSTEM, WalletPurpose.SYSTEM_PRIZE_POOL))
                 .thenReturn(Optional.empty());
         when(walletRepository.save(any(Wallet.class))).thenReturn(prizePool);

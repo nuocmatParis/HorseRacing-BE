@@ -82,7 +82,7 @@ public class TransactionServiceImpl implements TransactionService {
             throw new AppException(ErrorCode.INVALID_SYSTEM_WALLET_PURPOSE);
         }
 
-        Wallet wallet = walletRepository.findByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM,
+        Wallet wallet = walletRepository.findFirstByOwnerTypeAndUserIsNullAndWalletPurpose(WalletOwnerType.SYSTEM,
                 walletPurpose).orElseThrow(() -> new AppException(ErrorCode.SYSTEM_WALLET_NOT_FOUND));
 
         List<Transaction> list = transactionRepository.findByWallet_WalletIdOrderByCreatedAtDesc(wallet.getWalletId());
