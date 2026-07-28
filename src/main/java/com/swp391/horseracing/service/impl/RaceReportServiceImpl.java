@@ -370,9 +370,6 @@ public class RaceReportServiceImpl implements RaceReportService {
             throw new AppException(ErrorCode.RACE_REPORT_NOT_SIGNED);
         }
 
-        // Owners and jockeys may still submit an appeal after the Head Referee
-        // signs and before Admin publishes the official report. Re-check here
-        // so a late pending appeal cannot be silently bypassed.
         if (appealRepository.existsByEntry_Race_RaceIdAndStatus(raceId, AppealStatus.Pending)) {
             throw new AppException(ErrorCode.RACE_REPORT_PENDING_APPEAL);
         }

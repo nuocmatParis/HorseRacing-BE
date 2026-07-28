@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+
+# Local Spring profile containing credentials
+src/main/resources/application-local.properties
+
+# Runtime logs
+*.log

@@ -508,6 +508,78 @@ class AdditionalApiBusinessLogicTest {
     }
 
     @Test
+    void rejectsSecondPlaceRatingRangeAboveFirstPlaceRange() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = createDraftTournamentForRatingValidation(tournamentId);
+        TournamentRatingConfigRequest ratingConfig =
+                TournamentRatingConfigRequest.builder()
+                        .secondMin(7)
+                        .secondMax(13)
+                        .build();
+        UpdateTournamentRequest request = UpdateTournamentRequest.builder()
+                .ratingConfig(ratingConfig)
+                .build();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> tournamentService.update(tournamentId, request));
+
+        assertEquals(ErrorCode.INVALID_HORSE_RATING_CONFIG, exception.getErrorCode());
+        verify(tournamentRepository, never()).save(tournament);
+    }
+
+    @Test
+    void rejectsThirdPlaceRatingRangeAboveSecondPlaceRange() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = createDraftTournamentForRatingValidation(tournamentId);
+        TournamentRatingConfigRequest ratingConfig =
+                TournamentRatingConfigRequest.builder()
+                        .thirdMin(3)
+                        .thirdMax(6)
+                        .build();
+        UpdateTournamentRequest request = UpdateTournamentRequest.builder()
+                .ratingConfig(ratingConfig)
+                .build();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> tournamentService.update(tournamentId, request));
+
+        assertEquals(ErrorCode.INVALID_HORSE_RATING_CONFIG, exception.getErrorCode());
+        verify(tournamentRepository, never()).save(tournament);
+    }
+
+    @Test
+    void rejectsFourthFifthRatingRangeAboveThirdPlaceRange() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = createDraftTournamentForRatingValidation(tournamentId);
+        TournamentRatingConfigRequest ratingConfig =
+                TournamentRatingConfigRequest.builder()
+                        .fourthFifthMin(2)
+                        .fourthFifthMax(5)
+                        .build();
+        UpdateTournamentRequest request = UpdateTournamentRequest.builder()
+                .ratingConfig(ratingConfig)
+                .build();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> tournamentService.update(tournamentId, request));
+
+        assertEquals(ErrorCode.INVALID_HORSE_RATING_CONFIG, exception.getErrorCode());
+        verify(tournamentRepository, never()).save(tournament);
+    }
+
+    @Test
     void publishingTournamentLocksItsRatingConfig() {
         UUID tournamentId = UUID.randomUUID();
         Tournament tournament = Tournament.builder()
@@ -536,6 +608,32 @@ class AdditionalApiBusinessLogicTest {
         assertEquals(TournamentStatus.OPEN, tournament.getStatus());
         assertNotNull(response.getRatingConfig());
         assertEquals(true, response.getRatingConfig().isLocked());
+    }
+
+    private Tournament createDraftTournamentForRatingValidation(UUID tournamentId) {
+        LocalDateTime registrationOpenAt = LocalDateTime.now().plusDays(1);
+        LocalDateTime registrationCloseAt = registrationOpenAt.plusDays(3);
+        LocalDateTime reviewDeadlineAt = registrationCloseAt.plusDays(4);
+        LocalDateTime matchingDeadlineAt = reviewDeadlineAt.plusDays(3);
+        LocalDateTime schedulingDeadlineAt = matchingDeadlineAt.plusDays(4);
+
+        return Tournament.builder()
+                .tournamentId(tournamentId)
+                .name("Rating Validation Tournament")
+                .status(TournamentStatus.DRAFT)
+                .phase(TournamentPhase.DRAFT)
+                .startDate(LocalDate.now())
+                .endDate(LocalDate.now().plusMonths(1))
+                .minHorseAge(3)
+                .maxHorseAge(12)
+                .maxApprovedEntries(8)
+                .registrationOpenAt(registrationOpenAt)
+                .registrationCloseAt(registrationCloseAt)
+                .reviewDeadlineAt(reviewDeadlineAt)
+                .jockeyMatchingDeadlineAt(matchingDeadlineAt)
+                .schedulingDeadlineAt(schedulingDeadlineAt)
+                .ratingPolicyVersion(1)
+                .build();
     }
 
 }
