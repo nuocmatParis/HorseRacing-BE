@@ -811,6 +811,7 @@ public class TournamentServiceImpl implements TournamentService {
                 && thirdMin <= thirdMax
                 && fourthFifthMin >= 0
                 && fourthFifthMin <= fourthFifthMax
+                && secondMax < firstMin
                 && firstMin >= secondMin
                 && firstMax >= secondMax
                 && secondMin >= thirdMin

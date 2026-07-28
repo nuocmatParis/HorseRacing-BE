@@ -48,6 +48,8 @@ SET @created_at = DATE_SUB(@seed_now, INTERVAL 30 DAY);
 SET @demo_password = '$2a$12$ZGrUyKDU0UvqY0kpswOtoO58uurKVC2yVAA0iTlcnYI4pmPb18mBS';
 
 SET @matching_tournament_id = 'e5000000-0000-0000-0000-000000000001';
+SET @matching_round_id      = 'e5010000-0000-0000-0000-000000000001';
+SET @matching_race_id       = 'e5020000-0000-0000-0000-000000000001';
 SET @full_tournament_id     = 'e7000000-0000-0000-0000-000000000001';
 SET @full_round_id          = 'e7010000-0000-0000-0000-000000000001';
 SET @full_race_id           = 'e7020000-0000-0000-0000-000000000001';
@@ -67,14 +69,35 @@ DELETE FROM notification_deliveries
 WHERE notification_id IN (
     SELECT notification_id
     FROM notifications
-    WHERE related_id IN (@matching_tournament_id, @full_tournament_id, @full_race_id)
+    WHERE related_id IN (
+        @matching_tournament_id,
+        @matching_round_id,
+        @matching_race_id,
+        @full_tournament_id,
+        @full_round_id,
+        @full_race_id
+    )
 );
 
 DELETE FROM notifications
-WHERE related_id IN (@matching_tournament_id, @full_tournament_id, @full_race_id);
+WHERE related_id IN (
+    @matching_tournament_id,
+    @matching_round_id,
+    @matching_race_id,
+    @full_tournament_id,
+    @full_round_id,
+    @full_race_id
+);
 
 DELETE FROM notification_events
-WHERE aggregate_id IN (@matching_tournament_id, @full_tournament_id, @full_race_id);
+WHERE aggregate_id IN (
+    @matching_tournament_id,
+    @matching_round_id,
+    @matching_race_id,
+    @full_tournament_id,
+    @full_round_id,
+    @full_race_id
+);
 
 DELETE FROM wallet_transactions
 WHERE contract_id IN (
@@ -85,7 +108,7 @@ WHERE contract_id IN (
    OR race_result_id IN (
         SELECT result_id
         FROM race_results
-        WHERE race_id = @full_race_id
+        WHERE race_id IN (@matching_race_id, @full_race_id)
     )
    OR invoice_id IN (
         SELECT invoice_id
@@ -97,7 +120,58 @@ WHERE contract_id IN (
         )
     );
 
-DELETE FROM horse_rating_histories WHERE race_id = @full_race_id;
+DELETE FROM horse_rating_histories
+WHERE race_id IN (@matching_race_id, @full_race_id);
+
+DELETE FROM prediction_detail
+WHERE prediction_id IN (
+    SELECT prediction_id
+    FROM predictions
+    WHERE race_id = @matching_race_id
+);
+DELETE FROM predictions WHERE race_id = @matching_race_id;
+DELETE FROM appeal_evidences
+WHERE appeal_id IN (
+    SELECT appeal_id
+    FROM appeals
+    WHERE entry_id IN (
+        SELECT entry_id
+        FROM race_entries
+        WHERE race_id = @matching_race_id
+    )
+);
+DELETE FROM appeals
+WHERE entry_id IN (
+    SELECT entry_id
+    FROM race_entries
+    WHERE race_id = @matching_race_id
+);
+DELETE FROM violations
+WHERE entry_id IN (
+    SELECT entry_id
+    FROM race_entries
+    WHERE race_id = @matching_race_id
+);
+DELETE FROM race_reports WHERE race_id = @matching_race_id;
+DELETE FROM race_results WHERE race_id = @matching_race_id;
+DELETE FROM horse_inspections
+WHERE entry_id IN (
+    SELECT entry_id
+    FROM race_entries
+    WHERE race_id = @matching_race_id
+);
+DELETE FROM jockey_inspections
+WHERE entry_id IN (
+    SELECT entry_id
+    FROM race_entries
+    WHERE race_id = @matching_race_id
+);
+DELETE FROM race_referees WHERE race_id = @matching_race_id;
+DELETE FROM race_inspection_staff_assignments WHERE race_id = @matching_race_id;
+DELETE FROM race_entries WHERE race_id = @matching_race_id;
+DELETE FROM races WHERE round_id = @matching_round_id;
+DELETE FROM rounds WHERE tournament_id = @matching_tournament_id;
+
 DELETE FROM prediction_detail
 WHERE prediction_id IN (SELECT prediction_id FROM predictions WHERE race_id = @full_race_id);
 DELETE FROM predictions WHERE race_id = @full_race_id;

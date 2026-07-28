@@ -532,6 +532,30 @@ class AdditionalApiBusinessLogicTest {
     }
 
     @Test
+    void rejectsSecondPlaceRatingRangeOverlappingFirstPlaceRange() {
+        UUID tournamentId = UUID.randomUUID();
+        Tournament tournament = createDraftTournamentForRatingValidation(tournamentId);
+        TournamentRatingConfigRequest ratingConfig =
+                TournamentRatingConfigRequest.builder()
+                        .secondMin(2)
+                        .secondMax(8)
+                        .build();
+        UpdateTournamentRequest request = UpdateTournamentRequest.builder()
+                .ratingConfig(ratingConfig)
+                .build();
+
+        when(tournamentRepository.findById(tournamentId))
+                .thenReturn(Optional.of(tournament));
+
+        AppException exception = assertThrows(
+                AppException.class,
+                () -> tournamentService.update(tournamentId, request));
+
+        assertEquals(ErrorCode.INVALID_HORSE_RATING_CONFIG, exception.getErrorCode());
+        verify(tournamentRepository, never()).save(tournament);
+    }
+
+    @Test
     void rejectsThirdPlaceRatingRangeAboveSecondPlaceRange() {
         UUID tournamentId = UUID.randomUUID();
         Tournament tournament = createDraftTournamentForRatingValidation(tournamentId);
