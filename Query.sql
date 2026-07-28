@@ -78,3 +78,7 @@ EXECUTE drop_statement;
 DEALLOCATE PREPARE drop_statement;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+UPDATE ten_bang
+SET cot1 = gia_tri1, cot2 = gia_tri2
+WHERE dieu_kien;
