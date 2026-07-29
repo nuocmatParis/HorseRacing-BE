@@ -1,6 +1,7 @@
 package com.swp391.horseracing.service.impl;
 
 import com.swp391.horseracing.dto.tournament.request.CreatePrizeStructureRequest;
+import com.swp391.horseracing.dto.tournament.request.UpdatePrizeStructureRequest;
 import com.swp391.horseracing.dto.tournament.response.PrizeStructureResponse;
 import com.swp391.horseracing.entity.PrizeStructure;
 import com.swp391.horseracing.entity.Tournament;
@@ -17,8 +18,9 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.swp391.horseracing.dto.tournament.request.UpdatePrizeStructureRequest;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -65,6 +67,7 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
             if (newTotal.compareTo(BigDecimal.valueOf(100)) > 0) {
                 throw new AppException(ErrorCode.PRIZE_PERCENTAGE_EXCEEDS_100);
             }
+            validateRankHierarchyForCreationOrUpdate(tournamentId, null, request.getRank(), request.getPercentage());
         }
 
         PrizeStructure prizeStructure = prizeStructureMapper.toPrizeStructure(request);
@@ -93,17 +96,21 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
             throw new AppException(ErrorCode.PRIZE_PERCENTAGE_EXCEEDS_100);
         }
 
-        if (request.getPercentage() != null) {
+        int targetRank = request.getRank() != null ? request.getRank() : prizeStructure.getRank();
+        Float targetPercentage = request.getPercentage() != null ? request.getPercentage() : prizeStructure.getPercentage();
+
+        if (targetPercentage != null) {
             BigDecimal existingTotal = prizeStructureRepository
                     .findByTournament_TournamentId(tournament.getTournamentId())
                     .stream()
                     .filter(ps -> !ps.getPrizeStructureId().equals(prizeStructureId) && ps.getPercentage() != null)
                     .map(ps -> BigDecimal.valueOf(ps.getPercentage()))
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal newTotal = existingTotal.add(BigDecimal.valueOf(request.getPercentage()));
+            BigDecimal newTotal = existingTotal.add(BigDecimal.valueOf(targetPercentage));
             if (newTotal.compareTo(BigDecimal.valueOf(100)) > 0) {
                 throw new AppException(ErrorCode.PRIZE_PERCENTAGE_EXCEEDS_100);
             }
+            validateRankHierarchyForCreationOrUpdate(tournament.getTournamentId(), prizeStructureId, targetRank, targetPercentage);
         }
 
         prizeStructureMapper.updatePrizeStructure(request, prizeStructure);
@@ -124,11 +131,67 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
     }
 
     @Override
-    public List<PrizeStructureResponse> getByTournament( UUID tournamentId){
+    public List<PrizeStructureResponse> getByTournament(UUID tournamentId) {
         tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new AppException(ErrorCode.TOURNAMENT_NOT_FOUND));
         return prizeStructureRepository.findByTournament_TournamentId(tournamentId)
-                .stream().map(prizeStructureMapper :: toPrizeStructureResponse).collect(Collectors.toList());
+                .stream().map(prizeStructureMapper::toPrizeStructureResponse).collect(Collectors.toList());
     }
+
+    @Override
+    public void validatePrizeStructuresForTournament(UUID tournamentId) {
+        List<PrizeStructure> prizeStructures = prizeStructureRepository.findByTournament_TournamentId(tournamentId);
+
+        if (prizeStructures.isEmpty()) {
+            throw new AppException(ErrorCode.TOURNAMENT_MISSING_PRIZE);
+        }
+
+        List<PrizeStructure> activePercentagePrizes = prizeStructures.stream()
+                .filter(ps -> ps.getPercentage() != null)
+                .sorted(Comparator.comparingInt(PrizeStructure::getRank))
+                .collect(Collectors.toList());
+
+        if (!activePercentagePrizes.isEmpty()) {
+            BigDecimal totalPercentage = activePercentagePrizes.stream()
+                    .map(ps -> BigDecimal.valueOf(ps.getPercentage()))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (totalPercentage.compareTo(BigDecimal.valueOf(100)) != 0) {
+                throw new AppException(ErrorCode.INVALID_TOTAL_PRIZE_PERCENTAGE);
+            }
+        }
+    }
+
+    private void validateRankHierarchyForCreationOrUpdate(UUID tournamentId, UUID currentPrizeStructureId, int targetRank, Float targetPercentage) {
+        if (targetPercentage == null) {
+            return;
+        }
+
+        List<PrizeStructure> existing = prizeStructureRepository.findByTournament_TournamentId(tournamentId);
+
+        List<PrizeRankEntry> simulatedList = new ArrayList<>();
+        for (PrizeStructure ps : existing) {
+            if (currentPrizeStructureId != null && ps.getPrizeStructureId().equals(currentPrizeStructureId)) {
+                continue;
+            }
+            if (ps.getPercentage() != null) {
+                simulatedList.add(new PrizeRankEntry(ps.getRank(), ps.getPercentage()));
+            }
+        }
+        simulatedList.add(new PrizeRankEntry(targetRank, targetPercentage));
+
+        simulatedList.sort(Comparator.comparingInt(PrizeRankEntry::rank));
+
+        for (int i = 0; i < simulatedList.size() - 1; i++) {
+            PrizeRankEntry current = simulatedList.get(i);
+            PrizeRankEntry next = simulatedList.get(i + 1);
+
+            if (current.percentage() <= next.percentage()) {
+                throw new AppException(ErrorCode.INVALID_PRIZE_RANK_HIERARCHY);
+            }
+        }
+    }
+
+    private record PrizeRankEntry(int rank, float percentage) {}
 
 }

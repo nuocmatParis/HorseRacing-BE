@@ -13,4 +13,5 @@ public interface PrizeStructureService {
     PrizeStructureResponse update(UUID prizeStructureId, UpdatePrizeStructureRequest request);
     void delete(UUID prizeStructureId);
     List<PrizeStructureResponse> getByTournament(UUID tournamentId);
+    void validatePrizeStructuresForTournament(UUID tournamentId);
 }

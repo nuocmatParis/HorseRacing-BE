@@ -244,6 +244,10 @@ public enum ErrorCode {
 
     PRIZE_PERCENTAGE_EXCEEDS_100(1520, HttpStatus.BAD_REQUEST, "Total prize percentage must not exceed 100%"),
 
+    INVALID_TOTAL_PRIZE_PERCENTAGE(15201, HttpStatus.BAD_REQUEST, "Total prize percentage must be exactly 100%"),
+
+    INVALID_PRIZE_RANK_HIERARCHY(15202, HttpStatus.BAD_REQUEST, "Prize percentage of higher rank must be strictly greater than lower rank"),
+
     TOURNAMENT_ELIGIBILITY_NOT_FOUND(1521, HttpStatus.NOT_FOUND, "Tournament eligibility not found"),
 
     TOURNAMENT_MISSING_PRIZE(1522, HttpStatus.BAD_REQUEST, "Tournament must have at least one prize structure"),
