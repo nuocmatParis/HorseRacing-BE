@@ -41,3 +41,6 @@ src/main/resources/application-local.properties
 
 # Runtime logs
 *.log
+
+# Không theo dõi thư mục tài liệu
+/docs/
