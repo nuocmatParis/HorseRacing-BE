@@ -106,7 +106,7 @@ public class ScoringServiceImpl implements ScoringService {
 
         if (type == PredictionType.TOP1) {
             if (actualRank == 1 && detail.getPredictedRank() == 1) {
-                detail.setStatus(PredictionDetailStatus.CORRECT);
+                detail.setStatus(PredictionDetailStatus.CORRECT_EXACT_POSITION);
                 return tournament.getPredictionTop1CorrectPoints();
             } else {
                 detail.setStatus(PredictionDetailStatus.INCORRECT);
@@ -118,12 +118,12 @@ public class ScoringServiceImpl implements ScoringService {
         boolean inTop3 = actualRank >= 1 && actualRank <= 3;
 
         if (inTop3 && detail.getPredictedRank() == actualRank) {
-            detail.setStatus(PredictionDetailStatus.CORRECT);
+            detail.setStatus(PredictionDetailStatus.CORRECT_EXACT_POSITION);
             return tournament.getPredictionTop3ExactPositionPoints();
         }
 
         if (inTop3) {
-            detail.setStatus(PredictionDetailStatus.CORRECT);
+            detail.setStatus(PredictionDetailStatus.CORRECT_IN_TOP3);
             return tournament.getPredictionTop3CorrectHorsePoints();
         }
 

@@ -15,6 +15,7 @@ public class PredictionResultResponse {
     private UUID raceId;
     private PredictionStatus status;
     private Integer rewardPoints;
+    private Integer totalSpectatorPoints;
     private LocalDateTime scoredAt;
     private LocalDateTime voidedAt;
     private String voidReason;

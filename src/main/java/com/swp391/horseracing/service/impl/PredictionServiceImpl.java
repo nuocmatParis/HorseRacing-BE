@@ -257,6 +257,7 @@ public class PredictionServiceImpl implements PredictionService {
                 .raceId(raceId)
                 .status(prediction.getStatus())
                 .rewardPoints(prediction.getRewardPoints())
+                .totalSpectatorPoints(spectator.getTotalPoints())
                 .scoredAt(prediction.getScoredAt())
                 .voidedAt(prediction.getVoidedAt())
                 .voidReason(prediction.getVoidReason())
