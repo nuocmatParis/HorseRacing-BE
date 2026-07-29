@@ -52,6 +52,13 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
             throw new AppException(ErrorCode.TOURNAMENT_NOT_IN_DRAFT);
         }
 
+        int maxAllowedRank = tournament.getMaxApprovedHorses() != null && tournament.getMaxApprovedHorses() > 0
+                ? tournament.getMaxApprovedHorses()
+                : tournament.getMaxEntriesPerRace();
+        if (request.getRank() > maxAllowedRank) {
+            throw new AppException(ErrorCode.PRIZE_RANK_EXCEEDS_HORSE_COUNT);
+        }
+
         if (prizeStructureRepository.existsByTournament_TournamentIdAndRank(tournamentId, request.getRank())) {
             throw new AppException(ErrorCode.DUPLICATE_PRIZE_RANK);
         }
@@ -98,6 +105,13 @@ public class PrizeStructureServiceImpl implements PrizeStructureService {
 
         int targetRank = request.getRank() != null ? request.getRank() : prizeStructure.getRank();
         Float targetPercentage = request.getPercentage() != null ? request.getPercentage() : prizeStructure.getPercentage();
+
+        int maxAllowedRank = tournament.getMaxApprovedHorses() != null && tournament.getMaxApprovedHorses() > 0
+                ? tournament.getMaxApprovedHorses()
+                : tournament.getMaxEntriesPerRace();
+        if (targetRank > maxAllowedRank) {
+            throw new AppException(ErrorCode.PRIZE_RANK_EXCEEDS_HORSE_COUNT);
+        }
 
         if (targetPercentage != null) {
             BigDecimal existingTotal = prizeStructureRepository

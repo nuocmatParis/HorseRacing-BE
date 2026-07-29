@@ -248,6 +248,12 @@ public enum ErrorCode {
 
     INVALID_PRIZE_RANK_HIERARCHY(15202, HttpStatus.BAD_REQUEST, "Prize percentage of higher rank must be strictly greater than lower rank"),
 
+    PRIZE_RANK_EXCEEDS_HORSE_COUNT(15203, HttpStatus.BAD_REQUEST, "Prize rank cannot exceed the maximum number of horses in the tournament"),
+
+    RACE_RESULT_RANK_EXCEEDS_ENTRY_COUNT(15204, HttpStatus.BAD_REQUEST, "Race result rank cannot exceed the total number of horses in the race"),
+
+    RACE_REPORT_RETURN_NOT_ALLOWED(15205, HttpStatus.BAD_REQUEST, "Returning report to referee is disabled for Head Referee"),
+
     TOURNAMENT_ELIGIBILITY_NOT_FOUND(1521, HttpStatus.NOT_FOUND, "Tournament eligibility not found"),
 
     TOURNAMENT_MISSING_PRIZE(1522, HttpStatus.BAD_REQUEST, "Tournament must have at least one prize structure"),

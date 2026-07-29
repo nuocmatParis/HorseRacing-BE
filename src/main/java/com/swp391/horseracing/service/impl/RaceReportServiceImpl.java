@@ -192,19 +192,7 @@ public class RaceReportServiceImpl implements RaceReportService {
     @Override
     @Transactional
     public RaceReportResponse returnReport(UUID raceId, ReturnRaceReportRequest request) {
-        Referee referee = getCurrentReferee();
-        RaceReport report = getHeadManagedReportForUpdate(raceId, referee);
-        if (report.getStatus() != ReportStatus.SUBMITTED_TO_HEAD) {
-            throw new AppException(ErrorCode.RACE_REPORT_NOT_SUBMITTED);
-        }
-        if (request.getReason() == null || request.getReason().isBlank()) {
-            throw new AppException(ErrorCode.RACE_REPORT_RETURN_REASON_REQUIRED);
-        }
-        report.setStatus(ReportStatus.DRAFT);
-        report.setReturnedAt(LocalDateTime.now());
-        report.setReturnedBy(referee);
-        report.setReturnReason(request.getReason().trim());
-        return raceReportMapper.toRaceReportResponse(raceReportRepository.save(report));
+        throw new AppException(ErrorCode.RACE_REPORT_RETURN_NOT_ALLOWED);
     }
 
     @Override

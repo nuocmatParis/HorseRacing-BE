@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -103,6 +104,10 @@ public class RaceResultServiceImpl implements RaceResultService {
                 }
                 if (rank < 1) {
                     throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
+                }
+                long totalEntriesInRace = raceEntryRepository.countByRace_RaceId(raceId);
+                if (rank > totalEntriesInRace) {
+                    throw new AppException(ErrorCode.RACE_RESULT_RANK_EXCEEDS_ENTRY_COUNT);
                 }
                 if (!ranks.add(rank)) {
                     throw new AppException(ErrorCode.DUPLICATE_RACE_RESULT_RANK);
@@ -357,6 +362,10 @@ public class RaceResultServiceImpl implements RaceResultService {
                 if (rank < 1) {
                     throw new AppException(ErrorCode.RANK_MUST_BE_POSITIVE);
                 }
+                long totalEntriesInRace = raceEntryRepository.countByRace_RaceId(race.getRaceId());
+                if (rank > totalEntriesInRace) {
+                    throw new AppException(ErrorCode.RACE_RESULT_RANK_EXCEEDS_ENTRY_COUNT);
+                }
                 if (finishTime < 0) {
                     throw new AppException(ErrorCode.FINISH_TIME_MUST_BE_POSITIVE);
                 }
@@ -410,7 +419,36 @@ public class RaceResultServiceImpl implements RaceResultService {
             raceEntryRepository.save(entry);
         }
 
+        autoAdjustRaceResultRanks(existingResults);
+
         return mapResults(raceResultRepository.saveAll(existingResults));
+    }
+
+    private void autoAdjustRaceResultRanks(List<RaceResult> results) {
+        List<RaceResult> finishedResults = results.stream()
+                .filter(r -> r.getStatus() == RaceResultStatus.FINISHED)
+                .sorted((r1, r2) -> {
+                    if (r1.getFinishTime() != null && r2.getFinishTime() != null) {
+                        return Float.compare(r1.getFinishTime(), r2.getFinishTime());
+                    }
+                    if (r1.getRank() != null && r2.getRank() != null) {
+                        return Integer.compare(r1.getRank(), r2.getRank());
+                    }
+                    return 0;
+                })
+                .collect(Collectors.toList());
+
+        for (int i = 0; i < finishedResults.size(); i++) {
+            RaceResult result = finishedResults.get(i);
+            result.setRank(i + 1);
+        }
+
+        for (RaceResult result : results) {
+            if (result.getStatus() == RaceResultStatus.DISQUALIFIED) {
+                result.setRank(null);
+                result.setFinishTime(null);
+            }
+        }
     }
 
     private List<RaceResultResponse> mapResults(List<RaceResult> results) {
