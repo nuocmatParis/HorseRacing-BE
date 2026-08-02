@@ -44,3 +44,10 @@ src/main/resources/application-local.properties
 
 # Không theo dõi thư mục tài liệu
 /docs/
+
+# Repository-only internal/demo artifacts
+/.mailmap
+/*.sql
+/flow.md
+/demo-flow.md
+/run.err
