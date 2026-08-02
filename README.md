@@ -1,582 +1,217 @@
-# Backend Setup Guide - Spring Boot
+# 1. Horse Racing Tournament Management System — Backend
 
-Tài liệu này hướng dẫn cách setup project Backend để mọi người trong team có thể clone repo về, cài dependency, cấu hình database và chạy project trên máy local.
+Horse Racing Tournament Management System (HRTMS) là hệ thống quản lý giải đua ngựa từ giai đoạn đăng ký, ghép kỵ sĩ, lập lịch thi đấu, kiểm tra sức khỏe, vận hành cuộc đua đến công bố kết quả và thanh toán giải thưởng.
+
+Repository này chứa Backend REST API của hệ thống, chịu trách nhiệm xử lý nghiệp vụ, phân quyền, lưu trữ dữ liệu, thanh toán và thông báo theo thời gian thực.
 
 ---
 
-## 1. Yêu cầu cài đặt trước
+## 2. Chức năng chính
 
-Trước khi chạy project, cần cài các công cụ sau:
+### Tài khoản và phân quyền
 
-| Công cụ | Phiên bản khuyến nghị | Ghi chú |
-|---|---:|---|
-| Java JDK | 17 trở lên | Project Spring Boot nên dùng JDK  |
-| IntelliJ IDEA | Community hoặc Ultimate | Dùng để mở project |
-| Maven | Có thể dùng Maven Wrapper | Nếu repo có `mvnw` thì không cần cài Maven riêng |
-| MySQL | 8.x | Dùng làm database |
-| Git | Latest | Dùng để clone source code |
-| Postman | Optional | Dùng để test API |
+- Đăng ký tài khoản bằng email và OTP.
+- Đăng nhập và xác thực bằng JWT.
+- Quản lý hồ sơ theo vai trò:
+  - Admin
+  - Horse Owner
+  - Jockey
+  - Spectator
+  - Referee
+  - Veterinarian
+  - Medical Staff
 
-Kiểm tra phiên bản Java:
+### Quản lý giải đấu
 
-```bash
+- Tạo và cấu hình Tournament.
+- Cấu hình timeline cho từng giai đoạn của giải.
+- Tự động tính bracket, round và race.
+- Tự động đề xuất lịch thi đấu.
+- Quản lý điều kiện tham gia và cơ cấu giải thưởng.
+- Cấu hình khoảng điểm Horse Rating riêng cho từng giải.
+
+### Đăng ký và hợp đồng
+
+- Owner đăng ký ngựa tham gia Tournament.
+- Jockey đăng ký tham gia Tournament.
+- Owner gửi lời mời thuê Jockey.
+- Jockey chấp nhận, từ chối hoặc hủy hợp đồng hợp lệ.
+- Kiểm soát một ngựa hoặc một Jockey không có nhiều hợp đồng hiệu lực trong cùng Tournament.
+- Thanh toán phí thuê, phí hợp đồng và quản lý tiền escrow.
+- Giải ngân trước và giải ngân phần còn lại sau Final Race.
+
+### Lập lịch thi đấu
+
+- Phân contract vào Race.
+- Tự động hoặc thủ công phân lane.
+- Phân công Race Referee.
+- Phân công Head Referee cho Round.
+- Phân công Veterinarian và Medical Staff.
+- Publish lịch thi đấu.
+- Kiểm tra trùng lịch và thời gian nghỉ giữa các Race/Round.
+
+### Inspection
+
+- Veterinarian kiểm tra ngựa.
+- Medical Staff kiểm tra Jockey.
+- Ghi nhận cân nặng thực tế, giống thực tế và kết quả doping.
+- Hỗ trợ PASS/FAIL và handicap nếu Tournament áp dụng.
+- Chỉ entry đủ điều kiện mới được tham gia Race.
+
+### Vận hành Race
+
+- Race Referee kiểm tra readiness và bắt đầu Race.
+- Ghi nhận vi phạm và hình phạt.
+- Nhập hoặc cập nhật kết quả thi đấu.
+- Hỗ trợ kết quả `FINISHED` và `DISQUALIFIED`.
+- Race Referee tạo và gửi Race Report.
+- Head Referee xem xét, điều chỉnh và ký Race Report.
+- Admin publish kết quả chính thức.
+
+### Khiếu nại
+
+- Owner và Jockey gửi khiếu nại sau Race.
+- Đính kèm bằng chứng dạng URL, hình ảnh hoặc nội dung văn bản.
+- Race Referee xử lý khiếu nại trước khi gửi Report.
+- Head Referee xem lịch sử khiếu nại và điều chỉnh kết quả khi cần.
+- Không được ký hoặc publish Report khi còn khiếu nại chưa xử lý.
+
+### Prediction và AI Prediction
+
+- Spectator dự đoán Top 3 cho từng Race.
+- Mỗi Race có thời gian đóng prediction riêng.
+- Tự động chấm điểm khi Race Report được publish.
+- Hỗ trợ điểm đúng ngựa, đúng vị trí và perfect bonus.
+- Admin có thể tạo và publish AI Prediction cho Race.
+
+---
+
+## 3. Công nghệ sử dụng
+
+| Thành phần | Công nghệ |
+|---|---|
+| Ngôn ngữ | Java 21 |
+| Framework | Spring Boot 4 |
+| REST API | Spring Web MVC |
+| Database | MySQL 8 |
+| Realtime Notification | WebSocket, STOMP |
+| Email | Spring Mail |
+| Payment Gateway | VNPay Sandbox |
+| AI Prediction | OpenAI API |
+| Media Storage | Cloudinary |
+| API Documentation | Springdoc OpenAPI, Swagger UI |
+
+---
+
+## 4. Yêu cầu môi trường
+
+Trước khi chạy project, cần cài đặt:
+
+| Công cụ | Phiên bản |
+|---|---:|
+| Java JDK | 25 |
+| Maven | 3.9 trở lên |
+| MySQL | 8.x |
+| IntelliJ IDEA | Khuyến nghị |
+| Postman | Tùy chọn |
+| ngrok | Tùy chọn |
+
+Kiểm tra Java:
+
+```powershell
 java -version
 ```
 
-Kiểm tra Git:
+Kiểm tra Maven:
 
-```bash
-git --version
+```powershell
+mvn -version
 ```
+
+Project được compile với Java 25.
 
 ---
 
-## 2. Clone project
+## 5. Biến môi trường
 
-Clone repo Backend về máy:
-
-```bash
-git clone <backend-repo-url>
-```
-
-Di chuyển vào thư mục project:
-
-```bash
-cd <backend-project-folder>
-```
-
-Ví dụ:
-
-```bash
-cd horse-racing-backend
-```
-
----
-
-## 3. Mở project bằng IntelliJ IDEA
-
-1. Mở IntelliJ IDEA.
-2. Chọn **Open**.
-3. Chọn thư mục backend vừa clone.
-4. Đợi IntelliJ import Maven dependencies.
-5. Kiểm tra Project SDK đang dùng **JDK 25**.
-
-Nếu IntelliJ chưa nhận JDK:
-
-```text
-File > Project Structure > Project SDK > chọn JDK 17
-```
-
----
-
-## 4. Cấu hình database MySQL
-
-Tạo database trong MySQL:
-
-```sql
-CREATE DATABASE horse_racing_db;
-```
-
-Có thể đổi tên database tùy theo project, nhưng phải khớp với file cấu hình Spring Boot.
-
----
-
-## 5. Cấu hình `application.properties`
-
-Mở file:
-
-```text
-src/main/resources/application.properties
-```
-
-Cấu hình mẫu:
-
-```properties
-spring.application.name=horse-racing-backend
-
-spring.datasource.url=jdbc:mysql://localhost:3306/horse_racing_db
-spring.datasource.username=root
-spring.datasource.password=your_password
-
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-server.port=8080
-```
-
-Giải thích nhanh:
-
-| Config | Ý nghĩa |
+| Biến | Ý nghĩa |
 |---|---|
-| `spring.datasource.url` | Đường dẫn kết nối MySQL |
-| `spring.datasource.username` | Username MySQL |
-| `spring.datasource.password` | Password MySQL |
-| `spring.jpa.hibernate.ddl-auto=update` | Tự update bảng theo Entity |
-| `server.port=8080` | Backend chạy ở port 8080 |
-
-Lưu ý: Không nên push password thật lên GitHub. Nếu cần, tạo file `.env` hoặc dùng biến môi trường.
-
-## 7. Cài dependencies
-
-Nếu repo có Maven Wrapper, chạy:
-
-### Windows
-
-```bash
-mvnw.cmd clean install
-```
-
-### macOS / Linux
-
-```bash
-./mvnw clean install
-```
-
-Nếu máy đã cài Maven:
-
-```bash
-mvn clean install
-```
+| `DB_URL` | JDBC URL kết nối MySQL |
+| `DB_USERNAME` | Username MySQL |
+| `DB_PASSWORD` | Password MySQL |
+| `JWT_SIGNER_KEY` | Khóa ký và xác thực JWT |
+| `MAIL_USERNAME` | Email dùng để gửi OTP và notification |
+| `MAIL_PASSWORD` | Gmail App Password |
+| `VNPAY_TMN_CODE` | Mã merchant VNPay sandbox |
+| `VNPAY_HASH_SECRET` | Secret dùng để ký request VNPay |
+| `VNPAY_PAY_URL` | Endpoint thanh toán VNPay |
+| `VNPAY_RETURN_URL` | Backend callback URL sau thanh toán |
+| `VNPAY_IPN_URL` | Backend IPN URL của VNPay |
+| `VNPAY_FRONTEND_RETURN_URL` | Trang FE nhận kết quả thanh toán |
+| `OPENAI_API_KEY` | API key dùng cho AI Prediction |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
+| `CORS_ALLOWED_ORIGIN_PATTERNS` | Danh sách origin được gọi REST API |
+| `WEBSOCKET_ALLOWED_ORIGIN_PATTERNS` | Danh sách origin được kết nối WebSocket |
 
 ---
 
-## 8. Chạy project
+## 6. Chạy và kiểm tra project
 
-Có 2 cách chạy project.
+### Chạy ứng dụng
 
-### Cách 1: Chạy bằng IntelliJ
-
-Mở class main, thường có dạng:
-
-```text
-src/main/java/.../Application.java
-```
-
-Ví dụ:
-
-```java
-@SpringBootApplication
-public class HorseRacingBackendApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(HorseRacingBackendApplication.class, args);
-    }
-}
-```
-
-Bấm nút **Run**.
-
-### Cách 2: Chạy bằng terminal
-
-Nếu dùng Maven Wrapper:
-
-```bash
-mvnw.cmd spring-boot:run
-```
-
-Hoặc:
-
-```bash
+```powershell
 mvn spring-boot:run
 ```
 
-Nếu chạy thành công, terminal sẽ hiển thị tương tự:
+Sau khi khởi động thành công:
 
-```text
-Tomcat started on port 8080
-Started HorseRacingBackendApplication
-```
-
----
-
-## 9. Test API
-
-Sau khi chạy project, backend sẽ chạy ở:
-
-```text
-http://localhost:8080
-```
-
-Ví dụ test API:
-
-```text
-GET http://localhost:8080/api/health
-```
-
-Hoặc nếu có Swagger:
-
-```text
-http://localhost:8080/swagger-ui/index.html
-```
-
----
-
-## 10. Cấu trúc thư mục đề xuất
-
-Cấu trúc package backend nên chia theo layer:
-
-```text
-src/main/java/com/example/horseracing
-│
-├── config
-│   └── SecurityConfig.java
-│
-├── controller
-│   └── HorseController.java
-│
-├── dto
-│   ├── request
-│   │   ├── HorseCreateRequest.java
-│   │   └── HorseUpdateRequest.java
-│   └── response
-│       └── HorseResponse.java
-│
-├── entity
-│   └── Horse.java
-│
-├── exception
-│   ├── GlobalExceptionHandler.java
-│   └── ResourceNotFoundException.java
-│
-├── mapper
-│   └── HorseMapper.java
-│
-├── repository
-│   └── HorseRepository.java
-│
-├── service
-│   ├── HorseService.java
-│   └── impl
-│       └── HorseServiceImpl.java
-│
-└── HorseRacingBackendApplication.java
-```
-
-Ý nghĩa các package:
-
-| Package | Vai trò |
+| Dịch vụ | URL |
 |---|---|
-| `controller` | Nhận request từ FE |
-| `service` | Xử lý logic nghiệp vụ |
-| `repository` | Làm việc với database |
-| `entity` | Mapping bảng trong database |
-| `dto` | Dữ liệu request/response với FE |
-| `mapper` | Chuyển đổi Entity ↔ DTO |
-| `config` | Cấu hình Spring Security, CORS, JWT |
-| `exception` | Xử lý lỗi tập trung |
+| Backend API | `http://localhost:8080` |
+| Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
+| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
+| WebSocket endpoint | `http://localhost:8080/ws` |
 
----
-
-## 11. Quy tắc làm việc với Git
-
-Không code trực tiếp trên branch `main`.
-
-Quy trình đề xuất:
-
-```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/ten-chuc-nang
-```
-
-Ví dụ:
-
-```bash
-git checkout -b feature/horse-crud
-```
-
-Sau khi code xong:
-
-```bash
-git add .
-git commit -m "feat: implement horse CRUD API"
-git push origin feature/horse-crud
-```
-
-Sau đó tạo Pull Request vào branch `develop`.
-
----
-
-## 12. Quy tắc đặt tên branch
-
-| Loại task | Cách đặt tên |
-|---|---|
-| Tính năng mới | `feature/ten-chuc-nang` |
-| Sửa lỗi | `fix/ten-loi` |
-| Cấu hình | `config/ten-cau-hinh` |
-| Refactor code | `refactor/ten-phan-code` |
-
-Ví dụ:
+## 7. Cấu trúc project
 
 ```text
-feature/auth-login
-feature/horse-management
-fix/jwt-token-error
-config/cors-security
-```
-
----
-
-## 13. Quy tắc commit message
-
-Nên dùng format:
-
-```text
-type: nội dung commit
-```
-
-Ví dụ:
-
-```text
-feat: create horse entity and repository
-fix: resolve database connection error
-refactor: separate horse dto into request and response
-config: add cors configuration
-docs: update backend setup guide
-```
-
-Một số type thường dùng:
-
-| Type | Ý nghĩa |
-|---|---|
-| `feat` | Thêm chức năng mới |
-| `fix` | Sửa lỗi |
-| `refactor` | Tối ưu code, không đổi chức năng |
-| `config` | Cấu hình project |
-| `docs` | Sửa tài liệu |
-| `test` | Thêm hoặc sửa test |
-
----
-
-## 14. Quy tắc API với FE
-
-Backend nên thống nhất endpoint dạng:
-
-```text
-/api/<resource>
-```
-
-Ví dụ:
-
-```text
-GET    /api/horses
-GET    /api/horses/{id}
-POST   /api/horses
-PUT    /api/horses/{id}
-DELETE /api/horses/{id}
-```
-
-Quy tắc DTO:
-
-| API | Request body có id không? | Response có id không? |
-|---|---:|---:|
-| POST create | Không | Có |
-| PUT update | Không, id nằm trên URL | Có |
-| GET detail | Không | Có |
-| DELETE | Không | Có thể không cần body |
-
-Ví dụ tạo mới Horse:
-
-```json
-{
-  "name": "Lightning",
-  "breed": "Arabian",
-  "age": 5,
-  "weight": 450,
-  "color": "Black"
-}
-```
-
-Ví dụ response:
-
-```json
-{
-  "id": 1,
-  "name": "Lightning",
-  "breed": "Arabian",
-  "age": 5,
-  "weight": 450,
-  "color": "Black",
-  "healthStatus": "Healthy"
-}
-```
-
----
-
-## 15. Cấu hình CORS cho FE gọi API
-
-Nếu FE chạy ở:
-
-```text
-http://localhost:5173
-```
-
-Backend cần cho phép CORS.
-
-Ví dụ config:
-
-```java
-@Configuration
-public class CorsConfig {
-
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:5173")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
-            }
-        };
-    }
-}
-```
-
-Nếu dùng Spring Security, cần cấu hình CORS trong `SecurityConfig` nữa.
-
----
-
-## 16. Các lỗi thường gặp
-
-### Lỗi 1: Không connect được MySQL
-
-Thông báo thường gặp:
-
-```text
-Communications link failure
-```
-
-Cách xử lý:
-
-- Kiểm tra MySQL đã chạy chưa.
-- Kiểm tra database đã tạo chưa.
-- Kiểm tra username/password.
-- Kiểm tra URL đúng chưa.
-
-Đúng:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/horse_racing_db
-```
-
-Sai thường gặp:
-
-```properties
-spring.datasource.url=jdbc:mysql://localhost3306/horse_racing_db
-```
-
-Thiếu dấu `:` giữa `localhost` và `3306`.
-
----
-
-### Lỗi 2: Maven không tải được dependency
-
-Cách xử lý:
-
-```bash
-mvn clean install -U
-```
-
-Hoặc trong IntelliJ:
-
-```text
-Maven tab > Reload All Maven Projects
-```
-
----
-
-### Lỗi 3: Port 8080 đã được dùng
-
-Đổi port trong `application.properties`:
-
-```properties
-server.port=8081
-```
-
-Hoặc tắt process đang dùng port 8080.
-
----
-
-### Lỗi 4: Không tìm thấy main class
-
-Cách xử lý:
-
-- Kiểm tra class main có annotation `@SpringBootApplication`.
-- Kiểm tra file nằm trong package gốc.
-- Reload Maven project.
-
----
-
-## 17. Checklist trước khi push code
-
-Trước khi push code lên GitHub, kiểm tra:
-
-- Project chạy được local.
-- Không push password thật.
-- Không push file rác như `.idea`, `target`, `.env`.
-- API đã test bằng Postman.
-- Code không bị lỗi compile.
-- Tên branch đúng format.
-- Commit message rõ ràng.
-
----
-
-## 18. File `.gitignore` nên có
-
-Ví dụ `.gitignore` cho Spring Boot:
-
-```gitignore
-target/
-.idea/
-*.iml
-.env
-logs/
-*.log
-.DS_Store
-```
-
----
-
-## 19. Gợi ý README ngắn cho người mới clone
-
-Người mới chỉ cần chạy nhanh các bước sau:
-
-```bash
-git clone <backend-repo-url>
-cd <backend-project-folder>
-```
-
-Tạo database:
-
-```sql
-CREATE DATABASE horse_racing_db;
-```
-
-Cấu hình password MySQL trong:
-
-```text
-src/main/resources/application.properties
-```
-
-Chạy project:
-
-```bash
-mvn spring-boot:run
-```
-
-Mở:
-
-```text
-http://localhost:8080
-```
-
----
-
-## 20. Ghi chú cho team
-
-Khi có thay đổi cấu trúc database, entity, API hoặc rule xử lý, cần báo lại trong nhóm để FE và các thành viên backend khác update kịp.
-
-Nếu thêm API mới, nên cập nhật tài liệu API hoặc gửi endpoint mẫu cho FE test.
+HorseRacing-BE
+├── .env.example
+├── pom.xml
+├── README.md
+└── src
+    ├── main
+    │   ├── java
+    │   │   └── com
+    │   │       └── swp391
+    │   │           └── horseracing
+    │   │               ├── config
+    │   │               ├── controller
+    │   │               ├── dto
+    │   │               ├── entity
+    │   │               ├── enums
+    │   │               ├── exception
+    │   │               ├── mapper
+    │   │               ├── policy
+    │   │               ├── repository
+    │   │               ├── scheduler
+    │   │               ├── service
+    │   │               │   └── impl
+    │   │               ├── validation
+    │   │               └── websocket
+    │   └── resources
+    │       ├── application.properties
+    │       └── db
+    │           └── migration
+    └── test
+        ├── java
+        │   └── com
+        │       └── swp391
+        │           └── horseracing
+        │               ├── controller
+        │               ├── policy
+        │               └── service
+        └── resources
+            └── application-test.properties
