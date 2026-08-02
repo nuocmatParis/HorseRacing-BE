@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Repository-only internal/demo artifacts
+/docs/
+/.mailmap
+/*.sql
+/flow.md
+/demo-flow.md
+/run.err
