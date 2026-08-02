@@ -1,2 +1,0 @@
-USE SWP391_Project_HRTMS;
-ALTER TABLE wallets ADD COLUMN wallet_purpose VARCHAR(30) NOT NULL DEFAULT 'USER_MAIN' AFTER owner_type;
